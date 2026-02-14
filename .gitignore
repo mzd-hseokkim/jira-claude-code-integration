@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# MCP config (contains credentials)
+.mcp.json
+
+# Build
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local state
+.jira-context.json
+.claude/
+docs/.bkit-memory.json
+docs/.pdca-status.json
+docs/.pdca-snapshots/
+
+# MCP server (if cloned locally)
+mcp-jira-server/
