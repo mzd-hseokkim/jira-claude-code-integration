@@ -34,9 +34,19 @@ Parse the user's argument to determine the action and task ID, then execute the 
 The argument format is: `[action] [TASK-ID]`
 
 - **action**: One of `init`, `start`, `plan`, `design`, `impl`, `test`, `review`, `pr`, `done`, `report`, `status`
-- **TASK-ID**: Jira issue key (e.g., `PROJ-123`). Required for most actions. Not required for `init`, `report`, `status`.
+- **TASK-ID**: Jira issue key (e.g., `PROJ-123`). Optional — if omitted, auto-detect from context. Not required for `init`, `report`, `status`.
 
 If no action is provided, show the help text (same as `/jira` command).
+
+## TASK-ID Auto-Detection
+
+When TASK-ID is not provided, detect it automatically in the following priority order:
+
+1. **Git branch name**: Run `git branch --show-current`. If the branch matches `feature/<TASK-ID>`, extract the TASK-ID.
+2. **Current directory name**: Check if the current directory name matches a Jira issue key pattern (`[A-Z]+-\d+`, e.g., `PROJ-123`).
+3. **`.jira-context.json`**: Read the file and use the active task ID if present.
+
+If auto-detection succeeds, proceed with the detected TASK-ID. If it fails and the action requires a TASK-ID, ask the user to provide it.
 
 ## Action Routing
 
@@ -158,6 +168,6 @@ Quick status check:
 
 ## Error Handling
 
-- If TASK-ID is missing for actions that require it, ask the user to provide it
+- If TASK-ID is not provided and auto-detection fails, ask the user to provide it
 - If Jira MCP server is not connected, guide user to check `/jira` for setup
 - If transition fails (e.g., invalid transition name), use `mcp__jira__get-issue` to show current status and available transitions
