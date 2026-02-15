@@ -170,16 +170,41 @@ If Playwright generated failure screenshots, try to upload them:
 Use mcp__jira__upload-attachment with base64-encoded screenshot
 ```
 
-### Step 6: Handle Failures
+### Step 6: Completion Summary
 
-If tests failed:
-1. List the failing tests with error details
-2. Suggest fixes based on error analysis
-3. Offer to re-run tests after fixes: "Fix the issues and run `/jira-task test <TASK-ID>` again"
+테스트 통과 시 `.jira-context.json`의 `completedSteps`에 `"test"` 추가 (실패 시 추가하지 않음).
+테스트 결과에 따라 분기하여 완료 요약 출력:
 
-If all tests passed:
-1. Congratulate
-2. Suggest next step: `/jira-task review <TASK-ID>` for code review
+**테스트 통과 시:**
+```
+---
+✅ **Test Complete** — <TASK-ID>
+
+- 전체: <N>개, 통과: <N>개, 실패: 0개
+- 테스트 리포트: `docs/test/<TASK-ID>.test-report.md`
+- Jira 코멘트 게시됨
+
+**Progress**: init → start → plan → design → impl → **test ✓** → review → pr → done
+
+**Next**: `/jira-task review <TASK-ID>` — 코드 리뷰를 실행합니다
+---
+```
+
+**테스트 실패 시:**
+```
+---
+⚠️ **Test Failed** — <TASK-ID>
+
+- 전체: <N>개, 통과: <N>개, 실패: <N>개
+- 실패 목록:
+  - <test name>: <error summary>
+- 테스트 리포트: `docs/test/<TASK-ID>.test-report.md`
+
+**Progress**: init → start → plan → design → impl → **test ✗** → review → pr → done
+
+**Next**: 실패 항목 수정 후 `/jira-task test <TASK-ID>` 재실행
+---
+```
 
 ### Step 7: Write Playwright Tests (if none exist)
 

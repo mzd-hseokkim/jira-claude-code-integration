@@ -70,15 +70,12 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 This project is a Claude Code plugin that integrates Jira with the software development workflow.
 
-### Dependencies
+### PDCA Documents
 
-- **bkit (Vibecoding Kit)**: PDCA 사이클 전반을 위임.
-  - `plan` → bkit `/pdca plan`
-  - `design` → bkit `/pdca design`
-  - `impl` → bkit `/pdca do`
-  - `review` → bkit gap-detector + code-analyzer
-  - `done` → bkit `/pdca report`
-  - bkit이 설치되어 있어야 위 커맨드들이 정상 동작
+`/jira-task` 워크플로에서 생성하는 문서:
+- Plan: `docs/plan/<TASK-ID>.plan.md`
+- Design: `docs/design/<TASK-ID>.design.md`
+- Test Report: `docs/test/<TASK-ID>.test-report.md`
 
 ### MCP Server: jira (tom28881/mcp-jira-server)
 
@@ -139,6 +136,24 @@ The `jira` MCP server provides Jira tools. Available tools:
 - Store active task context in `.jira-context.json` (gitignored).
 - Git branches follow pattern: `feature/<TASK-ID>`
 - Worktrees are created in the parent directory: `../<project>_worktree/<TASK-ID>`
+
+### Workflow Progress Tracking
+
+각 `/jira-task` 스킬은 완료 시 `.jira-context.json`의 `completedSteps` 배열에 자신의 단계를 추가해야 한다:
+
+```json
+{
+  "taskId": "PROJ-123",
+  "completedSteps": ["init", "start", "plan"]
+}
+```
+
+유효한 단계: `init`, `start`, `plan`, `design`, `impl`, `test`, `review`, `pr`, `done`
+
+규칙:
+- 스킬 완료 시 `.jira-context.json`을 읽고, `completedSteps`에 현재 단계를 추가 (중복 방지)
+- Completion Summary 출력 시, `completedSteps`를 기반으로 Progress 라인의 `✓` 표시를 생성
+- `done` 단계 완료 시 `status`를 `"Done"`으로 변경
 
 ### Environment Variables
 

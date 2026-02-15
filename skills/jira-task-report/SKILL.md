@@ -59,6 +59,16 @@ Create a markdown report with:
 
 Save to `docs/reports/status-<YYYY-MM-DD>.report.md`
 
-### Step 4: Display Report
+### Step 4: Completion Summary
 
-Show the report to the user inline and note the saved file location.
+리포트를 인라인으로 표시한 뒤 완료 요약 출력:
+
+```
+---
+✅ **Report Generated**
+
+- 리포트 저장: `docs/reports/status-<YYYY-MM-DD>.report.md`
+- 전체 이슈: <N>개 (완료: <N>개, 진행중: <N>개, 대기: <N>개)
+- 완료율: <N>%
+---
+```

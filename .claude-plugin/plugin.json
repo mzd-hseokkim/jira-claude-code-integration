@@ -13,5 +13,9 @@
     "sprint",
     "issue-tracking",
     "automation"
-  ]
+  ],
+  "commands": "./commands",
+  "skills": "./skills",
+  "agents": "./agents",
+  "hooks": "./hooks/hooks.json"
 }

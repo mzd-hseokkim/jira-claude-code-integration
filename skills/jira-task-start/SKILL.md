@@ -124,10 +124,23 @@ Write `.jira-context.json` in the original repo root:
 }
 ```
 
-### Step 7: Summary
+### Step 7: Completion Summary
 
-Tell the user:
-- Task has been started
-- Branch/worktree location
-- Current issue status
-- Suggest next steps: "You can now start coding. When ready, use `/jira-task review <TASK-ID>` for code review or `/jira-task done <TASK-ID>` to complete."
+`.jira-context.json`의 `completedSteps`에 `"start"` 추가 후, 아래 형식으로 완료 요약 출력:
+
+```
+---
+✅ **Start Complete** — <TASK-ID>
+
+- 이슈 상태: In Progress
+- 브랜치: feature/<TASK-ID>
+- Worktree: <path>
+- Jira 코멘트 게시됨
+
+**Progress**: init → **start ✓** → plan → design → impl → test → review → pr → done
+
+**Next**: `/jira-task plan <TASK-ID>` — 기획 문서를 작성합니다
+---
+```
+
+Plan이 불필요한 간단한 작업이면 `/jira-task impl <TASK-ID>`로 바로 구현 가능함을 안내.

@@ -2,7 +2,7 @@
 name: jira-task-design
 description: |
   Generate a design document for a Jira task. Analyzes the codebase,
-  references the planning document, then delegates document generation to bkit PDCA.
+  references the planning document, then generates a structured design document.
 
   Use when: user says "design task", "create design", "jira-task design",
   "설계 문서", "디자인 문서", or wants to design the implementation of a Jira issue.
@@ -13,12 +13,11 @@ allowed-tools:
   - Write
   - Glob
   - Grep
-  - Skill
   - mcp__jira__get-issue
   - mcp__jira__add-comment
 ---
 
-# jira-task-design: Generate Design Document (via bkit PDCA)
+# jira-task-design: Generate Design Document
 
 ## Workflow
 
@@ -37,30 +36,17 @@ Use Glob and Grep to understand the existing codebase:
 - Check for existing similar implementations that can be referenced
 - Note the tech stack and frameworks in use
 
-### Step 3: Delegate to bkit PDCA Design
+### Step 3: Generate Design Document
 
-bkit의 `/pdca design` 스킬을 호출하여 고품질 설계 문서를 생성.
+Plan 문서 + 코드베이스 분석 결과를 기반으로 `docs/design/<TASK-ID>.design.md` 생성.
 
-Jira 컨텍스트 + 코드베이스 분석 결과를 포함하여 요청:
-
-```
-/pdca design <TASK-ID>
-
-기획 문서(docs/plan/<TASK-ID>.plan.md)와 아래 코드베이스 분석을 기반으로 설계 문서를 생성해줘.
-문서 경로: docs/design/<TASK-ID>.design.md
-
-## Codebase Analysis
-- Tech Stack: <identified stack>
-- Related files: <list>
-- Existing patterns: <patterns found>
-```
-
-bkit이 생성하는 문서는 다음을 포함:
-- 시퀀스 다이어그램, 컴포넌트 다이어그램
-- 에러 핸들링 전략
-- 보안 체크리스트
-- 마이그레이션 전략
-- 구현 순서 및 파일 목록
+문서에 포함할 내용:
+- **Architecture**: 관련 컴포넌트/모듈 구조
+- **Sequence Diagram**: 주요 플로우 (Mermaid 형식)
+- **Implementation Plan**: 파일별 변경 사항, 구현 순서
+- **Error Handling**: 에러 시나리오와 처리 전략
+- **Security Checklist**: 해당하는 보안 고려사항
+- **Test Plan**: 테스트 전략 (unit, E2E)
 
 ### Step 4: Post Summary to Jira
 
@@ -83,9 +69,19 @@ Technical design has been created for this issue.
 See: docs/design/<TASK-ID>.design.md
 ```
 
-### Step 5: Suggest Next Steps
+### Step 5: Completion Summary
 
-Tell the user:
-- Design document created at `docs/design/<TASK-ID>.design.md`
-- Review the design before implementation
-- Next step: Start implementation, then `/jira-task review <TASK-ID>` when ready
+`.jira-context.json`의 `completedSteps`에 `"design"` 추가 후, 아래 형식으로 완료 요약 출력:
+
+```
+---
+✅ **Design Complete** — <TASK-ID>
+
+- 설계 문서 생성: `docs/design/<TASK-ID>.design.md`
+- Jira 코멘트 게시됨
+
+**Progress**: init → start → plan → **design ✓** → impl → test → review → pr → done
+
+**Next**: `/jira-task impl <TASK-ID>` — 설계 기반으로 구현을 시작합니다
+---
+```

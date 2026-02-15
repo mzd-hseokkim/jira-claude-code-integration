@@ -127,18 +127,22 @@ PR URL을 캡처.
 mcp__jira__transition-issue with transitionName: "In Review"
 ```
 
-### Step 7: Summary
+### Step 7: Completion Summary
+
+`.jira-context.json`의 `completedSteps`에 `"pr"` 추가 후, 아래 형식으로 완료 요약 출력:
 
 ```
-PR created successfully!
+---
+✅ **PR Created** — <TASK-ID>
 
-  URL: <PR URL>
-  Title: <TASK-ID>: <summary>
-  Base: <base-branch> ← feature/<TASK-ID>
-  Files: <count> changed
-  Jira: Comment posted to <TASK-ID>
+- PR URL: <PR URL>
+- Title: <TASK-ID>: <summary>
+- Base: <base-branch> ← feature/<TASK-ID>
+- Files: <count> changed
+- Jira 코멘트 게시됨
 
-Next steps:
-  - Review the PR at <PR URL>
-  - After merge: /jira-task done <TASK-ID>
+**Progress**: init → start → plan → design → impl → test → review → **pr ✓** → done
+
+**Next**: PR 머지 후 `/jira-task done <TASK-ID>` — 태스크를 완료 처리합니다
+---
 ```

@@ -36,9 +36,7 @@ function main() {
     if (context.taskId && context.status !== 'Done') {
       // Output reminder as JSON
       const output = {
-        hookSpecificOutput: {
-          message: `Reminder: Active Jira task ${context.taskId} (${context.summary || ''}) is still in progress on branch ${context.branch || 'unknown'}. Consider posting a progress update to Jira before ending the session.`
-        }
+        additionalContext: `Reminder: Active Jira task ${context.taskId} (${context.summary || ''}) is still in progress on branch ${context.branch || 'unknown'}. Consider posting a progress update to Jira before ending the session.`
       };
       process.stdout.write(JSON.stringify(output));
     }

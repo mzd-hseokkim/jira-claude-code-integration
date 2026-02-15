@@ -2,7 +2,7 @@
 name: jira-task-impl
 description: |
   Implement a Jira task based on plan/design documents.
-  Loads Jira context, delegates implementation to bkit PDCA Do phase,
+  Loads Jira context, implements based on the design document,
   then posts progress to Jira.
 
   Use when: user says "implement task", "start coding", "jira-task impl",
@@ -16,12 +16,11 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-  - Skill
   - mcp__jira__get-issue
   - mcp__jira__add-comment
 ---
 
-# jira-task-impl: Implement a Jira Task (via bkit PDCA Do)
+# jira-task-impl: Implement a Jira Task
 
 ## Prerequisites
 - Design document should exist at `docs/design/<TASK-ID>.design.md` (warn if missing)
@@ -36,21 +35,17 @@ allowed-tools:
 3. Read `docs/design/<TASK-ID>.design.md` if it exists
 4. Read `docs/plan/<TASK-ID>.plan.md` if it exists
 
-### Step 2: Delegate to bkit PDCA Do
+### Step 2: Implement Based on Design Document
 
-bkit의 `/pdca do` 스킬을 호출하여 설계 문서 기반 구현:
+`docs/design/<TASK-ID>.design.md`의 Implementation Plan에 따라 구현.
 
-```
-/pdca do <TASK-ID>
+구현 원칙:
+1. Implementation Plan의 순서를 따름
+2. 기존 코드 컨벤션과 패턴을 준수
+3. Design 문서의 Error Handling, Security Checklist 반영
+4. 각 단계 완료 시 간단한 검증 수행
 
-설계 문서(docs/design/<TASK-ID>.design.md) 기반으로 구현해줘.
-```
-
-bkit이 수행하는 작업:
-- 설계 문서의 Implementation Plan에 따른 단계별 구현
-- 기존 코드 컨벤션 준수
-- 파일 생성/수정
-- 구현 중 설계와의 일관성 검증
+Design 문서가 없으면, Jira 이슈 설명과 Acceptance Criteria 기반으로 구현.
 
 ### Step 3: Post Progress to Jira
 
@@ -74,10 +69,22 @@ bkit이 수행하는 작업:
 - Code review: `/jira-task review <TASK-ID>`
 ```
 
-### Step 4: Suggest Next Steps
+### Step 4: Completion Summary
 
-Tell the user:
-- Implementation is complete
-- List files created/modified
-- Suggest: `/jira-task test <TASK-ID>` to run tests
-- Or: `/jira-task review <TASK-ID>` for code review
+`.jira-context.json`의 `completedSteps`에 `"impl"` 추가 후, 아래 형식으로 완료 요약 출력:
+
+```
+---
+✅ **Implementation Complete** — <TASK-ID>
+
+- 생성된 파일: <list>
+- 수정된 파일: <list>
+- Jira 코멘트 게시됨
+
+**Progress**: init → start → plan → design → **impl ✓** → test → review → pr → done
+
+**Next**: `/jira-task test <TASK-ID>` — 테스트를 실행합니다
+---
+```
+
+테스트 프레임워크가 없는 프로젝트면 `/jira-task review <TASK-ID>`를 대신 추천.

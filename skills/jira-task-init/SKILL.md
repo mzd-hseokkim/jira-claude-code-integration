@@ -90,7 +90,19 @@ git rev-parse --verify main 2>/dev/null     # 2nd: main
 git rev-parse --verify master 2>/dev/null   # 3rd: master
 ```
 
-### Step 4: Create Worktrees
+### Step 4: Ensure .gitignore
+
+프로젝트의 `.gitignore`에 아래 항목이 없으면 추가:
+
+```
+# Jira integration (local dev context)
+.jira-context.json
+TASK-README.md
+```
+
+이미 존재하면 스킵.
+
+### Step 5: Create Worktrees
 
 선택된 각 태스크에 대해:
 
@@ -115,7 +127,7 @@ git worktree add -b "feature/<TASK-ID>" "$WORKTREE_BASE/<TASK-ID>" <base-branch>
       └── ...
   ```
 
-### Step 5: Generate README for Each Worktree
+### Step 6: Generate README for Each Worktree
 
 각 worktree 디렉토리에 `TASK-README.md` 생성:
 
@@ -146,7 +158,7 @@ git worktree add -b "feature/<TASK-ID>" "$WORKTREE_BASE/<TASK-ID>" <base-branch>
 5. `/jira-task done <TASK-ID>` 로 완료 처리
 ```
 
-### Step 6: Post Comments to Jira
+### Step 7: Post Comments to Jira
 
 각 태스크에 코멘트 게시:
 ```
@@ -154,9 +166,25 @@ Use mcp__jira__add-comment:
   "Worktree initialized for branch `feature/<TASK-ID>` at `<worktree-path>`"
 ```
 
-### Step 7: Save Context
+### Step 8: Save Context
 
-`.jira-context.json`에 전체 초기화 정보 저장:
+**각 worktree에** `.jira-context.json` 생성 (세션 시작 시 hook이 읽을 수 있도록):
+
+```json
+{
+  "taskId": "PROJ-101",
+  "branch": "feature/PROJ-101",
+  "worktreePath": "<path>",
+  "baseBranch": "<detected base branch>",
+  "summary": "로그인 기능 구현",
+  "priority": "Highest",
+  "status": "To Do",
+  "completedSteps": ["init"],
+  "initializedAt": "<ISO timestamp>"
+}
+```
+
+**원본 레포에도** `.jira-context.json` 저장 (전체 태스크 목록용):
 
 ```json
 {
@@ -176,20 +204,26 @@ Use mcp__jira__add-comment:
 }
 ```
 
-### Step 8: Summary
+### Step 9: Completion Summary
 
-결과를 테이블로 표시:
+`.jira-context.json`의 `completedSteps`에 `"init"` 추가.
+결과를 테이블로 표시한 뒤, 아래 형식으로 완료 요약 출력:
 
 ```
-Sprint initialization complete!
-
 | # | Task | Branch | Worktree Path | Status |
 |---|------|--------|---------------|--------|
 | 1 | PROJ-101 | feature/PROJ-101 | ../project_worktree/PROJ-101 | Created |
 | 2 | PROJ-102 | feature/PROJ-102 | ../project_worktree/PROJ-102 | Created |
-| ... | | | | |
 
-To start working on a task:
-  cd <worktree-path>
-  /jira-task start <TASK-ID>    # transition to In Progress
+---
+✅ **Init Complete**
+
+- <N>개 worktree 생성됨
+- Jira 코멘트 게시됨
+- 컨텍스트 `.jira-context.json`에 저장됨
+
+**Progress**: **init ✓** → start → plan → design → impl → test → review → pr → done
+
+**Next**: `cd <worktree-path>` → `/jira-task start <TASK-ID>`
+---
 ```

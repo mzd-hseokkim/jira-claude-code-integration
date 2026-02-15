@@ -1,8 +1,8 @@
 ---
 name: jira-task-done
 description: |
-  Complete a Jira task. Generates a PDCA completion report via bkit,
-  creates a pull request, transitions the issue, and posts the report to Jira.
+  Complete a Jira task. Generates a completion summary,
+  creates a pull request, transitions the issue, and posts the summary to Jira.
 
   Use when: user says "done", "complete task", "finish task", "jira-task done",
   "작업 완료", "태스크 완료", or wants to wrap up work on a Jira issue.
@@ -14,7 +14,6 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-  - Skill
   - mcp__jira__get-issue
   - mcp__jira__transition-issue
   - mcp__jira__add-comment
@@ -64,23 +63,17 @@ gh pr create --title "<TASK-ID>: <issue summary>" --body "<PR description with i
 
 If not available, skip and inform the user they can create a PR manually.
 
-### Step 5: Generate Completion Report (bkit)
+### Step 5: Generate Completion Summary
 
-bkit의 `/pdca report`를 호출하여 PDCA 완료 리포트를 생성:
+git diff/log 정보와 PDCA 문서들을 기반으로 완료 요약 생성:
 
-```
-/pdca report <TASK-ID>
-```
-
-bkit이 생성하는 리포트는 다음을 포함:
-- Plan → Design → Do → Check 전체 사이클 요약
-- 설계-구현 매칭률
-- 코드 품질 분석 결과
-- 교훈 (Lessons Learned)
+1. `docs/plan/<TASK-ID>.plan.md` 존재 시 기획 요약 추출
+2. `docs/design/<TASK-ID>.design.md` 존재 시 설계 요약 추출
+3. git log/diff로 실제 변경사항 요약
 
 ### Step 6: Post Completion Report to Jira
 
-bkit이 생성한 리포트를 기반으로 `mcp__jira__add-comment`에 게시:
+Step 5의 요약을 기반으로 `mcp__jira__add-comment`에 게시:
 
 ```
 ## Task Completed: <TASK-ID>
@@ -90,17 +83,13 @@ bkit이 생성한 리포트를 기반으로 `mcp__jira__add-comment`에 게시:
 **Files Changed**: <count> files (+<added> -<removed>)
 **PR**: <PR URL or "to be created manually">
 
-### PDCA Summary
+### Summary
 - **Plan**: <기획 요약>
 - **Design**: <설계 요약>
-- **Do**: <구현 변경사항 요약>
-- **Check**: 설계-구현 매칭률 <percentage>%
+- **Changes**: <구현 변경사항 요약>
 
 ### Key Changes
 <brief description of what was implemented>
-
-### Lessons Learned
-<bkit 리포트에서 추출한 교훈>
 ```
 
 ### Step 7: Transition Issue
@@ -122,11 +111,21 @@ Remove or update `.jira-context.json`:
 }
 ```
 
-### Step 9: Summary
+### Step 9: Completion Summary
 
-Tell the user:
-- Task has been completed
-- PDCA report generated and posted to Jira
-- PR status (created or needs manual creation)
-- Issue status in Jira
-- Any follow-up actions needed
+`.jira-context.json`의 `completedSteps`에 `"done"` 추가하고, `status`를 `"Done"`으로 변경 후, 아래 형식으로 완료 요약 출력:
+
+```
+---
+✅ **Task Done** — <TASK-ID>
+
+- Jira 상태: Done (또는 In Review)
+- PR: <PR URL 또는 "수동 생성 필요">
+- 완료 리포트 Jira에 게시됨
+- `.jira-context.json` 업데이트됨
+
+**Progress**: init → start → plan → design → impl → test → review → pr → **done ✓**
+
+🎉 모든 단계가 완료되었습니다!
+---
+```

@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 
 /**
- * SessionStart Hook: Load Jira sprint context at session start.
+ * SessionStart Hook: Load Jira task context at session start.
  *
- * Checks for Jira environment variables and .jira-context.json to provide
- * Claude with awareness of the current development context.
+ * Reads .jira-context.json to provide Claude with awareness of the
+ * current development context. Also detects worktree-based tasks.
  *
- * Output: JSON with systemPrompt additions for Claude.
+ * Note: MCP server env vars (JIRA_HOST, etc.) are not available in
+ * hook scripts. Connection status should be checked via /jira command.
+ *
+ * Output: JSON with additionalContext for Claude.
  */
 
 const fs = require('fs');
@@ -15,17 +18,8 @@ const path = require('path');
 function main() {
   const lines = [];
 
-  // Check Jira configuration
-  const jiraHost = process.env.JIRA_HOST;
-  const jiraEmail = process.env.JIRA_EMAIL;
-  const jiraToken = process.env.JIRA_API_TOKEN;
-
-  if (!jiraHost || !jiraEmail || !jiraToken) {
-    lines.push('Jira integration: Not configured. Set JIRA_HOST, JIRA_EMAIL, JIRA_API_TOKEN to enable.');
-  } else {
-    lines.push(`Jira integration: Connected to ${jiraHost} as ${jiraEmail}`);
-    lines.push('Available commands: /jira (status), /jira-task [start|plan|design|review|done|report] <TASK-ID>');
-  }
+  lines.push('Jira integration plugin active. Use /jira to check connection status.');
+  lines.push('Available commands: /jira (status), /jira-task [init|start|plan|design|impl|test|review|pr|done|report|status] <TASK-ID>');
 
   // Check for active task context
   const contextPath = path.join(process.cwd(), '.jira-context.json');
@@ -38,17 +32,33 @@ function main() {
         lines.push(`Branch: ${context.branch || 'unknown'}`);
         lines.push(`Started: ${context.startedAt || 'unknown'}`);
         lines.push(`Status: ${context.status || 'In Progress'}`);
+
+        // Show workflow progress
+        const steps = ['init', 'start', 'plan', 'design', 'impl', 'test', 'review', 'pr', 'done'];
+        const completed = context.completedSteps || [];
+        const progress = steps.map(s => completed.includes(s) ? `${s} ✓` : s).join(' → ');
+        lines.push(`Progress: ${progress}`);
       }
     } catch {
       // Ignore parse errors
+    }
+  } else {
+    // Fallback: detect task from directory name and TASK-README.md
+    const dirName = path.basename(process.cwd());
+    const taskIdMatch = dirName.match(/^[A-Z]+-\d+$/);
+    const readmePath = path.join(process.cwd(), 'TASK-README.md');
+
+    if (taskIdMatch && fs.existsSync(readmePath)) {
+      lines.push('');
+      lines.push(`Detected task from worktree: ${dirName}`);
+      lines.push(`Task README: TASK-README.md (read for details)`);
+      lines.push(`Run \`/jira-task start ${dirName}\` to begin work`);
     }
   }
 
   // Output as JSON for Claude Code to consume
   const output = {
-    hookSpecificOutput: {
-      systemPrompt: lines.join('\n')
-    }
+    additionalContext: lines.join('\n')
   };
 
   process.stdout.write(JSON.stringify(output));

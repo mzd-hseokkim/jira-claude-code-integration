@@ -82,7 +82,7 @@ Execute the `jira-task-plan` skill workflow:
 1. Fetch issue details and related issues (linked issues, sub-tasks, epic)
 2. Search for related issues using JQL
 3. Prepare Jira context summary
-4. **Delegate to bkit `/pdca plan`** for high-quality planning document generation
+4. Generate planning document using `templates/plan.template.md` structure
 5. Save to `docs/plan/<TASK-ID>.plan.md`
 6. Post a summary comment to Jira
 
@@ -91,7 +91,7 @@ Execute the `jira-task-design` skill workflow:
 1. Check if `docs/plan/<TASK-ID>.plan.md` exists (suggest running `plan` first if not)
 2. Fetch issue details from Jira
 3. Analyze relevant codebase files (use Glob/Grep to find related code)
-4. **Delegate to bkit `/pdca design`** for high-quality design document generation
+4. Generate design document (Architecture, Sequence Diagram, Implementation Plan, Error Handling, Security, Test Plan)
 5. Save to `docs/design/<TASK-ID>.design.md`
 6. Post a design summary comment to Jira
 
@@ -99,7 +99,7 @@ Execute the `jira-task-design` skill workflow:
 Execute the `jira-task-impl` skill workflow:
 1. Load context: `.jira-context.json`, design doc, plan doc
 2. Fetch latest issue details from Jira
-3. **Delegate to bkit `/pdca do`** for design-driven implementation
+3. Implement based on design document's Implementation Plan (or Jira issue if no design doc)
 4. Post implementation progress to Jira as a comment
 5. Suggest next: `/jira-task test <TASK-ID>` or `/jira-task review <TASK-ID>`
 
@@ -121,11 +121,10 @@ Execute the `jira-task-test` skill workflow:
 Execute the `jira-task-review` skill workflow:
 1. Identify the feature branch (`feature/<TASK-ID>`) and base branch
 2. Run `git diff` to identify changed files
-3. **Delegate to bkit `/pdca analyze`** for design-implementation gap analysis
-4. **Delegate to bkit code-analyzer** for code quality analysis
+3. Gap analysis: compare design document items against implementation using Glob/Grep
+4. Code quality review: security, error handling, naming, complexity
 5. Compile findings into a structured review report
 6. Post the review as a Jira comment
-7. If match rate < 90%, suggest `/pdca iterate <TASK-ID>` for auto-improvement
 
 ### `pr <TASK-ID>`
 Execute the `jira-task-pr` skill workflow:
@@ -146,7 +145,7 @@ Execute the `jira-task-done` skill workflow:
 2. Fetch current issue status from Jira
 3. Summarize changes (commits, files, diff stats)
 4. Create a pull request if not already created (invoke `pr` workflow)
-5. **Delegate to bkit `/pdca report`** for PDCA completion report
+5. Generate completion summary from plan/design docs and git diff/log
 6. Post completion report to Jira as a comment
 7. Transition issue to "In Review" or "Done"
 8. Clean up `.jira-context.json`

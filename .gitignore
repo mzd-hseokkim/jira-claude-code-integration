@@ -25,9 +25,6 @@ Thumbs.db
 # Local state
 .jira-context.json
 .claude/
-docs/.bkit-memory.json
-docs/.pdca-status.json
-docs/.pdca-snapshots/
 
 # MCP server (if cloned locally)
 mcp-jira-server/

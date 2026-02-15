@@ -6,7 +6,7 @@ description: |
 
   Use when: generating status reports, checking assigned issue progress, or creating
   status summaries.
-allowed-tools:
+tools:
   - Read
   - Write
   - Glob
