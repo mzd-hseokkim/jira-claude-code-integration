@@ -1,12 +1,6 @@
 ---
 name: jira-task-test
-description: |
-  Run tests for a Jira task and report results to Jira.
-  Supports Playwright E2E tests, unit tests (vitest/jest), and custom test commands.
-  Generates test reports and posts summaries to Jira.
-
-  Use when: user says "test task", "run tests", "jira-task test", "playwright",
-  "테스트 실행", "E2E 테스트", or wants to verify implementation with tests.
+description: Run tests for a Jira task and report results to Jira. Supports Playwright E2E tests, unit tests (vitest/jest), and custom test commands. Generates test reports and posts summaries to Jira. Use when user says "test task", "run tests", "jira-task test", "playwright", "테스트 실행", "E2E 테스트", or wants to verify implementation with tests.
 user-invocable: false
 argument-hint: "<TASK-ID>"
 allowed-tools:

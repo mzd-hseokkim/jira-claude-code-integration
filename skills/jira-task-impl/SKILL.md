@@ -1,12 +1,6 @@
 ---
 name: jira-task-impl
-description: |
-  Implement a Jira task based on plan/design documents.
-  Loads Jira context, implements based on the design document,
-  then posts progress to Jira.
-
-  Use when: user says "implement task", "start coding", "jira-task impl",
-  "구현 시작", "코딩 시작", or wants to begin implementation based on design.
+description: Implement a Jira task based on plan/design documents. Loads Jira context, implements based on the design document, then posts progress to Jira. Use when user says "implement task", "start coding", "jira-task impl", "구현 시작", "코딩 시작", or wants to begin implementation based on design.
 user-invocable: false
 argument-hint: "<TASK-ID>"
 allowed-tools:

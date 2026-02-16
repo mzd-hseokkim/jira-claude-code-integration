@@ -1,11 +1,6 @@
 ---
 name: jira-task-start
-description: |
-  Start working on a Jira task. Fetches issue details from Jira, creates a feature branch
-  or git worktree, transitions the issue to "In Progress", and sets up the development context.
-
-  Use when: user says "start task", "begin working on", "jira-task start", "start PROJ-123",
-  "작업 시작", "태스크 시작", or provides a Jira issue key to begin work on.
+description: Start working on a Jira task. Fetches issue details, creates a feature branch or git worktree, transitions the issue to "In Progress", and sets up the development context. Use when user says "start task", "begin working on", "jira-task start", "start PROJ-123", "작업 시작", "태스크 시작", or provides a Jira issue key to begin work on.
 user-invocable: false
 argument-hint: "<TASK-ID>"
 allowed-tools:

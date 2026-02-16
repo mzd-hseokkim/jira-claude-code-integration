@@ -1,12 +1,6 @@
 ---
 name: jira-task-init
-description: |
-  Fetch assigned high-priority Jira tasks and set up git worktrees for each.
-  Bulk operation to initialize a sprint's working environment at once.
-
-  Use when: user says "init sprint", "setup tasks", "작업 환경 세팅", "worktree 세팅",
-  "스프린트 초기화", "할당된 작업 가져와", "jira-task init", or wants to prepare
-  multiple task branches at the start of a sprint.
+description: Fetch assigned high-priority Jira tasks and set up git worktrees for each. Bulk operation to initialize a sprint's working environment at once. Use when user says "init sprint", "setup tasks", "작업 환경 세팅", "worktree 세팅", "스프린트 초기화", "할당된 작업 가져와", "jira-task init", or wants to prepare multiple task branches at the start of a sprint.
 user-invocable: false
 argument-hint: "[count]"
 allowed-tools:

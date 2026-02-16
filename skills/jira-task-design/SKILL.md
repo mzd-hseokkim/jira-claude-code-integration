@@ -1,11 +1,6 @@
 ---
 name: jira-task-design
-description: |
-  Generate a design document for a Jira task. Analyzes the codebase,
-  references the planning document, then generates a structured design document.
-
-  Use when: user says "design task", "create design", "jira-task design",
-  "설계 문서", "디자인 문서", or wants to design the implementation of a Jira issue.
+description: Generate a design document for a Jira task. Analyzes the codebase, references the planning document, then generates a structured design document. Use when user says "design task", "create design", "jira-task design", "설계 문서", "디자인 문서", or wants to design the implementation of a Jira issue.
 user-invocable: false
 argument-hint: "<TASK-ID>"
 allowed-tools:

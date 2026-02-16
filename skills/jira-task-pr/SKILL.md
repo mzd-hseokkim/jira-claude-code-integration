@@ -1,11 +1,6 @@
 ---
 name: jira-task-pr
-description: |
-  Create a pull request for a Jira task and link it back to the issue.
-  Generates PR title/description from Jira context and posts the PR link to Jira.
-
-  Use when: user says "create PR", "pull request", "PR 만들어", "PR 등록",
-  "jira-task pr", or wants to create a pull request for a completed task.
+description: Create a pull request for a Jira task and link it back to the issue. Generates PR title/description from Jira context and posts the PR link to Jira. Use when user says "create PR", "pull request", "PR 만들어", "PR 등록", "jira-task pr", or wants to create a pull request for a completed task.
 user-invocable: false
 argument-hint: "<TASK-ID>"
 allowed-tools:

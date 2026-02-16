@@ -1,12 +1,6 @@
 ---
 name: jira-task-review
-description: |
-  Run code review and gap analysis on changes for a Jira task,
-  then post results to Jira. Compares design document against
-  implementation and reviews code quality.
-
-  Use when: user says "review task", "code review", "jira-task review",
-  "코드 리뷰", "리뷰 해줘", or wants to review changes before completing a task.
+description: Run code review and gap analysis on changes for a Jira task, then post results to Jira. Compares design document against implementation and reviews code quality. Use when user says "review task", "code review", "jira-task review", "코드 리뷰", "리뷰 해줘", or wants to review changes before completing a task.
 user-invocable: false
 argument-hint: "<TASK-ID>"
 allowed-tools:
