@@ -1,8 +1,6 @@
 ---
 name: jira
-description: |
-  Show Jira integration status, available tools, and help for jira-task commands.
-  Use when: user types /jira, asks about Jira connection, or wants to see available Jira commands.
+description: Show Jira integration status, available tools, and help for jira-task commands. Use when user types /jira, asks about Jira connection, or wants to see available Jira commands.
 user-invocable: true
 allowed-tools:
   - Read

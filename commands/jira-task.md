@@ -1,16 +1,6 @@
 ---
 name: jira-task
-description: |
-  Main workflow command for Jira-integrated development.
-  Routes to specialized skills based on the action argument.
-
-  Usage: /jira-task [action] [TASK-ID]
-  Actions: init, start, plan, design, impl, test, review, pr, done, report, status
-
-  Triggers: jira-task, jira task, init tasks, setup tasks, start task, begin task,
-  implement task, test task, review task, create PR, complete task, task report,
-  현황 리포트, 작업 환경 세팅, 작업 시작, 구현 시작, 테스트 실행,
-  코드 리뷰, PR 만들어, 작업 완료
+description: Main workflow command for Jira-integrated development. Routes to specialized skills based on the action argument. Usage /jira-task [action] [TASK-ID]. Actions init, start, plan, design, impl, test, review, pr, done, report, status. Triggers jira-task, jira task, init tasks, setup tasks, start task, begin task, implement task, test task, review task, create PR, complete task, task report, 현황 리포트, 작업 환경 세팅, 작업 시작, 구현 시작, 테스트 실행, 코드 리뷰, PR 만들어, 작업 완료
 user-invocable: true
 argument-hint: "[init|start|plan|design|impl|test|review|pr|done|report] [TASK-ID]"
 allowed-tools:
@@ -170,3 +160,23 @@ Quick status check:
 - If TASK-ID is not provided and auto-detection fails, ask the user to provide it
 - If Jira MCP server is not connected, guide user to check `/jira` for setup
 - If transition fails (e.g., invalid transition name), use `mcp__jira__get-issue` to show current status and available transitions
+
+## Response Summary
+
+모든 응답 끝에 아래 형식의 요약을 출력한다:
+
+```
+─────────────────────────────────────────
+📋 Jira Workflow Summary
+─────────────────────────────────────────
+✅ Done: [이번 응답에서 수행한 작업]
+🔧 Used: [사용한 스킬, 에이전트, Jira MCP 도구]
+💡 Next: [다음 추천 작업]
+─────────────────────────────────────────
+```
+
+규칙:
+- **Done**: 실제로 수행한 작업을 간결하게 기술 (예: "PROJ-123 기획 문서 생성")
+- **Used**: 사용한 스킬(`jira-task-plan` 등), 에이전트(`jira-planner` 등), Jira MCP 도구(`get-issue`, `add-comment` 등)를 나열. 사용하지 않았으면 생략
+- **Next**: `.jira-context.json`의 `completedSteps` 기반으로 다음 워크플로 단계를 추천. 워크플로 외 작업이면 맥락에 맞는 다음 작업 추천
+- 워크플로와 무관한 단순 질의응답에서는 생략 가능
