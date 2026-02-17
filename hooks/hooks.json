@@ -8,7 +8,7 @@
           {
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/session-start.js",
-            "timeout": 10000
+            "timeout": 10
           }
         ]
       }
@@ -19,7 +19,7 @@
           {
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/stop-sync.js",
-            "timeout": 15000
+            "timeout": 15
           }
         ]
       }

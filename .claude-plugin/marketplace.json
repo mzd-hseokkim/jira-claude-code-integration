@@ -1,9 +1,13 @@
 {
+  "name": "jira-claude-code-integration",
+  "owner": {
+    "name": "bory9"
+  },
   "plugins": [
     {
       "name": "jira-integration",
-      "description": "Jira + Claude Code integration plugin for automating the full software development lifecycle. Supports task management, planning, design, implementation, code review, and reporting through Jira.",
-      "path": "."
+      "source": "./",
+      "description": "Jira + Claude Code integration plugin for automating the full software development lifecycle. Supports task management, planning, design, implementation, code review, and reporting through Jira."
     }
   ]
 }
