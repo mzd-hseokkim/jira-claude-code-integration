@@ -41,7 +41,10 @@ Plan 문서 + 코드베이스 분석 결과를 기반으로 `docs/design/<TASK-I
 - **Implementation Plan**: 파일별 변경 사항, 구현 순서
 - **Error Handling**: 에러 시나리오와 처리 전략
 - **Security Checklist**: 해당하는 보안 고려사항
-- **Test Plan**: 테스트 전략 (unit, E2E)
+- **Test Plan**: 테스트 전략 및 구체적 테스트 케이스 명세
+  - Unit test: 함수/모듈별 테스트 케이스 목록 (입력, 기대 결과, 경계 조건)
+  - E2E test: 사용자 시나리오별 테스트 케이스 (해당하는 경우)
+  - 각 케이스는 `impl` 단계에서 구현과 함께 작성할 수 있을 정도로 구체적이어야 함
 
 ### Step 4: Post Summary to Jira
 
