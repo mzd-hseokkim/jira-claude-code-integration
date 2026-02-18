@@ -106,7 +106,8 @@ Use `mcp__jira__add-comment` with:
 
 ### Step 6: Save Local Context
 
-Write `.jira-context.json` in the original repo root:
+기존 `.jira-context.json`이 있으면 읽어서 `completedSteps`를 보존하고, 없으면 새로 생성.
+worktree 디렉토리와 원본 레포 양쪽에 저장:
 ```json
 {
   "taskId": "<TASK-ID>",
@@ -115,13 +116,16 @@ Write `.jira-context.json` in the original repo root:
   "baseBranch": "<detected-base-branch>",
   "startedAt": "<ISO 8601 timestamp>",
   "summary": "<issue summary>",
-  "status": "In Progress"
+  "status": "In Progress",
+  "completedSteps": ["start"]
 }
 ```
 
+`init`에서 이미 `completedSteps: ["init"]`이 있으면 `["init", "start"]`로 병합.
+
 ### Step 7: Completion Summary
 
-`.jira-context.json`의 `completedSteps`에 `"start"` 추가 후, 아래 형식으로 완료 요약 출력:
+아래 형식으로 완료 요약 출력:
 
 ```
 ---

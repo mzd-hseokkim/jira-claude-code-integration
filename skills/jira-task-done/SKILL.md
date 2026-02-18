@@ -44,19 +44,19 @@ git log --oneline <base-branch>..feature/<TASK-ID>
 git diff --stat <base-branch>..feature/<TASK-ID>
 ```
 
-### Step 4: Create Pull Request (if gh CLI available)
+### Step 4: Create Pull Request (if not already exists)
 
-Check if `gh` is available:
+먼저 이미 PR이 존재하는지 확인:
 ```bash
-which gh 2>/dev/null
+gh pr list --head "feature/<TASK-ID>" --state open --json url --jq '.[0].url' 2>/dev/null
 ```
 
-If available, create a PR:
-```bash
-gh pr create --title "<TASK-ID>: <issue summary>" --body "<PR description with issue link>"
-```
-
-If not available, skip and inform the user they can create a PR manually.
+- **PR이 이미 있으면**: 기존 PR URL을 사용하고 새로 생성하지 않음
+- **PR이 없고 `gh` CLI가 있으면**: 새 PR 생성
+  ```bash
+  gh pr create --title "<TASK-ID>: <issue summary>" --body "<PR description with issue link>"
+  ```
+- **`gh` CLI가 없으면**: 스킵하고 수동 생성 필요를 안내
 
 ### Step 5: Generate Completion Summary
 
@@ -94,21 +94,14 @@ Use `mcp__jira__transition-issue` to move the issue:
 - If "In Review" fails, try "Done"
 - If both fail, inform the user of available transitions
 
-### Step 8: Cleanup
+### Step 8: Update Context & Completion Summary
 
-Remove or update `.jira-context.json`:
-```json
-{
-  "taskId": "<TASK-ID>",
-  "branch": "feature/<TASK-ID>",
-  "completedAt": "<ISO 8601 timestamp>",
-  "status": "Done"
-}
-```
+기존 `.jira-context.json`을 읽고, 다음 필드를 업데이트하여 저장:
+- `completedSteps` 배열에 `"done"` 추가 (중복 방지)
+- `status`를 `"Done"`으로 변경
+- `completedAt`에 현재 ISO 8601 타임스탬프 추가
 
-### Step 9: Completion Summary
-
-`.jira-context.json`의 `completedSteps`에 `"done"` 추가하고, `status`를 `"Done"`으로 변경 후, 아래 형식으로 완료 요약 출력:
+아래 형식으로 완료 요약 출력:
 
 ```
 ---

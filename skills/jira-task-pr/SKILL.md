@@ -26,7 +26,8 @@ allowed-tools:
 
 1. `.jira-context.json`에서 활성 태스크 정보 읽기
 2. `mcp__jira__get-issue`로 이슈 상세 조회
-3. Base branch 확인:
+3. **Jira 호스트 URL 추출**: `get-issue` 응답의 `self` 필드(예: `https://company.atlassian.net/rest/api/...`)에서 호스트 부분을 추출하여 Jira 이슈 링크 생성에 사용. 예: `https://company.atlassian.net/browse/<TASK-ID>`
+4. Base branch 확인:
    ```bash
    git rev-parse --abbrev-ref HEAD  # 현재 브랜치 확인
    ```
@@ -60,7 +61,7 @@ git push -u origin feature/<TASK-ID>
 <Jira 이슈 description 요약>
 
 ## Jira Issue
-- **Key**: [<TASK-ID>](<JIRA_HOST>/browse/<TASK-ID>)
+- **Key**: [<TASK-ID>](<Jira host URL extracted from Step 1>/browse/<TASK-ID>)
 - **Type**: <issue type>
 - **Priority**: <priority>
 

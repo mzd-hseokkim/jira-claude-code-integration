@@ -40,120 +40,40 @@ If auto-detection succeeds, proceed with the detected TASK-ID. If it fails and t
 
 ## Action Routing
 
+각 action은 대응하는 스킬의 워크플로를 그대로 따른다. 세부 절차는 각 스킬의 SKILL.md를 참조.
+
 ### `init [count]`
-Execute the `jira-task-init` skill workflow:
-1. Fetch my assigned high-priority tasks from Jira (default: top 5)
-   - JQL: `assignee = currentUser() AND status NOT IN (Done, Closed) ORDER BY priority DESC, created ASC`
-   - If active sprint exists, scope to sprint
-2. Display task list in a table and ask for confirmation
-3. Detect base branch (develop → main → master)
-4. Create git worktrees for each task in the **parent directory**:
-   - Path: `../<project>_worktree/<TASK-ID>`
-   - Branch: `feature/<TASK-ID>`
-5. Generate `TASK-README.md` in each worktree with issue details and workflow guide
-6. Post initialization comment to each Jira issue
-7. Save all task contexts to `.jira-context.json`
+Execute the `jira-task-init` skill. 할당된 태스크를 가져와 worktree를 일괄 생성한다.
 
 ### `start <TASK-ID>`
-Execute the `jira-task-start` skill workflow:
-1. Fetch issue details using `mcp__jira__get-issue` with the given TASK-ID
-2. Display issue summary, description, status, priority, and assignee
-3. Transition the issue to "In Progress" using `mcp__jira__transition-issue`
-4. Detect the base branch (check for `develop`, then `main`, then `master`)
-5. Create a git worktree or branch: `feature/<TASK-ID>` (skip if already exists from `init`)
-   - Worktree path: `../<project-name>_worktree/<TASK-ID>` (parent directory)
-   - If not in a git repo, create a regular branch instead
-6. Generate a task context README.md in the worktree/branch with issue details
-7. Post a comment to Jira: "Work started on branch `feature/<TASK-ID>`"
-8. Save task context to `.jira-context.json`
+Execute the `jira-task-start` skill. 이슈 조회, "In Progress" 전환, 브랜치/worktree 생성.
 
 ### `plan <TASK-ID>`
-Execute the `jira-task-plan` skill workflow:
-1. Fetch issue details and related issues (linked issues, sub-tasks, epic)
-2. Search for related issues using JQL
-3. Prepare Jira context summary
-4. Generate planning document using `templates/plan.template.md` structure
-5. Save to `docs/plan/<TASK-ID>.plan.md`
-6. Post a summary comment to Jira
+Execute the `jira-task-plan` skill. Jira 컨텍스트 기반 기획 문서를 `docs/plan/<TASK-ID>.plan.md`에 생성.
 
 ### `design <TASK-ID>`
-Execute the `jira-task-design` skill workflow:
-1. Check if `docs/plan/<TASK-ID>.plan.md` exists (suggest running `plan` first if not)
-2. Fetch issue details from Jira
-3. Analyze relevant codebase files (use Glob/Grep to find related code)
-4. Generate design document (Architecture, Sequence Diagram, Implementation Plan, Error Handling, Security, Test Plan)
-5. Save to `docs/design/<TASK-ID>.design.md`
-6. Post a design summary comment to Jira
+Execute the `jira-task-design` skill. 코드베이스 분석 기반 설계 문서를 `docs/design/<TASK-ID>.design.md`에 생성.
 
 ### `impl <TASK-ID>`
-Execute the `jira-task-impl` skill workflow:
-1. Load context: `.jira-context.json`, design doc, plan doc
-2. Fetch latest issue details from Jira
-3. Implement based on design document's Implementation Plan (or Jira issue if no design doc)
-4. Post implementation progress to Jira as a comment
-5. Suggest next: `/jira-task test <TASK-ID>` or `/jira-task review <TASK-ID>`
+Execute the `jira-task-impl` skill. 설계 문서(또는 Jira 이슈) 기반으로 구현.
 
 ### `test <TASK-ID>`
-Execute the `jira-task-test` skill workflow:
-1. Detect test environment (Playwright, Vitest, Jest, pytest, custom)
-2. Run unit tests first, then E2E tests (Playwright)
-3. If no tests exist for the feature, offer to generate Playwright tests based on:
-   - Acceptance criteria from Jira issue
-   - Test plan from design document
-4. Parse test results (total, passed, failed, skipped, duration)
-5. Generate test report at `docs/test/<TASK-ID>.test-report.md`
-6. Post test summary to Jira as a comment
-7. Upload failure screenshots (Playwright) to Jira as attachments
-8. If failed: list failures and suggest fixes
-9. If passed: suggest `/jira-task review <TASK-ID>`
+Execute the `jira-task-test` skill. 테스트 실행, 리포트 생성(`docs/test/<TASK-ID>.test-report.md`), Jira에 결과 게시.
 
 ### `review <TASK-ID>`
-Execute the `jira-task-review` skill workflow:
-1. Identify the feature branch (`feature/<TASK-ID>`) and base branch
-2. Run `git diff` to identify changed files
-3. Gap analysis: compare design document items against implementation using Glob/Grep
-4. Code quality review: security, error handling, naming, complexity
-5. Compile findings into a structured review report
-6. Post the review as a Jira comment
+Execute the `jira-task-review` skill. Gap 분석 + 코드 품질 리뷰, 리포트 저장(`docs/review/<TASK-ID>.review.md`), Jira에 게시.
 
 ### `pr <TASK-ID>`
-Execute the `jira-task-pr` skill workflow:
-1. Verify `gh` CLI is available and authenticated
-2. Verify feature branch has commits and is pushed to remote
-3. Fetch Jira issue details for PR title and description
-4. Generate PR content:
-   - Title: `<TASK-ID>: <summary>`
-   - Body: issue description, changes summary, acceptance criteria, test plan
-   - Link to Jira issue: `<JIRA_HOST>/browse/<TASK-ID>`
-5. Create PR using `gh pr create`
-6. Post PR link to Jira as a comment
-7. Optionally transition issue to "In Review"
+Execute the `jira-task-pr` skill. `gh` CLI로 PR 생성, Jira에 PR 링크 게시.
 
 ### `done <TASK-ID>`
-Execute the `jira-task-done` skill workflow:
-1. Verify the feature branch exists and has commits
-2. Fetch current issue status from Jira
-3. Summarize changes (commits, files, diff stats)
-4. Create a pull request if not already created (invoke `pr` workflow)
-5. Generate completion summary from plan/design docs and git diff/log
-6. Post completion report to Jira as a comment
-7. Transition issue to "In Review" or "Done"
-8. Clean up `.jira-context.json`
+Execute the `jira-task-done` skill. 완료 리포트 게시, 상태 전이, 컨텍스트 정리.
 
 ### `report`
-Execute the `jira-task-report` skill workflow:
-1. Check if active sprint exists → sprint-scoped, otherwise project-scoped
-2. Search my assigned issues with JQL
-3. Categorize issues by status (To Do, In Progress, In Review, Done)
-4. Read `templates/report.template.md` for report structure
-5. Generate a status report with progress, issue breakdown, blockers
-6. Save to `docs/reports/status-<date>.report.md`
+Execute the `jira-task-report` skill. 내 할당 이슈 현황 리포트 생성.
 
 ### `status`
-Quick status check:
-1. Read `.jira-context.json` to see if there's an active task
-2. If active, fetch current issue status from Jira using `mcp__jira__get-issue`
-3. Display: current task, branch, status, time elapsed
+Quick status check — `.jira-context.json`에서 활성 태스크 정보를 읽고, Jira에서 최신 상태를 조회하여 표시.
 
 ## Error Handling
 

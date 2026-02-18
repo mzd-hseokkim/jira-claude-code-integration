@@ -103,10 +103,27 @@ TASK-README.md
 ```bash
 # Worktree 디렉토리 생성
 mkdir -p "$WORKTREE_BASE"
-
-# 각 태스크별 worktree 생성
-git worktree add -b "feature/<TASK-ID>" "$WORKTREE_BASE/<TASK-ID>" <base-branch>
 ```
+
+**각 태스크별로 먼저 기존 존재 여부 확인 후 생성:**
+
+```bash
+# 1. 이미 브랜치가 있는지 확인
+git branch --list "feature/<TASK-ID>"
+
+# 2. 이미 worktree가 있는지 확인
+git worktree list | grep "<TASK-ID>"
+```
+
+- **브랜치와 worktree 모두 이미 존재**: "Already exists — skipped" 표시 후 다음 태스크로
+- **브랜치만 존재 (worktree 없음)**: 기존 브랜치로 worktree 생성 (`-b` 플래그 없이)
+  ```bash
+  git worktree add "$WORKTREE_BASE/<TASK-ID>" "feature/<TASK-ID>"
+  ```
+- **둘 다 없음**: 새로 생성
+  ```bash
+  git worktree add -b "feature/<TASK-ID>" "$WORKTREE_BASE/<TASK-ID>" <base-branch>
+  ```
 
 **중요: Worktree 경로 규칙**
 - 반드시 원본 레포의 **상위 디렉토리**에 생성

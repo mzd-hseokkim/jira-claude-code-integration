@@ -5,6 +5,7 @@ user-invocable: false
 argument-hint: "<TASK-ID>"
 allowed-tools:
   - Read
+  - Write
   - Bash
   - Glob
   - Grep
@@ -55,6 +56,11 @@ git diff --name-only <base-branch>..feature/<TASK-ID>
 - **Gap Analysis**: 설계-구현 매칭률 및 주요 차이
 - **Code Quality**: 이슈별 심각도 분류 (Critical / Warning / Info)
 - **Positive Notes**: 잘 된 점
+
+### Step 4.5: Save Review Report
+
+리뷰 리포트를 `docs/review/<TASK-ID>.review.md`에 저장.
+다른 PDCA 문서들(plan, design, test)과 동일한 패턴으로 로컬 파일로 보존.
 
 ### Step 5: Post Review to Jira
 

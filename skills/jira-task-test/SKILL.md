@@ -47,6 +47,29 @@ Determine available test types:
 - **Unit (Vitest/Jest)**: If `vitest.config.*` or `jest.config.*` exists
 - **Custom**: If `package.json` has a `test` script
 
+### Step 1.5: Check for Existing Tests
+
+이 태스크와 관련된 테스트가 이미 있는지 Glob/Grep으로 확인:
+- 테스트 파일에서 TASK-ID 또는 기능 키워드 검색
+- `tests/`, `e2e/`, `__tests__/`, `*.test.*`, `*.spec.*` 패턴 탐색
+
+**관련 테스트가 없으면**: 사용자에게 테스트 생성을 먼저 제안:
+1. Design 문서의 Test Plan 섹션 참조
+2. Jira 이슈의 Acceptance Criteria 참조
+3. Playwright 또는 unit 테스트 파일 생성 (아래 구조 참고)
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.describe('<Feature Name> - <TASK-ID>', () => {
+  test('should <acceptance criterion 1>', async ({ page }) => {
+    // Test implementation
+  });
+});
+```
+
+사용자가 테스트 생성을 원하면 생성 후 Step 2로 진행. 원치 않으면 바로 Step 2로.
+
 ### Step 2: Run Tests
 
 Execute tests in order of speed (unit first, then E2E):
@@ -159,10 +182,21 @@ Use `mcp__jira__add-comment` to post the test summary:
 See full report: docs/test/<TASK-ID>.test-report.md
 ```
 
-If Playwright generated failure screenshots, try to upload them:
-```
-Use mcp__jira__upload-attachment with base64-encoded screenshot
-```
+If Playwright generated failure screenshots, upload them to Jira:
+
+1. 스크린샷 파일 탐색:
+   ```bash
+   find test-results/ playwright-report/ -name "*.png" -type f 2>/dev/null
+   ```
+2. 각 스크린샷을 base64로 인코딩:
+   ```bash
+   base64 < <screenshot-path>
+   ```
+3. `mcp__jira__upload-attachment`로 업로드:
+   - `issueKey`: TASK-ID
+   - `filename`: 스크린샷 파일명
+   - `base64Content`: base64 인코딩 결과
+4. 업로드 실패 시: "스크린샷은 로컬 `test-results/` 디렉토리에서 확인 가능" 안내로 폴백
 
 ### Step 6: Completion Summary
 
@@ -200,30 +234,3 @@ Use mcp__jira__upload-attachment with base64-encoded screenshot
 ---
 ```
 
-### Step 7: Write Playwright Tests (if none exist)
-
-If no tests exist for the feature yet, offer to create them:
-
-1. Read the design document for test plan section
-2. Read the implementation to understand the feature
-3. Generate Playwright test files at `tests/<TASK-ID>/` or `e2e/<feature>/`
-
-Playwright test structure:
-```typescript
-import { test, expect } from '@playwright/test';
-
-test.describe('<Feature Name> - <TASK-ID>', () => {
-  test('should <acceptance criterion 1>', async ({ page }) => {
-    // Test implementation
-  });
-
-  test('should <acceptance criterion 2>', async ({ page }) => {
-    // Test implementation
-  });
-});
-```
-
-Base tests on:
-- Acceptance criteria from the Jira issue
-- Test plan from the design document
-- Common user flows for the feature
