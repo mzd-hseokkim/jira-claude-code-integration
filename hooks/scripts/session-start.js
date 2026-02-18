@@ -38,6 +38,38 @@ function main() {
         const completed = context.completedSteps || [];
         const progress = steps.map(s => completed.includes(s) ? `${s} ✓` : s).join(' → ');
         lines.push(`Progress: ${progress}`);
+
+        // Detect existing PDCA documents for session continuity
+        const taskId = context.taskId;
+        const docsFound = [];
+        const docPaths = [
+          { label: 'Plan', path: `docs/plan/${taskId}.plan.md` },
+          { label: 'Design', path: `docs/design/${taskId}.design.md` },
+          { label: 'Test Report', path: `docs/test/${taskId}.test-report.md` },
+          { label: 'Review', path: `docs/review/${taskId}.review.md` },
+        ];
+        for (const doc of docPaths) {
+          const fullPath = path.join(process.cwd(), doc.path);
+          if (fs.existsSync(fullPath)) {
+            docsFound.push(`  - ${doc.label}: ${doc.path}`);
+          }
+        }
+        if (docsFound.length > 0) {
+          lines.push('');
+          lines.push('Existing documents (READ these to resume context):');
+          lines.push(...docsFound);
+        }
+
+        // Suggest next step based on completedSteps
+        const nextStepMap = {
+          init: 'start', start: 'plan', plan: 'design', design: 'impl',
+          impl: 'test', test: 'review', review: 'pr', pr: 'done'
+        };
+        const lastCompleted = [...completed].reverse().find(s => steps.includes(s));
+        if (lastCompleted && nextStepMap[lastCompleted]) {
+          lines.push('');
+          lines.push(`Next step: /jira-task ${nextStepMap[lastCompleted]} ${taskId}`);
+        }
       }
     } catch {
       // Ignore parse errors
