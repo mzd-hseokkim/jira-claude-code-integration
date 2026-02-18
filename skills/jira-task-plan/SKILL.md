@@ -8,6 +8,7 @@ allowed-tools:
   - Write
   - Glob
   - Grep
+  - AskUserQuestion
   - mcp__jira__get-issue
   - mcp__jira__search-issues
   - mcp__jira__add-comment
@@ -25,6 +26,26 @@ allowed-tools:
    - Same epic: `"Epic Link" = <epic-key>`
    - Same component: `project = <project> AND component = <component>`
    - Recently resolved similar: `project = <project> AND status = Done AND resolved >= -30d`
+
+### Step 1.5: Validate Information Sufficiency
+
+Step 1에서 수집한 Jira 정보의 충분성을 평가한다. 다음 항목이 부족하면 사용자에게 질문:
+
+**필수 정보 체크리스트:**
+- [ ] 이슈 설명(Description)이 구체적인가? (한 줄 요약만 있거나 비어 있으면 부족)
+- [ ] 무엇을 구현해야 하는지 명확한가?
+- [ ] Acceptance Criteria가 있거나 유추할 수 있는가?
+
+**부족한 경우**: `AskUserQuestion`으로 사용자에게 보충 질문을 한다.
+
+질문 예시:
+- "이슈 설명이 `<summary>` 한 줄뿐입니다. 구체적으로 어떤 기능을 구현해야 하나요?"
+- "Acceptance Criteria가 없습니다. 이 기능이 완료되려면 어떤 조건을 만족해야 하나요?"
+- "대상 사용자나 사용 시나리오가 명시되어 있지 않습니다. 어떤 상황에서 사용되나요?"
+
+사용자 답변을 수집한 뒤 Step 2의 컨텍스트에 반영한다.
+
+**충분한 경우**: 바로 Step 2로 진행.
 
 ### Step 2: Prepare Context Summary
 
