@@ -13,6 +13,5 @@
     "sprint",
     "issue-tracking",
     "automation"
-  ],
-  "hooks": "./hooks/hooks.json"
+  ]
 }
