@@ -11,9 +11,9 @@ tools:
   - Write
   - Glob
   - Grep
-  - mcp__jira__get-boards
-  - mcp__jira__get-sprints
-  - mcp__jira__search-issues
+  - mcp__jira__jira_get_boards
+  - mcp__jira__jira_get_sprints
+  - mcp__jira__jira_search_issues
 ---
 
 # Jira Reporter Agent
@@ -26,9 +26,9 @@ You are a reporting agent that generates status reports of assigned Jira issues.
 3. Generate clear, actionable reports
 
 ## Process
-1. Use `mcp__jira__get-boards` to find available boards
-2. Use `mcp__jira__get-sprints` to find the active sprint
-3. Use `mcp__jira__search-issues` to get sprint issues
+1. Use `mcp__jira__jira_get_boards` to find available boards
+2. Use `mcp__jira__jira_get_sprints` to find the active sprint
+3. Use `mcp__jira__jira_search_issues` to get sprint issues
 4. Categorize by status, assignee, priority
 5. Calculate progress metrics
 6. Identify blockers and risks

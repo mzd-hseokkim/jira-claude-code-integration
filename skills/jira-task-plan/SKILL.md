@@ -9,9 +9,9 @@ allowed-tools:
   - Glob
   - Grep
   - AskUserQuestion
-  - mcp__jira__get-issue
-  - mcp__jira__search-issues
-  - mcp__jira__add-comment
+  - mcp__jira__jira_get_issue
+  - mcp__jira__jira_search_issues
+  - mcp__jira__jira_add_comment
 ---
 
 # jira-task-plan: Generate Planning Document
@@ -20,9 +20,9 @@ allowed-tools:
 
 ### Step 1: Gather Context from Jira
 
-1. Use `mcp__jira__get-issue` to fetch the issue details
+1. Use `mcp__jira__jira_get_issue` to fetch the issue details
 2. If the issue has a parent epic, fetch the epic details too
-3. Use `mcp__jira__search-issues` with JQL to find related issues:
+3. Use `mcp__jira__jira_search_issues` with JQL to find related issues:
    - Same epic: `"Epic Link" = <epic-key>`
    - Same component: `project = <project> AND component = <component>`
    - Recently resolved similar: `project = <project> AND status = Done AND resolved >= -30d`
@@ -86,7 +86,7 @@ Step 2에서 정리한 Jira 컨텍스트를 기반으로 `docs/plan/<TASK-ID>.pl
 
 ### Step 4: Post Summary to Jira
 
-Use `mcp__jira__add-comment` to post a brief summary:
+Use `mcp__jira__jira_add_comment` to post a brief summary:
 
 ```
 ## Planning Document Created

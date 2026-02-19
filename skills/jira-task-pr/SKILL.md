@@ -8,9 +8,9 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-  - mcp__jira__get-issue
-  - mcp__jira__add-comment
-  - mcp__jira__transition-issue
+  - mcp__jira__jira_get_issue
+  - mcp__jira__jira_add_comment
+  - mcp__jira__jira_transition_issue
 ---
 
 # jira-task-pr: Create Pull Request for Jira Task
@@ -25,7 +25,7 @@ allowed-tools:
 ### Step 1: Gather Context
 
 1. `.jira-context.json`에서 활성 태스크 정보 읽기
-2. `mcp__jira__get-issue`로 이슈 상세 조회
+2. `mcp__jira__jira_get_issue`로 이슈 상세 조회
 3. **Jira 호스트 URL 추출**: `get-issue` 응답의 `self` 필드(예: `https://company.atlassian.net/rest/api/...`)에서 호스트 부분을 추출하여 Jira 이슈 링크 생성에 사용. 예: `https://company.atlassian.net/browse/<TASK-ID>`
 4. Base branch 확인:
    ```bash
@@ -104,7 +104,7 @@ PR URL을 캡처.
 
 ### Step 5: Post PR Link to Jira
 
-`mcp__jira__add-comment`로 Jira에 PR 링크 게시:
+`mcp__jira__jira_add_comment`로 Jira에 PR 링크 게시:
 
 ```
 ## Pull Request Created
@@ -120,7 +120,7 @@ PR URL을 캡처.
 
 사용자에게 확인 후 이슈 상태를 "In Review"로 전환:
 ```
-mcp__jira__transition-issue with transitionName: "In Review"
+mcp__jira__jira_transition_issue with transitionName: "In Review"
 ```
 
 ### Step 7: Completion Summary

@@ -10,8 +10,8 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-  - mcp__jira__get-issue
-  - mcp__jira__add-comment
+  - mcp__jira__jira_get_issue
+  - mcp__jira__jira_add_comment
 ---
 
 # jira-task-impl: Implement a Jira Task
@@ -25,7 +25,7 @@ allowed-tools:
 ### Step 1: Load Context
 
 1. Read `.jira-context.json` for active task info
-2. Use `mcp__jira__get-issue` to fetch latest issue details
+2. Use `mcp__jira__jira_get_issue` to fetch latest issue details
 3. Read `docs/design/<TASK-ID>.design.md` if it exists
 4. Read `docs/plan/<TASK-ID>.plan.md` if it exists
 
@@ -60,7 +60,7 @@ Design 문서의 Test Plan 섹션에 명세된 단위테스트 케이스를 구�
 
 ### Step 3: Post Progress to Jira
 
-구현 완료 후 `mcp__jira__add-comment`:
+구현 완료 후 `mcp__jira__jira_add_comment`:
 
 ```
 ## Implementation Complete

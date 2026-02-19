@@ -8,8 +8,8 @@ allowed-tools:
   - Write
   - Glob
   - Grep
-  - mcp__jira__get-issue
-  - mcp__jira__add-comment
+  - mcp__jira__jira_get_issue
+  - mcp__jira__jira_add_comment
 ---
 
 # jira-task-design: Generate Design Document
@@ -21,7 +21,7 @@ allowed-tools:
 1. Check if `docs/plan/<TASK-ID>.plan.md` exists
    - If yes, read it for context
    - If no, suggest running `/jira-task plan <TASK-ID>` first (but proceed if user wants)
-2. Use `mcp__jira__get-issue` to fetch current issue details
+2. Use `mcp__jira__jira_get_issue` to fetch current issue details
 
 ### Step 2: Analyze Codebase
 
@@ -52,7 +52,7 @@ Plan 문서 + 코드베이스 분석 결과를 기반으로 `docs/design/<TASK-I
 
 ### Step 4: Post Summary to Jira
 
-Use `mcp__jira__add-comment` to post:
+Use `mcp__jira__jira_add_comment` to post:
 
 ```
 ## Design Document Created

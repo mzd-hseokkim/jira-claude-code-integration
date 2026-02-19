@@ -10,9 +10,9 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-  - mcp__jira__get-issue
-  - mcp__jira__add-comment
-  - mcp__jira__upload-attachment
+  - mcp__jira__jira_get_issue
+  - mcp__jira__jira_add_comment
+  - mcp__jira__jira_upload_attachment
 ---
 
 # jira-task-test: Run Tests & Report to Jira
@@ -159,7 +159,7 @@ Create a test report at `docs/test/<TASK-ID>.test-report.md`:
 
 ### Step 5: Post Results to Jira
 
-Use `mcp__jira__add-comment` to post the test summary:
+Use `mcp__jira__jira_add_comment` to post the test summary:
 
 ```
 ## Test Results: <TASK-ID>
@@ -192,7 +192,7 @@ If Playwright generated failure screenshots, upload them to Jira:
    ```bash
    base64 < <screenshot-path>
    ```
-3. `mcp__jira__upload-attachment`로 업로드:
+3. `mcp__jira__jira_upload_attachment`로 업로드:
    - `issueKey`: TASK-ID
    - `filename`: 스크린샷 파일명
    - `base64Content`: base64 인코딩 결과

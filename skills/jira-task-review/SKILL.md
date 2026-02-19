@@ -9,8 +9,8 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-  - mcp__jira__get-issue
-  - mcp__jira__add-comment
+  - mcp__jira__jira_get_issue
+  - mcp__jira__jira_add_comment
 ---
 
 # jira-task-review: Code Review + Gap Analysis with Jira Reporting
@@ -64,7 +64,7 @@ git diff --name-only <base-branch>..feature/<TASK-ID>
 
 ### Step 5: Post Review to Jira
 
-Use `mcp__jira__add-comment` to post the review:
+Use `mcp__jira__jira_add_comment` to post the review:
 
 ```
 ## Code Review: <TASK-ID>

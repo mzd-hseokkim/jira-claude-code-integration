@@ -77,42 +77,39 @@ This project is a Claude Code plugin that integrates Jira with the software deve
 - Design: `docs/design/<TASK-ID>.design.md`
 - Test Report: `docs/test/<TASK-ID>.test-report.md`
 
-### MCP Server: jira (tom28881/mcp-jira-server)
+### MCP Server: jira (mcp-jira-cloud)
 
-The `jira` MCP server provides Jira tools. Available tools:
+The `jira` MCP server provides Jira Cloud tools (79개). 전체 도구 레퍼런스: `docs/mcp-jira-cloud-tools.md`
+
+스킬에서 주로 사용하는 도구:
 
 **Issue Management:**
-- `create-issue` - Create new Jira issue
-- `update-issue` - Update issue fields
-- `get-issue` - Retrieve issue details by key
-- `search-issues` - Search with JQL or filters
-- `transition-issue` - Change issue status (by transition name)
-- `link-issues` - Link two issues
-- `get-link-types` - List available link types
-- `get-fields` - List available fields
-- `diagnose-fields` - Troubleshoot field configuration
-- `create-epic-with-subtasks` - Create epic with sub-tasks
-- `create-task-for-epic` - Add task to an epic
 
-**Comments & History:**
-- `get-comments` - Read issue comments
-- `add-comment` - Post comment to issue
-- `batch-comment` - Post comment to multiple issues
-- `get-history` - View issue change history
+- `jira_get_issue` - 이슈 상세 조회
+- `jira_search_issues` - JQL로 이슈 검색
+- `jira_create_issue` - 새 이슈 생성
+- `jira_update_issue` - 이슈 필드 수정
+- `jira_transition_issue` - 상태 전환 (transitionId 사용, `jira_get_transitions`로 조회)
+- `jira_assign_issue` - 담당자 할당
 
-**Attachments:**
-- `get-attachments` - List attachments on issue
-- `upload-attachment` - Upload file (base64) to issue
+**Comments & Attachments:**
+
+- `jira_add_comment` - 이슈에 코멘트 추가
+- `jira_get_issue_comments` - 이슈 코멘트 조회
+- `jira_upload_attachment` - 파일 첨부 업로드 (filePath 사용)
+- `jira_get_attachments` - 첨부파일 목록 조회
 
 **Sprint & Agile:**
-- `get-boards` - List Jira boards
-- `get-sprints` - List sprints for a board
-- `move-issue-to-sprint` - Move issue to sprint
-- `create-sprint` - Create new sprint
 
-**Resources:** `jira://projects`, `jira://project/{key}`, `jira://issue/{key}`, `jira://myself`, `jira://search?jql={query}`
+- `jira_get_boards` - 보드 목록 조회
+- `jira_get_sprints` - 스프린트 목록 조회
+- `jira_move_issues_to_sprint` - 이슈를 스프린트로 이동
+- `jira_get_sprint_issues` - 스프린트 이슈 조회
 
-**Prompts:** `standup-report`, `sprint-planning`, `bug-triage`, `release-notes`, `epic-status`
+**Authentication:**
+
+- `jira_auth_status` - 인증 상태 확인
+- `jira_whoami` - 현재 사용자 정보
 
 ### Workflow Commands
 
@@ -132,7 +129,7 @@ The `jira` MCP server provides Jira tools. Available tools:
 
 - When posting comments to Jira, use markdown format.
 - Always fetch issue details before transitioning status.
-- Use `transition-issue` with the transition **name** (e.g., "In Progress"), not ID.
+- Use `jira_get_transitions`로 전환 목록 조회 후 `jira_transition_issue`에 **transitionId**를 전달.
 - Store active task context in `.jira-context.json` (gitignored).
 - Git branches follow pattern: `feature/<TASK-ID>`
 - Worktrees are created in the parent directory: `../<project>_worktree/<TASK-ID>`
@@ -157,7 +154,7 @@ The `jira` MCP server provides Jira tools. Available tools:
 
 ### Environment Variables
 
-Required: `JIRA_HOST`, `JIRA_EMAIL`, `JIRA_API_TOKEN`
+Required: `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`
 Optional: `JIRA_DEFAULT_PROJECT`
 
 Set in `.mcp.json` (project-level) or `~/.claude/settings.local.json` (global).

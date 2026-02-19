@@ -14,7 +14,7 @@ Show the user the following information:
 
 ## 1. Connection Status
 
-Check if Jira MCP server is available by trying to use `mcp__jira__get-boards` or reading the `jira://myself` resource. Report:
+Check if Jira MCP server is available by trying to use `mcp__jira__jira_get_boards` or reading the `jira://myself` resource. Report:
 - Whether the Jira MCP server is connected
 - The connected Jira instance URL (from JIRA_HOST env var)
 - The authenticated user (from `jira://myself` resource)

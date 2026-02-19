@@ -27,4 +27,4 @@ Thumbs.db
 .claude/
 
 # MCP server (if cloned locally)
-mcp-jira-server/
+mcp-jira-cloud/

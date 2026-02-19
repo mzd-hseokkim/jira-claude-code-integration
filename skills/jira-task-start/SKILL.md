@@ -8,10 +8,10 @@ allowed-tools:
   - Write
   - Bash
   - Glob
-  - mcp__jira__get-issue
-  - mcp__jira__transition-issue
-  - mcp__jira__add-comment
-  - mcp__jira__search-issues
+  - mcp__jira__jira_get_issue
+  - mcp__jira__jira_transition_issue
+  - mcp__jira__jira_add_comment
+  - mcp__jira__jira_search_issues
 ---
 
 # jira-task-start: Start Working on a Jira Task
@@ -25,7 +25,7 @@ allowed-tools:
 
 ### Step 1: Fetch Issue Details
 
-Use `mcp__jira__get-issue` with the provided TASK-ID.
+Use `mcp__jira__jira_get_issue` with the provided TASK-ID.
 
 Display to the user:
 - **Key**: Issue key
@@ -40,7 +40,7 @@ Display to the user:
 
 ### Step 2: Transition to "In Progress"
 
-Use `mcp__jira__transition-issue` with:
+Use `mcp__jira__jira_transition_issue` with:
 - `issueKey`: The TASK-ID
 - `transitionName`: "In Progress" (or similar like "Start Progress", "Begin Work")
 
@@ -100,7 +100,7 @@ Create a `README.md` in the worktree directory (or project root for branch) with
 
 ### Step 5: Post Comment to Jira
 
-Use `mcp__jira__add-comment` with:
+Use `mcp__jira__jira_add_comment` with:
 - `issueKey`: The TASK-ID
 - `comment`: "Development started on branch `feature/<TASK-ID>`. Working directory: `<worktree-path or branch>`"
 

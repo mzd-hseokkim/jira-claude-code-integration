@@ -40,17 +40,17 @@ claude plugin install jira-integration@jira-claude-code-integration
 # 2. Jira MCP 서버 등록 (환경변수 포함, Setup 참고)
 # macOS/Linux:
 claude mcp add jira \
-  -e JIRA_HOST=https://your-domain.atlassian.net \
+  -e JIRA_BASE_URL=https://your-domain.atlassian.net \
   -e JIRA_EMAIL=your-email@company.com \
   -e JIRA_API_TOKEN=your-api-token \
-  -- npx -y mcp-jira-server
+  -- npx -y mcp-jira-cloud
 
 # Windows:
 claude mcp add jira \
-  -e JIRA_HOST=https://your-domain.atlassian.net \
+  -e JIRA_BASE_URL=https://your-domain.atlassian.net \
   -e JIRA_EMAIL=your-email@company.com \
   -e JIRA_API_TOKEN=your-api-token \
-  -- cmd /c npx -y mcp-jira-server
+  -- cmd /c npx -y mcp-jira-cloud
 
 # 3. Claude Code 실행 후 연결 확인
 claude
@@ -99,31 +99,31 @@ claude --plugin-dir /path/to/jira-claude-code-integration
 
 ### Step 3: Jira MCP 서버 등록
 
-Jira MCP 서버([mcp-jira-server](https://www.npmjs.com/package/mcp-jira-server))를 Claude Code에 등록합니다.
+Jira MCP 서버([mcp-jira-cloud](https://www.npmjs.com/package/mcp-jira-cloud))를 Claude Code에 등록합니다.
 
 > **중요**: 아래 4개의 환경변수가 모두 올바르게 설정되어야 Jira 연동이 동작합니다.
 
 ```bash
 # macOS/Linux:
 claude mcp add jira \
-  -e JIRA_HOST=https://your-domain.atlassian.net \
+  -e JIRA_BASE_URL=https://your-domain.atlassian.net \
   -e JIRA_EMAIL=your-email@company.com \
   -e JIRA_API_TOKEN=your-api-token \
   -e JIRA_DEFAULT_PROJECT=PROJ \
-  -- npx -y mcp-jira-server
+  -- npx -y mcp-jira-cloud
 
 # Windows (cmd /c wrapper 필요):
 claude mcp add jira \
-  -e JIRA_HOST=https://your-domain.atlassian.net \
+  -e JIRA_BASE_URL=https://your-domain.atlassian.net \
   -e JIRA_EMAIL=your-email@company.com \
   -e JIRA_API_TOKEN=your-api-token \
   -e JIRA_DEFAULT_PROJECT=PROJ \
-  -- cmd /c npx -y mcp-jira-server
+  -- cmd /c npx -y mcp-jira-cloud
 ```
 
 | 환경변수 | 필수 | 설명 |
 |----------|------|------|
-| `JIRA_HOST` | Yes | Jira Cloud URL (끝에 `/` 없이) |
+| `JIRA_BASE_URL` | Yes | Jira Cloud URL (끝에 `/` 없이) |
 | `JIRA_EMAIL` | Yes | Atlassian 계정 이메일 |
 | `JIRA_API_TOKEN` | Yes | Step 1에서 생성한 API 토큰 |
 | `JIRA_DEFAULT_PROJECT` | No | 기본 프로젝트 키 (예: `PROJ`) |
@@ -333,11 +333,11 @@ Progress: init ✓ → start ✓ → plan ✓ → design → impl → test → r
 # 1. MCP 서버 등록 상태 확인
 claude mcp list
 
-# 2. 환경변수가 올바른지 확인 (특히 JIRA_HOST, JIRA_EMAIL, JIRA_API_TOKEN)
+# 2. 환경변수가 올바른지 확인 (특히 JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN)
 claude mcp get jira
 
 # 3. MCP 서버 직접 실행 테스트
-npx -y mcp-jira-server           # 입력 대기하면 정상. Ctrl+C로 종료
+npx -y mcp-jira-cloud           # 입력 대기하면 정상. Ctrl+C로 종료
 ```
 
 ### "Transition failed"
@@ -352,7 +352,7 @@ Jira 워크플로우에 따라 전환 이름이 다를 수 있습니다:
 
 - API Token이 만료되지 않았는지 확인
 - `JIRA_EMAIL`이 Atlassian 계정 이메일과 **정확히** 일치하는지 확인
-- `JIRA_HOST` URL 끝에 `/`가 **없어야** 함 (예: `https://company.atlassian.net`)
+- `JIRA_BASE_URL` URL 끝에 `/`가 **없어야** 함 (예: `https://company.atlassian.net`)
 
 ### "`gh` CLI not found" (PR 생성 실패)
 
@@ -376,7 +376,7 @@ git worktree prune               # 정리
 
 | Variable | Required | Example | Description |
 |----------|----------|---------|-------------|
-| `JIRA_HOST` | Yes | `https://company.atlassian.net` | Jira Cloud URL (끝에 `/` 없이) |
+| `JIRA_BASE_URL` | Yes | `https://company.atlassian.net` | Jira Cloud URL (끝에 `/` 없이) |
 | `JIRA_EMAIL` | Yes | `user@company.com` | Atlassian 계정 이메일 |
 | `JIRA_API_TOKEN` | Yes | `ATATT3x...` | API 토큰 ([여기서 생성](https://id.atlassian.com/manage-profile/security/api-tokens)) |
 | `JIRA_DEFAULT_PROJECT` | No | `PROJ` | 기본 프로젝트 키 |

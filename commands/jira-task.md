@@ -79,7 +79,7 @@ Quick status check — `.jira-context.json`에서 활성 태스크 정보를 읽
 
 - If TASK-ID is not provided and auto-detection fails, ask the user to provide it
 - If Jira MCP server is not connected, guide user to check `/jira` for setup
-- If transition fails (e.g., invalid transition name), use `mcp__jira__get-issue` to show current status and available transitions
+- If transition fails (e.g., invalid transition name), use `mcp__jira__jira_get_issue` to show current status and available transitions
 
 ## Response Summary
 
