@@ -135,6 +135,14 @@ The `jira` MCP server provides Jira Cloud tools (79개). 전체 도구 레퍼런
 - Worktrees are created in the parent directory: `../<project>_worktree/<TASK-ID>`
 - 프로젝트 내용(스킬, 훅, 설정 등)이 변경되면 `.claude-plugin/plugin.json`의 `version`도 반드시 함께 증가시킬 것.
 
+### JIRA_DEFAULT_PROJECT Scoping Rule
+
+`JIRA_DEFAULT_PROJECT` 환경변수가 설정되어 있으면, **모든 JQL 쿼리에 `project = <JIRA_DEFAULT_PROJECT>` 조건을 반드시 포함**해야 한다.
+
+- 스프린트 기반 조회에서도 `project = <JIRA_DEFAULT_PROJECT> AND sprint = ...` 형태로 프로젝트를 한정
+- 관련 이슈, 에픽 하위 이슈 등 검색 시에도 항상 프로젝트 조건 포함
+- 이 규칙은 init, plan, report 등 JQL을 사용하는 모든 스킬에 적용
+
 ### Workflow Progress Tracking
 
 각 `/jira-task` 스킬은 완료 시 `.jira-context.json`의 `completedSteps` 배열에 자신의 단계를 추가해야 한다:

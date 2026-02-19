@@ -21,7 +21,7 @@ allowed-tools:
 **스프린트가 있는 경우 (Scrum)**:
 1. Use `mcp__jira__jira_get_boards` to list available boards
 2. Use `mcp__jira__jira_get_sprints` to find the active sprint
-3. JQL: `sprint = <sprint-id> AND assignee = currentUser() ORDER BY status ASC, priority DESC`
+3. JQL: `project = <JIRA_DEFAULT_PROJECT> AND sprint = <sprint-id> AND assignee = currentUser() ORDER BY status ASC, priority DESC`
 
 **스프린트가 없는 경우 (Kanban / 기타)**:
 ```

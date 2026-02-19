@@ -22,10 +22,11 @@ allowed-tools:
 
 1. Use `mcp__jira__jira_get_issue` to fetch the issue details
 2. If the issue has a parent epic, fetch the epic details too
-3. Use `mcp__jira__jira_search_issues` with JQL to find related issues:
-   - Same epic: `"Epic Link" = <epic-key>`
-   - Same component: `project = <project> AND component = <component>`
-   - Recently resolved similar: `project = <project> AND status = Done AND resolved >= -30d`
+3. Use `mcp__jira__jira_search_issues` with JQL to find related issues.
+   **JIRA_DEFAULT_PROJECT가 설정되어 있으면 모든 JQL에 `project = <JIRA_DEFAULT_PROJECT>` 조건을 반드시 포함:**
+   - Same epic: `project = <JIRA_DEFAULT_PROJECT> AND "Epic Link" = <epic-key>`
+   - Same component: `project = <JIRA_DEFAULT_PROJECT> AND component = <component>`
+   - Recently resolved similar: `project = <JIRA_DEFAULT_PROJECT> AND status = Done AND resolved >= -30d`
 
 ### Step 1.5: Validate Information Sufficiency
 

@@ -31,22 +31,18 @@ allowed-tools:
 
 사용자에게 몇 개의 태스크를 가져올지 확인 (기본값: 5).
 
-JQL 쿼리로 나에게 할당된 고우선순위 태스크 조회:
+JQL 쿼리로 나에게 할당된 고우선순위 태스크 조회.
+**JIRA_DEFAULT_PROJECT가 설정되어 있으면 반드시 `project = <JIRA_DEFAULT_PROJECT>` 조건을 포함해야 한다.**
 
 ```
 Use mcp__jira__jira_search_issues with JQL:
-  assignee = currentUser() AND status NOT IN (Done, Closed) ORDER BY priority DESC, created ASC
-```
-
-JIRA_DEFAULT_PROJECT가 설정되어 있으면 프로젝트 필터 추가:
-```
   project = <JIRA_DEFAULT_PROJECT> AND assignee = currentUser() AND status NOT IN (Done, Closed) ORDER BY priority DESC, created ASC
 ```
 
 또는 활성 스프린트가 있으면 스프린트 기반으로 조회:
 1. `mcp__jira__jira_get_boards`로 보드 확인
 2. `mcp__jira__jira_get_sprints`로 활성 스프린트 확인
-3. JQL: `sprint = <active-sprint-id> AND assignee = currentUser() AND status NOT IN (Done, Closed) ORDER BY priority DESC`
+3. JQL: `project = <JIRA_DEFAULT_PROJECT> AND sprint = <active-sprint-id> AND assignee = currentUser() AND status NOT IN (Done, Closed) ORDER BY priority DESC`
 
 결과에서 상위 N개(기본 5개)만 선택.
 
