@@ -133,6 +133,7 @@ The `jira` MCP server provides Jira Cloud tools (79개). 전체 도구 레퍼런
 - Store active task context in `.jira-context.json` (gitignored).
 - Git branches follow pattern: `feature/<TASK-ID>`
 - Worktrees are created in the parent directory: `../<project>_worktree/<TASK-ID>`
+- 프로젝트 내용(스킬, 훅, 설정 등)이 변경되면 `.claude-plugin/plugin.json`의 `version`도 반드시 함께 증가시킬 것.
 
 ### Workflow Progress Tracking
 
