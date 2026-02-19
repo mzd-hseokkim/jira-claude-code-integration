@@ -39,9 +39,9 @@ claude plugin install jira-integration@jira-claude-code-integration
 
 # 2. Jira MCP 서버 등록 (환경변수 포함, Setup 참고)
 claude mcp add jira \
-  --env JIRA_HOST=https://your-domain.atlassian.net \
-  --env JIRA_EMAIL=your-email@company.com \
-  --env JIRA_API_TOKEN=your-api-token \
+  -e JIRA_HOST=https://your-domain.atlassian.net \
+  -e JIRA_EMAIL=your-email@company.com \
+  -e JIRA_API_TOKEN=your-api-token \
   -- npx -y mcp-jira-server
 
 # 3. Claude Code 실행 후 연결 확인
@@ -97,10 +97,10 @@ Jira MCP 서버([mcp-jira-server](https://www.npmjs.com/package/mcp-jira-server)
 
 ```bash
 claude mcp add jira \
-  --env JIRA_HOST=https://your-domain.atlassian.net \
-  --env JIRA_EMAIL=your-email@company.com \
-  --env JIRA_API_TOKEN=your-api-token \
-  --env JIRA_DEFAULT_PROJECT=PROJ \
+  -e JIRA_HOST=https://your-domain.atlassian.net \
+  -e JIRA_EMAIL=your-email@company.com \
+  -e JIRA_API_TOKEN=your-api-token \
+  -e JIRA_DEFAULT_PROJECT=PROJ \
   -- npx -y mcp-jira-server
 ```
 
@@ -355,7 +355,7 @@ git worktree prune               # 정리
 
 ## Environment Variables
 
-`claude mcp add` 시 `--env`로 설정하는 변수들:
+`claude mcp add` 시 `-e`로 설정하는 변수들:
 
 | Variable | Required | Example | Description |
 |----------|----------|---------|-------------|
