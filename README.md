@@ -38,11 +38,19 @@ claude plugin marketplace add mzd-hseokkim/jira-claude-code-integration
 claude plugin install jira-integration@jira-claude-code-integration
 
 # 2. Jira MCP 서버 등록 (환경변수 포함, Setup 참고)
+# macOS/Linux:
 claude mcp add jira \
   -e JIRA_HOST=https://your-domain.atlassian.net \
   -e JIRA_EMAIL=your-email@company.com \
   -e JIRA_API_TOKEN=your-api-token \
   -- npx -y mcp-jira-server
+
+# Windows:
+claude mcp add jira \
+  -e JIRA_HOST=https://your-domain.atlassian.net \
+  -e JIRA_EMAIL=your-email@company.com \
+  -e JIRA_API_TOKEN=your-api-token \
+  -- cmd /c npx -y mcp-jira-server
 
 # 3. Claude Code 실행 후 연결 확인
 claude
@@ -96,12 +104,21 @@ Jira MCP 서버([mcp-jira-server](https://www.npmjs.com/package/mcp-jira-server)
 > **중요**: 아래 4개의 환경변수가 모두 올바르게 설정되어야 Jira 연동이 동작합니다.
 
 ```bash
+# macOS/Linux:
 claude mcp add jira \
   -e JIRA_HOST=https://your-domain.atlassian.net \
   -e JIRA_EMAIL=your-email@company.com \
   -e JIRA_API_TOKEN=your-api-token \
   -e JIRA_DEFAULT_PROJECT=PROJ \
   -- npx -y mcp-jira-server
+
+# Windows (cmd /c wrapper 필요):
+claude mcp add jira \
+  -e JIRA_HOST=https://your-domain.atlassian.net \
+  -e JIRA_EMAIL=your-email@company.com \
+  -e JIRA_API_TOKEN=your-api-token \
+  -e JIRA_DEFAULT_PROJECT=PROJ \
+  -- cmd /c npx -y mcp-jira-server
 ```
 
 | 환경변수 | 필수 | 설명 |
