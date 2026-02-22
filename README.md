@@ -38,14 +38,7 @@ claude plugin marketplace add mzd-hseokkim/jira-claude-code-integration
 claude plugin install jira-integration@jira-claude-code-integration
 
 # 2. Atlassian MCP 서버 등록 (환경변수 포함, Setup 참고)
-# macOS/Linux:
-claude mcp add atlassian \
-  -e JIRA_URL=https://your-domain.atlassian.net \
-  -e JIRA_USERNAME=your-email@company.com \
-  -e JIRA_API_TOKEN=your-api-token \
-  -- uvx mcp-atlassian
-
-# Windows:
+# macOS/Linux/Windows 모두 동일:
 claude mcp add atlassian \
   -e JIRA_URL=https://your-domain.atlassian.net \
   -e JIRA_USERNAME=your-email@company.com \
@@ -104,7 +97,7 @@ claude --plugin-dir /path/to/jira-claude-code-integration
 > **중요**: 아래 환경변수가 모두 올바르게 설정되어야 Jira 연동이 동작합니다.
 
 ```bash
-# macOS/Linux / Windows (동일):
+# macOS/Linux/Windows 모두 동일 (cmd /c 불필요):
 claude mcp add atlassian \
   -e JIRA_URL=https://your-domain.atlassian.net \
   -e JIRA_USERNAME=your-email@company.com \
@@ -112,6 +105,8 @@ claude mcp add atlassian \
   -e JIRA_DEFAULT_PROJECT=PROJ \
   -- uvx mcp-atlassian
 ```
+
+> **Windows 참고**: 이전 `mcp-jira-cloud`는 `npx.cmd` 배치 파일이라 `cmd /c npx ...` 래퍼가 필요했지만, `uvx`는 `uvx.exe` 네이티브 실행파일이므로 모든 OS에서 동일한 명령어를 사용합니다.
 
 | 환경변수 | 필수 | 설명 |
 |----------|------|------|
