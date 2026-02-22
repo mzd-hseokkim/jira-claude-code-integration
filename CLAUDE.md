@@ -173,7 +173,19 @@ The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스
 
 ### Environment Variables
 
-Required: `JIRA_URL`, `JIRA_USERNAME`, `JIRA_API_TOKEN`
-Optional: `JIRA_DEFAULT_PROJECT`
+**MCP 서버 등록 시 (`claude mcp add -e ...`):**
 
-Set in `.mcp.json` (project-level) or `~/.claude/settings.local.json` (global).
+| 변수 | 필수 | 설명 |
+|------|------|------|
+| `JIRA_URL` | Yes | Jira Cloud URL |
+| `JIRA_USERNAME` | Yes | Atlassian 계정 이메일 |
+| `JIRA_API_TOKEN` | Yes | API 토큰 |
+| `JIRA_PROJECTS_FILTER` | No | MCP 서버 접근 프로젝트 화이트리스트 (mcp-atlassian 공식 변수, 예: `PROJ` 또는 `PROJ,DEV`) |
+
+**이 플러그인 전용 규칙 (CLAUDE.md 또는 `.jira-context.json`에 명시):**
+
+| 변수 | 설명 |
+|------|------|
+| `JIRA_DEFAULT_PROJECT` | 스킬이 JQL 쿼리 구성 시 사용하는 기본 프로젝트 키. mcp-atlassian이 인식하지 않는 플러그인 자체 규칙. |
+
+Set MCP env vars in `.claude/settings.local.json` (project-level, default) or `~/.claude/settings.json` (global).

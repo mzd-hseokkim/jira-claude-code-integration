@@ -43,6 +43,7 @@ claude mcp add atlassian \
   -e JIRA_URL=https://your-domain.atlassian.net \
   -e JIRA_USERNAME=your-email@company.com \
   -e JIRA_API_TOKEN=your-api-token \
+  -e JIRA_PROJECTS_FILTER=PROJ \
   -- uvx mcp-atlassian
 
 # 3. Claude Code 실행 후 연결 확인
@@ -102,7 +103,7 @@ claude mcp add atlassian \
   -e JIRA_URL=https://your-domain.atlassian.net \
   -e JIRA_USERNAME=your-email@company.com \
   -e JIRA_API_TOKEN=your-api-token \
-  -e JIRA_DEFAULT_PROJECT=PROJ \
+  -e JIRA_PROJECTS_FILTER=PROJ \
   -- uvx mcp-atlassian
 ```
 
@@ -113,7 +114,7 @@ claude mcp add atlassian \
 | `JIRA_URL` | Yes | Jira Cloud URL (끝에 `/` 없이) |
 | `JIRA_USERNAME` | Yes | Atlassian 계정 이메일 |
 | `JIRA_API_TOKEN` | Yes | Step 1에서 생성한 API 토큰 |
-| `JIRA_DEFAULT_PROJECT` | No | 기본 프로젝트 키 (예: `PROJ`) |
+| `JIRA_PROJECTS_FILTER` | No | 접근 허용 프로젝트 키 (쉼표 구분, 예: `PROJ` 또는 `PROJ,DEV`) |
 
 위 명령은 현재 프로젝트의 `.claude/settings.local.json`에 MCP 서버를 등록합니다 (기본 `local` 스코프). 프로젝트별로 다른 Jira 설정을 사용할 수 있습니다.
 
@@ -370,7 +371,9 @@ git worktree prune               # 정리
 | `JIRA_URL` | Yes | `https://company.atlassian.net` | Jira Cloud URL (끝에 `/` 없이) |
 | `JIRA_USERNAME` | Yes | `user@company.com` | Atlassian 계정 이메일 |
 | `JIRA_API_TOKEN` | Yes | `ATATT3x...` | API 토큰 ([여기서 생성](https://id.atlassian.com/manage-profile/security/api-tokens)) |
-| `JIRA_DEFAULT_PROJECT` | No | `PROJ` | 기본 프로젝트 키 |
+| `JIRA_PROJECTS_FILTER` | No | `PROJ` 또는 `PROJ,DEV` | MCP 서버가 접근할 프로젝트 화이트리스트 (mcp-atlassian 공식 변수) |
+
+> **`JIRA_DEFAULT_PROJECT`와의 차이**: `JIRA_PROJECTS_FILTER`는 mcp-atlassian 서버 수준에서 접근 가능한 프로젝트를 제한합니다. `JIRA_DEFAULT_PROJECT`는 이 플러그인 스킬이 JQL 쿼리를 구성할 때 사용하는 별도의 프로젝트 키 규칙으로, CLAUDE.md에 명시하거나 `.jira-context.json`에 저장합니다.
 
 > **주의**: 이 환경변수들이 누락되거나 잘못되면 모든 Jira 연동 기능이 동작하지 않습니다.
 
