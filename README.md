@@ -287,6 +287,120 @@ workspace/
     └── PROJ-103/                # feature/PROJ-103 브랜치
 ```
 
+### Multi-Worktree PR 병합 전략
+
+`/jira-task init`은 모든 worktree를 동일한 base branch(develop/main)에서 생성합니다. 서로 다른 태스크가 같은 파일을 수정하면, 나중에 병합되는 PR에서 충돌이 발생합니다. 작업 시작 전에 병합 순서를 계획하는 것이 핵심입니다.
+
+#### 구조 이해
+
+```
+main (또는 develop)
+ ├─ feature/PROJ-101   ← init이 main에서 생성
+ ├─ feature/PROJ-102   ← init이 main에서 생성
+ └─ feature/PROJ-103   ← init이 main에서 생성
+```
+
+모든 브랜치가 같은 시점의 main에서 분기됩니다. PROJ-101을 main에 병합하면, PROJ-102와 PROJ-103은 그 변경사항을 모르는 상태가 됩니다.
+
+#### 충돌 발생 시나리오
+
+```
+main ──┬──────────────────────────────────►
+       │
+       ├ PROJ-101: src/api/auth.ts 수정 → main에 병합
+       │
+       ├ PROJ-102: src/api/auth.ts 수정 → PR 시 충돌!
+       └ PROJ-103: src/api/user.ts 수정 → PR 시 정상 (다른 파일)
+```
+
+충돌 발생 여부는 **파일 중복 여부**로 결정됩니다. 설계 단계에서 미리 파악해야 합니다.
+
+---
+
+#### 전략 1: 순차 rebase-and-merge (파일 중복이 있을 때)
+
+병합 순서를 미리 정하고, 앞 태스크가 main에 합쳐진 뒤 뒷 태스크를 rebase합니다.
+
+```
+1단계: PROJ-101 PR → main에 병합
+2단계: PROJ-102 브랜치를 새 main으로 rebase → PR 생성
+3단계: PROJ-103 브랜치를 새 main으로 rebase → PR 생성
+```
+
+```bash
+# PROJ-101 병합 후, PROJ-102 worktree에서:
+git fetch origin
+git rebase origin/main
+
+# 충돌 해결 후 PR 생성
+/jira-task pr
+```
+
+**언제 사용**: 태스크 간 의존 관계가 있거나, 같은 파일을 건드릴 때.
+**병합 순서 결정 기준**: 논리적으로 선행해야 하는 태스크 → 먼저 병합.
+
+---
+
+#### 전략 2: 통합 브랜치 (스프린트 단위 릴리즈)
+
+별도 통합 브랜치를 만들고, 모든 태스크 PR을 거기서 먼저 합친 뒤 최종에 main으로 PR 1개.
+
+```bash
+# 스프린트 시작 시 통합 브랜치 생성
+git checkout -b feature/sprint-42 main
+
+# 각 태스크 PR의 base를 feature/sprint-42로 설정 (GitHub PR 생성 시)
+# 태스크 완료마다 → feature/sprint-42에 병합 → 충돌 해결
+# 스프린트 종료 시 → feature/sprint-42 → main PR 1개
+```
+
+**언제 사용**: 여러 태스크를 함께 릴리즈해야 하거나, 개별 배포가 불가능한 경우.
+
+---
+
+#### 전략 3: 사전 파일 영역 분리 (가장 단순)
+
+`/jira-task design` 단계에서, 내가 수정할 파일이 다른 진행 중인 태스크와 겹치지 않도록 설계합니다.
+
+```bash
+# 현재 각 태스크 브랜치의 변경 파일 목록 확인
+git diff --name-only main feature/PROJ-101
+git diff --name-only main feature/PROJ-102
+```
+
+겹치는 파일이 없으면 어떤 순서로 병합해도 충돌이 없습니다. 겹친다면 전략 1로 순서를 정합니다.
+
+---
+
+#### 브랜치 주기적 동기화 (개발 기간 중)
+
+스프린트 기간 동안 다른 팀원의 PR이 main에 계속 병합됩니다. 오래 방치한 브랜치일수록 나중에 충돌 규모가 커집니다. **매일 또는 작업 세션 시작 시** 각 worktree를 최신 main과 동기화하세요.
+
+```bash
+# 각 worktree에서 (또는 해당 worktree 디렉토리로 이동 후):
+git fetch origin
+git rebase origin/main   # 또는 git merge origin/main
+```
+
+rebase vs merge 선택:
+- **rebase**: 커밋 히스토리가 깔끔하게 유지됨. 단독 작업 브랜치에 권장.
+- **merge**: 히스토리 보존. 여러 명이 같은 브랜치에서 작업 중이라면 merge가 안전.
+
+통합 브랜치(전략 2) 사용 시에는 feature 브랜치를 `origin/main` 대신 `origin/feature/sprint-42`와 동기화합니다.
+
+---
+
+#### 의사결정
+
+```
+설계 단계에서 파일 중복 확인
+├─ 중복 없음 → 전략 3: 어떤 순서로든 PR 가능
+├─ 중복 있음, 각자 배포 가능 → 전략 1: 병합 순서 정하고 순차 rebase
+└─ 중복 있음, 함께 릴리즈 필요 → 전략 2: 통합 브랜치
+```
+
+> **팁**: `/jira-task init` 후 구현 시작 전에 `git diff --name-only`로 태스크 간 파일 중복을 확인하고, 중복이 있으면 병합 순서를 팀과 먼저 합의하세요. 개발 중에는 주기적으로 main을 당겨와 충돌을 조금씩 해결하는 것이 한꺼번에 처리하는 것보다 훨씬 수월합니다.
+
 ### Progress Tracking
 
 각 워크플로 스킬이 완료되면 `.jira-context.json`의 `completedSteps`에 단계가 기록됩니다. 다음 스킬 실행 시 진행 상황이 자동으로 표시됩니다:
