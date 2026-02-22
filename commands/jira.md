@@ -5,7 +5,7 @@ user-invocable: true
 allowed-tools:
   - Read
   - Bash
-  - mcp__jira
+  - mcp__atlassian
 ---
 
 # /jira - Jira Integration Help & Status
@@ -14,15 +14,15 @@ Show the user the following information:
 
 ## 1. Connection Status
 
-Check if Jira MCP server is available by trying to use `mcp__jira__jira_get_boards` or reading the `jira://myself` resource. Report:
-- Whether the Jira MCP server is connected
-- The connected Jira instance URL (from JIRA_HOST env var)
-- The authenticated user (from `jira://myself` resource)
+Check if Atlassian MCP server is available by trying to use `mcp__atlassian__jira_get_user_profile`. Report:
+- Whether the Atlassian MCP server is connected
+- The connected Jira instance URL (from JIRA_URL env var)
+- The authenticated user (from `jira_get_user_profile` response)
 
 If connection fails, guide the user to set up environment variables:
 ```
-JIRA_HOST=https://your-domain.atlassian.net
-JIRA_EMAIL=your-email@company.com
+JIRA_URL=https://your-domain.atlassian.net
+JIRA_USERNAME=your-email@company.com
 JIRA_API_TOKEN=your-api-token
 ```
 
@@ -45,9 +45,11 @@ Display the available workflow commands:
 
 ## 3. Available MCP Tools
 
-Briefly list the Jira MCP tool categories:
-- **Issues**: create, get, update, search, transition, link
-- **Comments**: get, add, batch
-- **Attachments**: list, upload
-- **Sprints**: boards, sprints, move, create
-- **Prompts**: standup-report, sprint-planning, bug-triage, release-notes, epic-status
+Briefly list the Atlassian MCP tool categories:
+- **Issues**: get, search (JQL), create, update, delete, transition, batch-create
+- **Comments**: add
+- **Attachments**: download
+- **Sprints & Boards**: get-agile-boards, get-sprints-from-board, get-sprint-issues, create-sprint, update-sprint
+- **Development Info**: get-issue-development-info (linked PRs, branches, commits)
+- **Projects & Users**: get-all-projects, get-project-issues, get-user-profile
+- **Issue Links**: create-issue-link, link-to-epic

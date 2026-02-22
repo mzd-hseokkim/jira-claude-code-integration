@@ -77,39 +77,48 @@ This project is a Claude Code plugin that integrates Jira with the software deve
 - Design: `docs/design/<TASK-ID>.design.md`
 - Test Report: `docs/test/<TASK-ID>.test-report.md`
 
-### MCP Server: jira (mcp-jira-cloud)
+### MCP Server: atlassian (mcp-atlassian)
 
-The `jira` MCP server provides Jira Cloud tools (79개). 전체 도구 레퍼런스: `docs/mcp-jira-cloud-tools.md`
+The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스: `docs/mcp-atlassian-tools.md`
 
 스킬에서 주로 사용하는 도구:
 
 **Issue Management:**
 
 - `jira_get_issue` - 이슈 상세 조회
-- `jira_search_issues` - JQL로 이슈 검색
+- `jira_search` - JQL로 이슈 검색 (구 `jira_search_issues`)
 - `jira_create_issue` - 새 이슈 생성
-- `jira_update_issue` - 이슈 필드 수정
+- `jira_update_issue` - 이슈 필드 수정 (담당자 변경 포함)
 - `jira_transition_issue` - 상태 전환 (transitionId 사용, `jira_get_transitions`로 조회)
-- `jira_assign_issue` - 담당자 할당
+- `jira_get_transitions` - 가능한 상태 전환 목록 조회
 
 **Comments & Attachments:**
 
 - `jira_add_comment` - 이슈에 코멘트 추가
-- `jira_get_issue_comments` - 이슈 코멘트 조회
-- `jira_upload_attachment` - 파일 첨부 업로드 (filePath 사용)
-- `jira_get_attachments` - 첨부파일 목록 조회
+- `jira_download_attachments` - 첨부파일 다운로드
+- 첨부파일 **업로드**는 Jira REST API 직접 호출로 처리:
+  `POST $JIRA_URL/rest/api/3/issue/<KEY>/attachments` (Basic Auth + X-Atlassian-Token: no-check)
+  자격증명은 환경변수(`JIRA_URL`, `JIRA_USERNAME`, `JIRA_API_TOKEN`) 또는 `.claude/settings.local.json`에서 읽음
 
 **Sprint & Agile:**
 
-- `jira_get_boards` - 보드 목록 조회
-- `jira_get_sprints` - 스프린트 목록 조회
-- `jira_move_issues_to_sprint` - 이슈를 스프린트로 이동
+- `jira_get_agile_boards` - 보드 목록 조회 (구 `jira_get_boards`)
+- `jira_get_sprints_from_board` - 보드의 스프린트 목록 조회 (boardId 필요, 구 `jira_get_sprints`)
 - `jira_get_sprint_issues` - 스프린트 이슈 조회
+- `jira_get_board_issues` - 보드 이슈 조회
+- `jira_create_sprint` - 스프린트 생성
+- `jira_update_sprint` - 스프린트 수정
 
-**Authentication:**
+**User & Project:**
 
-- `jira_auth_status` - 인증 상태 확인
-- `jira_whoami` - 현재 사용자 정보
+- `jira_get_user_profile` - 현재 사용자 정보 및 인증 확인 (구 `jira_whoami`, `jira_auth_status`)
+- `jira_get_all_projects` - 프로젝트 목록 조회
+- `jira_get_project_issues` - 프로젝트 이슈 조회
+
+**Issue Linking:**
+
+- `jira_create_issue_link` - 이슈 간 링크 생성
+- `jira_link_to_epic` - 에픽 연결
 
 ### Workflow Commands
 
@@ -130,6 +139,7 @@ The `jira` MCP server provides Jira Cloud tools (79개). 전체 도구 레퍼런
 - When posting comments to Jira, use markdown format.
 - Always fetch issue details before transitioning status.
 - Use `jira_get_transitions`로 전환 목록 조회 후 `jira_transition_issue`에 **transitionId**를 전달.
+- `jira_get_sprints_from_board`는 `boardId`가 필요하므로 먼저 `jira_get_agile_boards`로 보드 ID를 조회해야 한다.
 - Store active task context in `.jira-context.json` (gitignored).
 - Git branches follow pattern: `feature/<TASK-ID>`
 - Worktrees are created in the parent directory: `../<project>_worktree/<TASK-ID>`
@@ -163,7 +173,7 @@ The `jira` MCP server provides Jira Cloud tools (79개). 전체 도구 레퍼런
 
 ### Environment Variables
 
-Required: `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`
+Required: `JIRA_URL`, `JIRA_USERNAME`, `JIRA_API_TOKEN`
 Optional: `JIRA_DEFAULT_PROJECT`
 
 Set in `.mcp.json` (project-level) or `~/.claude/settings.local.json` (global).

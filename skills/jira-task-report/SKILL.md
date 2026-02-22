@@ -5,9 +5,9 @@ user-invocable: false
 allowed-tools:
   - Read
   - Write
-  - mcp__jira__jira_get_boards
-  - mcp__jira__jira_get_sprints
-  - mcp__jira__jira_search_issues
+  - mcp__atlassian__jira_get_agile_boards
+  - mcp__atlassian__jira_get_sprints_from_board
+  - mcp__atlassian__jira_search
 ---
 
 # jira-task-report: Status Report
@@ -19,13 +19,14 @@ allowed-tools:
 먼저 스프린트 유무를 확인하고, 적절한 JQL로 이슈를 검색:
 
 **스프린트가 있는 경우 (Scrum)**:
-1. Use `mcp__jira__jira_get_boards` to list available boards
-2. Use `mcp__jira__jira_get_sprints` to find the active sprint
+1. Use `mcp__atlassian__jira_get_agile_boards` to list available boards
+2. Use `mcp__atlassian__jira_get_sprints_from_board` with the boardId to find the active sprint
 3. JQL: `project = <JIRA_DEFAULT_PROJECT> AND sprint = <sprint-id> AND assignee = currentUser() ORDER BY status ASC, priority DESC`
 
 **스프린트가 없는 경우 (Kanban / 기타)**:
 ```
-project = <JIRA_DEFAULT_PROJECT> AND assignee = currentUser() AND status != Done ORDER BY priority DESC
+Use mcp__atlassian__jira_search with JQL:
+  project = <JIRA_DEFAULT_PROJECT> AND assignee = currentUser() AND status != Done ORDER BY priority DESC
 ```
 
 ### Step 2: Categorize Issues

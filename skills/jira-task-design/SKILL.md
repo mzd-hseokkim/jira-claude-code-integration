@@ -6,10 +6,11 @@ argument-hint: "<TASK-ID>"
 allowed-tools:
   - Read
   - Write
+  - Bash
   - Glob
   - Grep
-  - mcp__jira__jira_get_issue
-  - mcp__jira__jira_add_comment
+  - mcp__atlassian__jira_get_issue
+  - mcp__atlassian__jira_add_comment
 ---
 
 # jira-task-design: Generate Design Document
@@ -21,7 +22,7 @@ allowed-tools:
 1. Check if `docs/plan/<TASK-ID>.plan.md` exists
    - If yes, read it for context
    - If no, suggest running `/jira-task plan <TASK-ID>` first (but proceed if user wants)
-2. Use `mcp__jira__jira_get_issue` to fetch current issue details
+2. Use `mcp__atlassian__jira_get_issue` to fetch current issue details
 
 ### Step 2: Analyze Codebase
 
@@ -52,7 +53,7 @@ Plan 문서 + 코드베이스 분석 결과를 기반으로 `docs/design/<TASK-I
 
 ### Step 4: Post Summary to Jira
 
-Use `mcp__jira__jira_add_comment` to post:
+Use `mcp__atlassian__jira_add_comment` to post:
 
 ```
 ## Design Document Created
@@ -71,6 +72,37 @@ Technical design has been created for this issue.
 See: docs/design/<TASK-ID>.design.md
 ```
 
+### Step 4.5: Attach Design Document to Jira
+
+생성한 `docs/design/<TASK-ID>.design.md`를 Jira 이슈에 첨부파일로 업로드:
+
+```bash
+# 1. 자격증명 확보 (환경변수 우선, 없으면 .claude/settings.local.json에서 읽기)
+JIRA_URL="${JIRA_URL:-}"
+JIRA_USERNAME="${JIRA_USERNAME:-}"
+JIRA_API_TOKEN="${JIRA_API_TOKEN:-}"
+
+if [ -z "$JIRA_URL" ]; then
+  _s="$(git rev-parse --show-toplevel 2>/dev/null)/.claude/settings.local.json"
+  if [ -f "$_s" ]; then
+    JIRA_URL=$(node -e "const s=require('$_s');const e=(s.mcpServers?.atlassian||s.mcpServers?.jira||{}).env||{};console.log(e.JIRA_URL||'')" 2>/dev/null)
+    JIRA_USERNAME=$(node -e "const s=require('$_s');const e=(s.mcpServers?.atlassian||s.mcpServers?.jira||{}).env||{};console.log(e.JIRA_USERNAME||'')" 2>/dev/null)
+    JIRA_API_TOKEN=$(node -e "const s=require('$_s');const e=(s.mcpServers?.atlassian||s.mcpServers?.jira||{}).env||{};console.log(e.JIRA_API_TOKEN||'')" 2>/dev/null)
+  fi
+fi
+
+# 2. 첨부파일 업로드
+AUTH=$(printf '%s:%s' "$JIRA_USERNAME" "$JIRA_API_TOKEN" | base64 | tr -d '\n')
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+  -H "Authorization: Basic $AUTH" \
+  -H "X-Atlassian-Token: no-check" \
+  -F "file=@docs/design/<TASK-ID>.design.md" \
+  "${JIRA_URL}/rest/api/3/issue/<TASK-ID>/attachments")
+```
+
+- HTTP 200: 첨부 성공
+- 그 외: 업로드 실패를 사용자에게 알리고 계속 진행 (로컬 파일 경로 안내)
+
 ### Step 5: Completion Summary
 
 `.jira-context.json`의 `completedSteps`에 `"design"` 추가 후, 아래 형식으로 완료 요약 출력:
@@ -81,6 +113,7 @@ See: docs/design/<TASK-ID>.design.md
 
 - 설계 문서 생성: `docs/design/<TASK-ID>.design.md`
 - Jira 코멘트 게시됨
+- Jira 첨부파일 업로드됨 (또는 실패 시 로컬 경로 안내)
 
 **Progress**: init → start → plan → **design ✓** → impl → test → review → pr → done
 

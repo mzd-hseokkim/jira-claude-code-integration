@@ -6,12 +6,13 @@ argument-hint: "<TASK-ID>"
 allowed-tools:
   - Read
   - Write
+  - Bash
   - Glob
   - Grep
   - AskUserQuestion
-  - mcp__jira__jira_get_issue
-  - mcp__jira__jira_search_issues
-  - mcp__jira__jira_add_comment
+  - mcp__atlassian__jira_get_issue
+  - mcp__atlassian__jira_search
+  - mcp__atlassian__jira_add_comment
 ---
 
 # jira-task-plan: Generate Planning Document
@@ -20,9 +21,9 @@ allowed-tools:
 
 ### Step 1: Gather Context from Jira
 
-1. Use `mcp__jira__jira_get_issue` to fetch the issue details
+1. Use `mcp__atlassian__jira_get_issue` to fetch the issue details
 2. If the issue has a parent epic, fetch the epic details too
-3. Use `mcp__jira__jira_search_issues` with JQL to find related issues.
+3. Use `mcp__atlassian__jira_search` with JQL to find related issues.
    **JIRA_DEFAULT_PROJECT가 설정되어 있으면 모든 JQL에 `project = <JIRA_DEFAULT_PROJECT>` 조건을 반드시 포함:**
    - Same epic: `project = <JIRA_DEFAULT_PROJECT> AND "Epic Link" = <epic-key>`
    - Same component: `project = <JIRA_DEFAULT_PROJECT> AND component = <component>`
@@ -87,7 +88,7 @@ Step 2에서 정리한 Jira 컨텍스트를 기반으로 `docs/plan/<TASK-ID>.pl
 
 ### Step 4: Post Summary to Jira
 
-Use `mcp__jira__jira_add_comment` to post a brief summary:
+Use `mcp__atlassian__jira_add_comment` to post a brief summary:
 
 ```
 ## Planning Document Created
@@ -104,6 +105,37 @@ A planning document has been created for this issue.
 See: docs/plan/<TASK-ID>.plan.md
 ```
 
+### Step 4.5: Attach Plan Document to Jira
+
+생성한 `docs/plan/<TASK-ID>.plan.md`를 Jira 이슈에 첨부파일로 업로드:
+
+```bash
+# 1. 자격증명 확보 (환경변수 우선, 없으면 .claude/settings.local.json에서 읽기)
+JIRA_URL="${JIRA_URL:-}"
+JIRA_USERNAME="${JIRA_USERNAME:-}"
+JIRA_API_TOKEN="${JIRA_API_TOKEN:-}"
+
+if [ -z "$JIRA_URL" ]; then
+  _s="$(git rev-parse --show-toplevel 2>/dev/null)/.claude/settings.local.json"
+  if [ -f "$_s" ]; then
+    JIRA_URL=$(node -e "const s=require('$_s');const e=(s.mcpServers?.atlassian||s.mcpServers?.jira||{}).env||{};console.log(e.JIRA_URL||'')" 2>/dev/null)
+    JIRA_USERNAME=$(node -e "const s=require('$_s');const e=(s.mcpServers?.atlassian||s.mcpServers?.jira||{}).env||{};console.log(e.JIRA_USERNAME||'')" 2>/dev/null)
+    JIRA_API_TOKEN=$(node -e "const s=require('$_s');const e=(s.mcpServers?.atlassian||s.mcpServers?.jira||{}).env||{};console.log(e.JIRA_API_TOKEN||'')" 2>/dev/null)
+  fi
+fi
+
+# 2. 첨부파일 업로드
+AUTH=$(printf '%s:%s' "$JIRA_USERNAME" "$JIRA_API_TOKEN" | base64 | tr -d '\n')
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+  -H "Authorization: Basic $AUTH" \
+  -H "X-Atlassian-Token: no-check" \
+  -F "file=@docs/plan/<TASK-ID>.plan.md" \
+  "${JIRA_URL}/rest/api/3/issue/<TASK-ID>/attachments")
+```
+
+- HTTP 200: 첨부 성공
+- 그 외: 업로드 실패를 사용자에게 알리고 계속 진행 (로컬 파일 경로 안내)
+
 ### Step 5: Completion Summary
 
 `.jira-context.json`의 `completedSteps`에 `"plan"` 추가 후, 아래 형식으로 완료 요약 출력:
@@ -114,6 +146,7 @@ See: docs/plan/<TASK-ID>.plan.md
 
 - 기획 문서 생성: `docs/plan/<TASK-ID>.plan.md`
 - Jira 코멘트 게시됨
+- Jira 첨부파일 업로드됨 (또는 실패 시 로컬 경로 안내)
 
 **Progress**: init → start → **plan ✓** → design → impl → test → review → pr → done
 

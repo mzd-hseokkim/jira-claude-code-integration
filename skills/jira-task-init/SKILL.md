@@ -8,11 +8,11 @@ allowed-tools:
   - Write
   - Bash
   - Glob
-  - mcp__jira__jira_search_issues
-  - mcp__jira__jira_get_issue
-  - mcp__jira__jira_add_comment
-  - mcp__jira__jira_get_boards
-  - mcp__jira__jira_get_sprints
+  - mcp__atlassian__jira_search
+  - mcp__atlassian__jira_get_issue
+  - mcp__atlassian__jira_add_comment
+  - mcp__atlassian__jira_get_agile_boards
+  - mcp__atlassian__jira_get_sprints_from_board
 ---
 
 # jira-task-init: Bulk Sprint/Task Initialization
@@ -23,7 +23,7 @@ allowed-tools:
 ## Prerequisites
 - Jira MCP 서버 연결됨
 - 현재 디렉토리가 git repository 내부
-- 환경변수: JIRA_HOST, JIRA_EMAIL, JIRA_API_TOKEN
+- 환경변수: JIRA_URL, JIRA_USERNAME, JIRA_API_TOKEN
 
 ## Workflow
 
@@ -35,13 +35,13 @@ JQL 쿼리로 나에게 할당된 고우선순위 태스크 조회.
 **JIRA_DEFAULT_PROJECT가 설정되어 있으면 반드시 `project = <JIRA_DEFAULT_PROJECT>` 조건을 포함해야 한다.**
 
 ```
-Use mcp__jira__jira_search_issues with JQL:
+Use mcp__atlassian__jira_search with JQL:
   project = <JIRA_DEFAULT_PROJECT> AND assignee = currentUser() AND status NOT IN (Done, Closed) ORDER BY priority DESC, created ASC
 ```
 
 또는 활성 스프린트가 있으면 스프린트 기반으로 조회:
-1. `mcp__jira__jira_get_boards`로 보드 확인
-2. `mcp__jira__jira_get_sprints`로 활성 스프린트 확인
+1. `mcp__atlassian__jira_get_agile_boards`로 보드 목록 확인
+2. `mcp__atlassian__jira_get_sprints_from_board`로 활성 스프린트 확인 (boardId 필요)
 3. JQL: `project = <JIRA_DEFAULT_PROJECT> AND sprint = <active-sprint-id> AND assignee = currentUser() AND status NOT IN (Done, Closed) ORDER BY priority DESC`
 
 결과에서 상위 N개(기본 5개)만 선택.
@@ -169,7 +169,7 @@ git worktree list | grep "<TASK-ID>"
 
 각 태스크에 코멘트 게시:
 ```
-Use mcp__jira__jira_add_comment:
+Use mcp__atlassian__jira_add_comment:
   "Worktree initialized for branch `feature/<TASK-ID>` at `<worktree-path>`"
 ```
 

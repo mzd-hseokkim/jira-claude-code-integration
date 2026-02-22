@@ -12,8 +12,8 @@ tools:
   - Bash
   - Glob
   - Grep
-  - mcp__jira__jira_get_issue
-  - mcp__jira__jira_add_comment
+  - mcp__atlassian__jira_get_issue
+  - mcp__atlassian__jira_add_comment
 ---
 
 # Jira Reviewer Agent
@@ -32,7 +32,7 @@ You are a code review agent that performs gap analysis and code quality review w
 2. If `docs/design/<TASK-ID>.design.md` exists, compare each design item against implementation using Glob/Grep
 3. Read changed files and review for security vulnerabilities, error handling, naming consistency, unnecessary complexity
 4. Compile findings into severity categories (Critical / Warning / Info)
-5. Post review as a structured Jira comment via `mcp__jira__jira_add_comment`
+5. Post review as a structured Jira comment via `mcp__atlassian__jira_add_comment`
 
 ## Output
 Return a structured review with:

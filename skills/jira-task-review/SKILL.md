@@ -9,8 +9,8 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-  - mcp__jira__jira_get_issue
-  - mcp__jira__jira_add_comment
+  - mcp__atlassian__jira_get_issue
+  - mcp__atlassian__jira_add_comment
 ---
 
 # jira-task-review: Code Review + Gap Analysis with Jira Reporting
@@ -62,9 +62,40 @@ git diff --name-only <base-branch>..feature/<TASK-ID>
 리뷰 리포트를 `docs/review/<TASK-ID>.review.md`에 저장.
 다른 PDCA 문서들(plan, design, test)과 동일한 패턴으로 로컬 파일로 보존.
 
+### Step 4.7: Attach Review Report to Jira
+
+저장한 `docs/review/<TASK-ID>.review.md`를 Jira 이슈에 첨부파일로 업로드:
+
+```bash
+# 1. 자격증명 확보 (환경변수 우선, 없으면 .claude/settings.local.json에서 읽기)
+JIRA_URL="${JIRA_URL:-}"
+JIRA_USERNAME="${JIRA_USERNAME:-}"
+JIRA_API_TOKEN="${JIRA_API_TOKEN:-}"
+
+if [ -z "$JIRA_URL" ]; then
+  _s="$(git rev-parse --show-toplevel 2>/dev/null)/.claude/settings.local.json"
+  if [ -f "$_s" ]; then
+    JIRA_URL=$(node -e "const s=require('$_s');const e=(s.mcpServers?.atlassian||s.mcpServers?.jira||{}).env||{};console.log(e.JIRA_URL||'')" 2>/dev/null)
+    JIRA_USERNAME=$(node -e "const s=require('$_s');const e=(s.mcpServers?.atlassian||s.mcpServers?.jira||{}).env||{};console.log(e.JIRA_USERNAME||'')" 2>/dev/null)
+    JIRA_API_TOKEN=$(node -e "const s=require('$_s');const e=(s.mcpServers?.atlassian||s.mcpServers?.jira||{}).env||{};console.log(e.JIRA_API_TOKEN||'')" 2>/dev/null)
+  fi
+fi
+
+# 2. 첨부파일 업로드
+AUTH=$(printf '%s:%s' "$JIRA_USERNAME" "$JIRA_API_TOKEN" | base64 | tr -d '\n')
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+  -H "Authorization: Basic $AUTH" \
+  -H "X-Atlassian-Token: no-check" \
+  -F "file=@docs/review/<TASK-ID>.review.md" \
+  "${JIRA_URL}/rest/api/3/issue/<TASK-ID>/attachments")
+```
+
+- HTTP 200: 첨부 성공
+- 그 외: 업로드 실패를 사용자에게 알리고 계속 진행 (로컬 파일 경로 안내)
+
 ### Step 5: Post Review to Jira
 
-Use `mcp__jira__jira_add_comment` to post the review:
+Use `mcp__atlassian__jira_add_comment` to post the review:
 
 ```
 ## Code Review: <TASK-ID>
@@ -109,6 +140,7 @@ Approve 시 `.jira-context.json`의 `completedSteps`에 `"review"` 추가 (Reque
 - 설계-구현 매칭률: <N>%
 - 리뷰 파일: <N>개
 - Jira 코멘트 게시됨
+- Jira 첨부파일 업로드됨 (또는 실패 시 로컬 경로 안내)
 
 **Progress**: init → start → plan → design → impl → test → **review ✓** → pr → done
 

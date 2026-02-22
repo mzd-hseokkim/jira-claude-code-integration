@@ -10,9 +10,8 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-  - mcp__jira__jira_get_issue
-  - mcp__jira__jira_add_comment
-  - mcp__jira__jira_upload_attachment
+  - mcp__atlassian__jira_get_issue
+  - mcp__atlassian__jira_add_comment
 ---
 
 # jira-task-test: Run Tests & Report to Jira
@@ -159,7 +158,7 @@ Create a test report at `docs/test/<TASK-ID>.test-report.md`:
 
 ### Step 5: Post Results to Jira
 
-Use `mcp__jira__jira_add_comment` to post the test summary:
+Use `mcp__atlassian__jira_add_comment` to post the test summary:
 
 ```
 ## Test Results: <TASK-ID>
@@ -182,21 +181,44 @@ Use `mcp__jira__jira_add_comment` to post the test summary:
 See full report: docs/test/<TASK-ID>.test-report.md
 ```
 
-If Playwright generated failure screenshots, upload them to Jira:
+테스트 리포트와 실패 스크린샷을 Jira 이슈에 첨부파일로 업로드:
 
-1. 스크린샷 파일 탐색:
-   ```bash
-   find test-results/ playwright-report/ -name "*.png" -type f 2>/dev/null
-   ```
-2. 각 스크린샷을 base64로 인코딩:
-   ```bash
-   base64 < <screenshot-path>
-   ```
-3. `mcp__jira__jira_upload_attachment`로 업로드:
-   - `issueKey`: TASK-ID
-   - `filename`: 스크린샷 파일명
-   - `base64Content`: base64 인코딩 결과
-4. 업로드 실패 시: "스크린샷은 로컬 `test-results/` 디렉토리에서 확인 가능" 안내로 폴백
+```bash
+# 1. 자격증명 확보 (환경변수 우선, 없으면 .claude/settings.local.json에서 읽기)
+JIRA_URL="${JIRA_URL:-}"
+JIRA_USERNAME="${JIRA_USERNAME:-}"
+JIRA_API_TOKEN="${JIRA_API_TOKEN:-}"
+
+if [ -z "$JIRA_URL" ]; then
+  _s="$(git rev-parse --show-toplevel 2>/dev/null)/.claude/settings.local.json"
+  if [ -f "$_s" ]; then
+    JIRA_URL=$(node -e "const s=require('$_s');const e=(s.mcpServers?.atlassian||s.mcpServers?.jira||{}).env||{};console.log(e.JIRA_URL||'')" 2>/dev/null)
+    JIRA_USERNAME=$(node -e "const s=require('$_s');const e=(s.mcpServers?.atlassian||s.mcpServers?.jira||{}).env||{};console.log(e.JIRA_USERNAME||'')" 2>/dev/null)
+    JIRA_API_TOKEN=$(node -e "const s=require('$_s');const e=(s.mcpServers?.atlassian||s.mcpServers?.jira||{}).env||{};console.log(e.JIRA_API_TOKEN||'')" 2>/dev/null)
+  fi
+fi
+
+AUTH=$(printf '%s:%s' "$JIRA_USERNAME" "$JIRA_API_TOKEN" | base64 | tr -d '\n')
+
+# 2. 테스트 리포트 첨부
+curl -s -o /dev/null -w "%{http_code}" -X POST \
+  -H "Authorization: Basic $AUTH" \
+  -H "X-Atlassian-Token: no-check" \
+  -F "file=@docs/test/<TASK-ID>.test-report.md" \
+  "${JIRA_URL}/rest/api/3/issue/<TASK-ID>/attachments"
+
+# 3. Playwright 실패 스크린샷 첨부 (있는 경우)
+find test-results/ playwright-report/ -name "*.png" -type f 2>/dev/null | while read -r screenshot; do
+  curl -s -o /dev/null -w "%{http_code}: $screenshot\n" -X POST \
+    -H "Authorization: Basic $AUTH" \
+    -H "X-Atlassian-Token: no-check" \
+    -F "file=@${screenshot}" \
+    "${JIRA_URL}/rest/api/3/issue/<TASK-ID>/attachments"
+done
+```
+
+- 리포트 및 각 스크린샷 업로드 결과를 확인하고 성공/실패 요약
+- 업로드 실패한 파일은 로컬 경로를 코멘트에 추가
 
 ### Step 6: Completion Summary
 
@@ -211,6 +233,7 @@ If Playwright generated failure screenshots, upload them to Jira:
 - 전체: <N>개, 통과: <N>개, 실패: 0개
 - 테스트 리포트: `docs/test/<TASK-ID>.test-report.md`
 - Jira 코멘트 게시됨
+- Jira 첨부파일: 리포트 + 스크린샷 <N>개 (또는 실패 시 로컬 경로 안내)
 
 **Progress**: init → start → plan → design → impl → **test ✓** → review → pr → done
 

@@ -11,9 +11,9 @@ tools:
   - Write
   - Glob
   - Grep
-  - mcp__jira__jira_get_issue
-  - mcp__jira__jira_search_issues
-  - mcp__jira__jira_add_comment
+  - mcp__atlassian__jira_get_issue
+  - mcp__atlassian__jira_search
+  - mcp__atlassian__jira_add_comment
 ---
 
 # Jira Planner Agent
@@ -28,12 +28,12 @@ You are a planning agent that generates structured planning documents from Jira 
 5. Post summary back to Jira
 
 ## Process
-1. Use `mcp__jira__jira_get_issue` to fetch the target issue
-2. Use `mcp__jira__jira_search_issues` to find related work
+1. Use `mcp__atlassian__jira_get_issue` to fetch the target issue
+2. Use `mcp__atlassian__jira_search` to find related work (JQL-based)
 3. Use Glob/Grep to understand the codebase structure
 4. Compile Jira context + codebase analysis
 5. Generate plan document at `docs/plan/<TASK-ID>.plan.md`
-6. Post planning summary to Jira via `mcp__jira__jira_add_comment`
+6. Post planning summary to Jira via `mcp__atlassian__jira_add_comment`
 
 ## Output
 Return the path to the generated planning document and a brief summary of:

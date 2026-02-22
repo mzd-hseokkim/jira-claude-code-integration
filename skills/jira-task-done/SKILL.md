@@ -9,9 +9,10 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-  - mcp__jira__jira_get_issue
-  - mcp__jira__jira_transition_issue
-  - mcp__jira__jira_add_comment
+  - mcp__atlassian__jira_get_issue
+  - mcp__atlassian__jira_transition_issue
+  - mcp__atlassian__jira_get_transitions
+  - mcp__atlassian__jira_add_comment
 ---
 
 # jira-task-done: Complete a Jira Task
@@ -34,7 +35,7 @@ git branch --list "feature/<TASK-ID>"
 
 ### Step 2: Fetch Current Issue Status
 
-Use `mcp__jira__jira_get_issue` to confirm the issue exists and check its current status.
+Use `mcp__atlassian__jira_get_issue` to confirm the issue exists and check its current status.
 
 ### Step 3: Summarize Changes
 
@@ -68,7 +69,7 @@ git diff/log 정보와 PDCA 문서들을 기반으로 완료 요약 생성:
 
 ### Step 6: Post Completion Report to Jira
 
-Step 5의 요약을 기반으로 `mcp__jira__jira_add_comment`에 게시:
+Step 5의 요약을 기반으로 `mcp__atlassian__jira_add_comment`에 게시:
 
 ```
 ## Task Completed: <TASK-ID>
@@ -89,9 +90,9 @@ Step 5의 요약을 기반으로 `mcp__jira__jira_add_comment`에 게시:
 
 ### Step 7: Transition Issue
 
-Use `mcp__jira__jira_transition_issue` to move the issue:
+Use `mcp__atlassian__jira_get_transitions` to fetch available transitions, then use `mcp__atlassian__jira_transition_issue` to move the issue:
 - Try "In Review" first (common for PR-based workflows)
-- If "In Review" fails, try "Done"
+- If "In Review" is not available, try "Done"
 - If both fail, inform the user of available transitions
 
 ### Step 8: Update Context & Completion Summary
