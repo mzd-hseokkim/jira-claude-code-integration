@@ -162,6 +162,7 @@ gh auth login
 | `/jira-task test <TASK-ID>` | 테스트 실행 (Playwright E2E, unit) + Jira 리포트 |
 | `/jira-task review <TASK-ID>` | 코드 리뷰 + Jira 코멘트 |
 | `/jira-task pr <TASK-ID>` | PR 생성 + Jira에 PR 링크 게시 |
+| `/jira-task merge <TASK-ID>` | 로컬 병합 (remote 없을 때 `pr` + `done` 대체) |
 | `/jira-task done <TASK-ID>` | 완료 처리 (PR, 상태 전이, 리포트) |
 | `/jira-task report` | 내 할당 이슈 현황 리포트 |
 | `/jira-task status` | 현재 작업 중인 태스크 상태 |
@@ -184,6 +185,8 @@ cd ../my-project_worktree/PROJ-123
 
 ### Typical Workflow
 
+#### Remote origin이 있는 경우 (PR 기반)
+
 ```
 # === 태스크 초기화 ===
 /jira-task init 5                  # 할당된 태스크 5개 worktree 일괄 생성
@@ -202,6 +205,36 @@ cd ../my-project_worktree/PROJ-123 # worktree로 이동
 # === 현황 리포트 ===
 /jira-task report                  # 내 할당 이슈 현황
 ```
+
+#### Remote origin이 없는 경우 (로컬 병합)
+
+remote가 설정되지 않은 git 프로젝트에서는 `pr` 대신 `merge`를 사용합니다.
+`merge`는 병합 전략 선택 → 로컬 병합 → Jira 상태 전환 → worktree 정리까지 한 번에 처리합니다.
+
+```
+cd ../my-project_worktree/PROJ-123 # worktree로 이동
+/jira-task start
+/jira-task plan
+/jira-task design
+/jira-task impl
+/jira-task test
+/jira-task review
+/jira-task merge                   # pr + done 대신 사용
+```
+
+`merge` 실행 시 병합 전략을 선택합니다:
+
+| 전략 | 설명 | GitHub 동등 |
+|------|------|-------------|
+| `--no-ff` (기본 권장) | merge commit 생성, 브랜치 히스토리 보존 | Create a merge commit |
+| `--squash` | 모든 커밋을 하나로 합쳐 병합 | Squash and merge |
+| `rebase` | 선형 히스토리, merge commit 없음 | Rebase and merge |
+
+**병합 대상 브랜치**: `init` 시점에 감지된 `baseBranch` (`develop` → `develop`에, `main` → `main`에 병합).
+무조건 `main`이 아니라 `init`을 실행한 레포의 base 브랜치가 기준입니다.
+
+**실행 위치**: worktree 안에서 실행해도 병합은 항상 **메인 레포**에서 이루어집니다.
+`.jira-context.json`의 `repoRoot`를 읽어 메인 레포 경로를 정확히 참조하기 때문입니다.
 
 ### 개별 단계 설명
 
@@ -258,7 +291,8 @@ jira-claude-code-integration/
 │   ├── jira-task-review/        # review: 코드 리뷰
 │   ├── jira-task-pr/            # pr: PR 생성
 │   ├── jira-task-done/          # done: 완료 처리
-│   └── jira-task-report/        # report: 현황 리포트
+│   ├── jira-task-report/        # report: 현황 리포트
+│   └── jira-local-merge/        # merge: 로컬 병합 (no remote)
 │
 ├── agents/                      # Subagent definitions
 │   ├── jira-planner.md          # plan/design 시 Jira 컨텍스트 수집 + 문서 생성
