@@ -246,6 +246,7 @@ Use mcp__atlassian__jira_add_comment:
   "taskId": "PROJ-101",
   "branch": "feature/PROJ-101",
   "worktreePath": "<path>",
+  "repoRoot": "<REPO_ROOT 절대경로>",
   "baseBranch": "<detected base branch>",
   "summary": "로그인 기능 구현",
   "priority": "Highest",
@@ -260,6 +261,7 @@ Use mcp__atlassian__jira_add_comment:
 ```json
 {
   "initialized": "<ISO timestamp>",
+  "repoRoot": "<REPO_ROOT 절대경로>",
   "baseBranch": "<detected base branch>",
   "worktreeBase": "<worktree base path>",
   "tasks": [
@@ -267,6 +269,7 @@ Use mcp__atlassian__jira_add_comment:
       "taskId": "PROJ-101",
       "branch": "feature/PROJ-101",
       "worktreePath": "<path>",
+      "repoRoot": "<REPO_ROOT 절대경로>",
       "summary": "로그인 기능 구현",
       "priority": "Highest",
       "status": "To Do"
