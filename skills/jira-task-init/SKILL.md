@@ -6,6 +6,7 @@ argument-hint: "[count]"
 allowed-tools:
   - Read
   - Write
+  - Edit
   - Bash
   - Glob
   - mcp__atlassian__jira_search
@@ -82,12 +83,13 @@ git rev-parse --verify master 2>/dev/null   # 3rd: master
 
 ### Step 4: Ensure .gitignore
 
-프로젝트의 `.gitignore`에 아래 항목이 없으면 추가:
+프로젝트의 `.gitignore`에 아래 항목이 없으면 bash로 추가:
 
-```
-# Jira integration (local dev context)
-.jira-context.json
-TASK-README.md
+```bash
+REPO_GITIGNORE="$REPO_ROOT/.gitignore"
+if ! grep -qF ".jira-context.json" "$REPO_GITIGNORE" 2>/dev/null; then
+  printf '\n# Jira integration (local dev context)\n.jira-context.json\nTASK-README.md\n' >> "$REPO_GITIGNORE"
+fi
 ```
 
 이미 존재하면 스킵.
