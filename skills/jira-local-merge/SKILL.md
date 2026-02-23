@@ -32,12 +32,13 @@ Jira 상태 전환 및 worktree 정리까지 일괄 처리한다.
 
 인자로 TASK-ID가 전달된 경우 해당 값 우선 사용.
 
-`repoRoot`가 없으면 폴백:
+`repoRoot`가 없으면 `git worktree list`의 첫 번째 줄로 폴백:
 ```bash
-# 워크트리 안에서 실행하면 워크트리 경로가 반환되므로 신뢰하지 않음
-# repoRoot는 반드시 .jira-context.json에서 읽어야 함
-# 없을 경우 사용자에게 메인 레포 경로를 확인 요청
+# git worktree list 첫 번째 줄이 항상 메인 레포 경로
+git worktree list | head -1 | awk '{print $1}'
 ```
+`git worktree list --porcelain | awk 'NR==2{print $2; exit}'`도 동일 결과.
+`git rev-parse --show-toplevel`은 워크트리 안에서는 워크트리 경로를 반환하므로 사용하지 않음.
 
 `baseBranch`가 없으면 `repoRoot`에서 감지:
 ```bash
