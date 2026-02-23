@@ -95,7 +95,45 @@ Use `mcp__atlassian__jira_get_transitions` to fetch available transitions, then 
 - If "In Review" is not available, try "Done"
 - If both fail, inform the user of available transitions
 
-### Step 8: Update Context & Completion Summary
+### Step 8: Cleanup MCP Config from Worktree Entry
+
+`.jira-context.json`의 `worktreePath`를 읽어 `~/.claude.json`에서 해당 경로의 `mcpServers`를 제거한다.
+entry 전체는 삭제하지 않고 `mcpServers` 키만 제거하여 Claude Code의 다른 메타데이터는 보존한다.
+
+```bash
+WORKTREE_PATH="<worktreePath from .jira-context.json>" python3 << 'PYEOF'
+import json, os
+
+claude_json_path = os.path.expanduser("~/.claude.json")
+with open(claude_json_path, "r", encoding="utf-8") as f:
+    data = json.load(f)
+
+def norm(p):
+    return p.replace("\\", "/").rstrip("/")
+
+worktree_path = norm(os.environ.get("WORKTREE_PATH", ""))
+projects = data.get("projects", {})
+
+matched_key = None
+for k in list(projects.keys()):
+    if norm(k) == worktree_path:
+        matched_key = k
+        break
+
+if matched_key and isinstance(projects[matched_key], dict):
+    projects[matched_key].pop("mcpServers", None)
+    with open(claude_json_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    print(f"MCP config removed from {worktree_path}")
+else:
+    print(f"No entry found for {worktree_path}, skipping")
+PYEOF
+```
+
+- `.jira-context.json`에 `worktreePath`가 없으면 스킵
+- `~/.claude.json`에 해당 경로 entry가 없어도 스킵 (오류 아님)
+
+### Step 9: Update Context & Completion Summary
 
 기존 `.jira-context.json`을 읽고, 다음 필드를 업데이트하여 저장:
 - `completedSteps` 배열에 `"done"` 추가 (중복 방지)
@@ -112,6 +150,7 @@ Use `mcp__atlassian__jira_get_transitions` to fetch available transitions, then 
 - PR: <PR URL 또는 "수동 생성 필요">
 - 완료 리포트 Jira에 게시됨
 - `.jira-context.json` 업데이트됨
+- 워크트리 MCP config 정리됨 (`~/.claude.json`)
 
 **Progress**: init → start → plan → design → impl → test → review → pr → **done ✓**
 

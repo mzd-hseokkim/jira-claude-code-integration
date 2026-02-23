@@ -134,6 +134,70 @@ git worktree list | grep "<TASK-ID>"
       └── ...
   ```
 
+### Step 5.5: Propagate MCP Config to Worktree
+
+각 worktree 생성 직후, `~/.claude.json`의 해당 worktree 경로에 현재 프로젝트의 `mcpServers` 설정을 복사한다.
+
+`~/.claude.json`의 구조:
+```json
+{
+  "projects": {
+    "<project-path>": { "mcpServers": { "atlassian": { ... } } },
+    "<worktree-path>": { "mcpServers": {} }
+  }
+}
+```
+
+워크트리는 별도 경로라 MCP 설정이 자동 상속되지 않으므로 직접 주입해야 한다.
+
+```bash
+REPO_ROOT="<REPO_ROOT값>" WORKTREE_PATH="<워크트리 절대경로>" python3 << 'PYEOF'
+import json, os, sys
+
+claude_json_path = os.path.expanduser("~/.claude.json")
+with open(claude_json_path, "r", encoding="utf-8") as f:
+    data = json.load(f)
+
+def norm(p):
+    return p.replace("\\", "/").rstrip("/")
+
+projects = data.setdefault("projects", {})
+repo_root = norm(os.environ.get("REPO_ROOT", ""))
+worktree_path = norm(os.environ.get("WORKTREE_PATH", ""))
+
+# 현재 프로젝트의 mcpServers 찾기
+mcp_servers = {}
+for k, v in projects.items():
+    if isinstance(v, dict) and norm(k) == repo_root:
+        mcp_servers = v.get("mcpServers", {})
+        break
+
+if not mcp_servers:
+    print("No mcpServers in current project, skipping")
+    sys.exit(0)
+
+# 워크트리 entry 업데이트 또는 생성
+matched = False
+for k in list(projects.keys()):
+    if norm(k) == worktree_path:
+        if isinstance(projects[k], dict):
+            projects[k]["mcpServers"] = mcp_servers
+        matched = True
+        break
+
+if not matched:
+    projects[worktree_path] = {"mcpServers": mcp_servers}
+
+with open(claude_json_path, "w", encoding="utf-8") as f:
+    json.dump(data, f, indent=2, ensure_ascii=False)
+
+print(f"MCP servers injected into {worktree_path}: {list(mcp_servers.keys())}")
+PYEOF
+```
+
+- `mcpServers`가 비어있거나 없으면 주입을 건너뜀 (오류 아님)
+- 경로 정규화: 백슬래시/슬래시 혼용 처리, 후행 슬래시 제거
+
 ### Step 6: Generate README for Each Worktree
 
 각 worktree 디렉토리에 `TASK-README.md` 생성:
