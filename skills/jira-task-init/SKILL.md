@@ -121,6 +121,19 @@ git worktree list | grep "<TASK-ID>"
   git worktree add -b "feature/<TASK-ID>" "$WORKTREE_BASE/<TASK-ID>" <base-branch>
   ```
 
+**Worktree 생성 직후 — `.gitignore` 확인:**
+
+worktree의 `.gitignore`에 아래 항목이 없으면 추가 (feature 브랜치는 base branch 시점의 `.gitignore`를 체크아웃하므로 메인 레포 변경이 반영되지 않을 수 있음):
+
+```bash
+WORKTREE_GITIGNORE="$WORKTREE_BASE/<TASK-ID>/.gitignore"
+if ! grep -qF ".jira-context.json" "$WORKTREE_GITIGNORE" 2>/dev/null; then
+  printf '\n# Jira integration (local dev context)\n.jira-context.json\nTASK-README.md\n' >> "$WORKTREE_GITIGNORE"
+fi
+```
+
+이미 존재하면 스킵.
+
 **중요: Worktree 경로 규칙**
 - 반드시 원본 레포의 **상위 디렉토리**에 생성
 - 절대로 원본 레포 안에 생성하지 않음
