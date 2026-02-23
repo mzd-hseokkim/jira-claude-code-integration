@@ -14,10 +14,14 @@ Show the user the following information:
 
 ## 1. Connection Status
 
-Check if Atlassian MCP server is available by trying to use `mcp__atlassian__jira_get_user_profile`. Report:
-- Whether the Atlassian MCP server is connected
-- The connected Jira instance URL (from JIRA_URL env var)
-- The authenticated user (from `jira_get_user_profile` response)
+Check if Atlassian MCP server is available by calling `mcp__atlassian__jira_search`
+with JQL `project is not EMPTY ORDER BY updated DESC` and limit 1.
+
+- If the call succeeds (no exception): report "Connected"
+- If the call throws an error: report "Not connected" and guide setup
+
+Do NOT use `echo $JIRA_URL` to check credentials — these are scoped to the MCP server
+process and not visible as shell environment variables.
 
 If connection fails, guide the user to set up environment variables:
 ```
