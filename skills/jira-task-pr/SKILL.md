@@ -16,6 +16,11 @@ allowed-tools:
 
 # jira-task-pr: Create Pull Request for Jira Task
 
+## Language Rule
+
+모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 등 모든 텍스트가 대상이다.
+예외: 코드, 변수명, 브랜치명, 파일명, 명령어는 영어를 유지한다.
+
 ## Prerequisites
 - `gh` CLI 설치 및 인증됨 (`gh auth status`로 확인)
 - Feature branch `feature/<TASK-ID>`에 커밋이 있어야 함

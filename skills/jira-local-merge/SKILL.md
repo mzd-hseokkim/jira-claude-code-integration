@@ -16,6 +16,11 @@ allowed-tools:
 
 # jira-local-merge: Local Branch Merge
 
+## Language Rule
+
+모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 등 모든 텍스트가 대상이다.
+예외: 코드, 변수명, 브랜치명, 파일명, 명령어는 영어를 유지한다.
+
 remote origin 없이 feature 브랜치를 base 브랜치로 로컬 병합하고,
 Jira 상태 전환 및 worktree 정리까지 일괄 처리한다.
 

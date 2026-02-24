@@ -16,6 +16,11 @@ allowed-tools:
 
 # jira-task-test: Run Tests & Report to Jira
 
+## Language Rule
+
+모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 등 모든 텍스트가 대상이다.
+예외: 코드, 변수명, 브랜치명, 파일명, 명령어는 영어를 유지한다.
+
 ## Prerequisites
 - Implementation should be complete for the task
 - Test framework should be installed in the project
