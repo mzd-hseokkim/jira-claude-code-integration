@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jira + Claude Code Integration — 플러그인 개요</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Noto+Serif+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F5FB;
+    --text: #080708;
+    --accent: #3B60E4;
+    --accent-dim: rgba(59,96,228,0.08);
+    --accent-mid: rgba(59,96,228,0.18);
+    --border: rgba(8,7,8,0.1);
+    --border-accent: rgba(59,96,228,0.35);
+    --text-dim: rgba(8,7,8,0.38);
+    --text-mid: rgba(8,7,8,0.62);
+    --green: #1a7a3a;
+    --green-dim: rgba(26,122,58,0.08);
+    --green-border: rgba(26,122,58,0.28);
+    --amber: #7a4f1a;
+    --amber-dim: rgba(122,79,26,0.08);
+    --amber-border: rgba(122,79,26,0.25);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: 'Noto Serif KR', serif; overflow-x: hidden; }
+
+  .progress-bar { position: fixed; top: 0; left: 0; height: 2px; background: var(--accent); z-index: 9999; box-shadow: 0 0 6px rgba(59,96,228,0.4); transition: width 0.1s linear; }
+
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 48px; }
+  section { padding: 88px 0; border-bottom: 1px solid var(--border); }
+
+  .section-header { display: flex; align-items: baseline; gap: 18px; margin-bottom: 56px; }
+  .section-num { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 0.12em; }
+  .section-title { font-family: 'DM Serif Display', serif; font-size: clamp(26px, 3.5vw, 42px); line-height: 1.1; }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh; display: flex; flex-direction: column; justify-content: center;
+    padding: 80px 48px 64px; border-bottom: 1px solid var(--border);
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 64px 64px; opacity: 0.45; pointer-events: none;
+  }
+  .hero-tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 28px; display: flex; gap: 28px; flex-wrap: wrap; opacity: 0; animation: fadeUp 0.7s 0.1s ease forwards; }
+  .hero-tag span::before { content: '▸ '; opacity: 0.5; }
+  .hero-title { font-family: 'DM Serif Display', serif; font-size: clamp(44px, 6.5vw, 88px); line-height: 1.0; letter-spacing: -0.02em; margin-bottom: 22px; opacity: 0; animation: fadeUp 0.7s 0.25s ease forwards; }
+  .hero-title em { font-style: italic; color: var(--accent); }
+  .hero-sub { font-size: 15px; color: var(--text-mid); max-width: 580px; line-height: 1.8; margin-bottom: 56px; opacity: 0; animation: fadeUp 0.7s 0.4s ease forwards; }
+
+  .hero-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); opacity: 0; animation: fadeUp 0.7s 0.55s ease forwards; }
+  .kpi { background: var(--bg); padding: 28px 24px; transition: background 0.25s; position: relative; }
+  .kpi:hover { background: var(--accent-dim); }
+  .kpi::after { content: ''; position: absolute; bottom: 0; left: 0; height: 2px; width: 0; background: var(--accent); transition: width 0.4s ease; }
+  .kpi:hover::after { width: 100%; }
+  .kpi-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
+  .kpi-value { font-size: 28px; font-weight: 700; line-height: 1.1; margin-bottom: 4px; color: var(--accent); }
+  .kpi-note { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); line-height: 1.5; }
+
+  /* ── WORKFLOW STEPS ── */
+  .flow-rows { display: flex; flex-direction: column; gap: 0; }
+
+  .flow-row-break {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+    gap: 0;
+  }
+  .flow-row-break-line { flex: 1; height: 1px; background: var(--border); }
+  .flow-row-break-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    padding: 0 14px;
+    white-space: nowrap;
+  }
+
+  .flow-wrap {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .flow-step {
+    flex: 1;
+    min-width: 100px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .flow-step::after {
+    content: '→';
+    position: absolute;
+    right: 3px;
+    top: 28px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    z-index: 1;
+  }
+  .flow-step:last-child::after { display: none; }
+
+  .flow-box {
+    padding: 18px 14px;
+    border: 1px solid var(--border);
+    margin-right: 20px;
+    flex: 1;
+    transition: background 0.25s, border-color 0.25s;
+    cursor: default;
+    position: relative;
+  }
+  .flow-box:hover { background: var(--accent-dim); border-color: var(--border-accent); }
+  .flow-step:last-child .flow-box { margin-right: 0; }
+
+  .flow-box.featured { background: var(--accent-dim); border-color: var(--border-accent); }
+  .flow-box.done-box { background: var(--green-dim); border-color: var(--green-border); }
+
+  .flow-num { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-dim); margin-bottom: 6px; }
+  .flow-cmd { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); font-weight: 500; margin-bottom: 6px; }
+  .flow-box.done-box .flow-cmd { color: var(--green); }
+  .flow-name { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .flow-out { font-size: 10px; color: var(--text-dim); line-height: 1.5; }
+
+  /* Jira sync indicator */
+  .jira-sync {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+  }
+  .jira-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: 0.5; }
+  .jira-dot.strong { opacity: 1; }
+
+  /* ── FEATURE GRID ── */
+  .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .feature-card { padding: 26px; border: 1px solid var(--border); transition: background 0.25s, border-color 0.25s; }
+  .feature-card:hover { background: var(--accent-dim); border-color: var(--border-accent); }
+  .feature-icon { font-size: 20px; margin-bottom: 12px; }
+  .feature-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+  .feature-text { font-size: 12px; color: var(--text-mid); line-height: 1.75; }
+  .feature-text strong { color: var(--text); }
+
+  /* ── WORKTREE DIAGRAM ── */
+  .worktree-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .worktree-box { padding: 28px; border: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.9; color: var(--text-mid); }
+  .worktree-box.structure { background: rgba(8,7,8,0.02); }
+  .worktree-box .hl { color: var(--accent); font-weight: 500; }
+  .worktree-box .hl-green { color: var(--green); font-weight: 500; }
+  .worktree-box .dim { color: var(--text-dim); }
+
+  /* ── STRATEGY TABLE ── */
+  .strategy-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .strategy-card { padding: 26px; border: 1px solid var(--border); }
+  .strategy-num { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
+  .strategy-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--accent); }
+  .strategy-text { font-size: 12px; color: var(--text-mid); line-height: 1.75; margin-bottom: 12px; }
+  .strategy-when { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); padding-top: 12px; border-top: 1px solid var(--border); line-height: 1.6; }
+  .strategy-when strong { color: var(--text); }
+
+  /* ── ROADMAP ── */
+  .roadmap-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .roadmap-card { padding: 24px; border: 1px solid var(--border); }
+  .roadmap-category { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+  .roadmap-items { list-style: none; }
+  .roadmap-items li { font-size: 12px; color: var(--text-mid); padding: 5px 0; border-bottom: 1px solid rgba(8,7,8,0.05); display: flex; align-items: flex-start; gap: 8px; line-height: 1.5; }
+  .roadmap-items li::before { content: '○'; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-dim); flex-shrink: 0; margin-top: 2px; }
+  .roadmap-items li:last-child { border-bottom: none; }
+
+  /* ── SETUP STRIP ── */
+  .setup-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); }
+  .setup-step { background: var(--bg); padding: 24px 20px; }
+  .setup-step-num { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
+  .setup-step-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .setup-step-text { font-size: 11px; color: var(--text-dim); line-height: 1.65; }
+  .setup-step-code { font-family: 'JetBrains Mono', monospace; font-size: 10px; background: rgba(59,96,228,0.06); border: 1px solid var(--border-accent); padding: 4px 8px; margin-top: 8px; color: var(--accent); border-radius: 2px; display: block; word-break: break-all; }
+
+  /* ── FOOTER ── */
+  footer { padding: 56px 0; }
+  .footer-inner { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 24px; }
+  .footer-meta { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); line-height: 1.9; }
+  .footer-brand { font-family: 'DM Serif Display', serif; font-size: 28px; color: rgba(8,7,8,0.07); }
+
+  .badge { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 9px; padding: 2px 7px; border-radius: 2px; letter-spacing: 0.05em; white-space: nowrap; }
+  .badge-blue  { background: var(--accent-mid); color: var(--accent); border: 1px solid var(--border-accent); }
+  .badge-green { background: var(--green-dim);  color: var(--green);  border: 1px solid var(--green-border); }
+  .badge-amber { background: var(--amber-dim);  color: var(--amber);  border: 1px solid var(--amber-border); }
+
+  @keyframes fadeUp   { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:none; } }
+  @keyframes barGrowH { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+
+  .reveal { opacity:0; transform:translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .reveal.visible { opacity:1; transform:none; }
+
+  @media (max-width: 900px) {
+    .container { padding: 0 24px; }
+    .hero { padding: 80px 24px 56px; }
+    .hero-kpis { grid-template-columns: 1fr 1fr; }
+    .feature-grid { grid-template-columns: 1fr; }
+    .strategy-grid { grid-template-columns: 1fr; }
+    .roadmap-grid { grid-template-columns: 1fr; }
+    .setup-steps { grid-template-columns: 1fr 1fr; }
+    .worktree-wrap { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- ─────────────── HERO ─────────────── -->
+<div class="hero container">
+  <div class="hero-tag">
+    <span>Claude Code Plugin</span>
+    <span>Jira + Claude Code Integration</span>
+    <span>개발 워크플로우 자동화</span>
+  </div>
+
+  <h1 class="hero-title">
+    Jira와 Claude Code를<br>
+    <em>하나의 워크플로우</em>로
+  </h1>
+
+  <p class="hero-sub">
+    Jira 이슈 할당부터 PR 생성·완료 처리까지, 소프트웨어 개발 전 단계를
+    Claude Code 플러그인 하나로 자동화합니다. 기획 문서·설계 문서·테스트 리포트·코드 리뷰가
+    모두 Jira에 자동 연동됩니다.
+  </p>
+
+  <div class="hero-kpis">
+    <div class="kpi">
+      <div class="kpi-label">워크플로우 단계</div>
+      <div class="kpi-value">10단계</div>
+      <div class="kpi-note">init → done<br>전 과정 커맨드화</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Jira 자동 연동</div>
+      <div class="kpi-value">전 단계</div>
+      <div class="kpi-note">상태 전이·코멘트·<br>첨부파일 자동 게시</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">슬래시 커맨드</div>
+      <div class="kpi-value">11개</div>
+      <div class="kpi-note">/jira, /jira-task<br>+ 서브커맨드</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Multi-Worktree</div>
+      <div class="kpi-value">병렬 처리</div>
+      <div class="kpi-note">N개 태스크 동시<br>진행 가능</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── SECTION 1: 개발 워크플로우 ─────────────── -->
+<section>
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-num">01</span>
+      <h2 class="section-title">전체 개발 워크플로우</h2>
+    </div>
+
+    <p class="reveal" style="font-size:14px;color:var(--text-mid);line-height:1.8;margin-bottom:36px;max-width:640px;">
+      Jira 이슈를 받아 git worktree를 생성하는 것부터 시작해,
+      기획→설계→구현→테스트→리뷰→병합→PR→완료까지 10단계가 하나의 흐름으로 연결됩니다.
+      각 단계 산출물은 Jira에 자동 첨부·코멘트됩니다.
+    </p>
+
+    <!-- Flow diagram: Row 1 (STEP 0–4) -->
+    <div class="flow-rows reveal">
+      <div class="flow-wrap">
+
+        <div class="flow-step">
+          <div class="flow-box featured">
+            <div class="flow-num">STEP 0</div>
+            <div class="flow-cmd">/jira-task init</div>
+            <div class="flow-name">태스크 초기화</div>
+            <div class="flow-out">할당 이슈 조회<br>worktree 일괄 생성</div>
+            <div class="jira-sync"><div class="jira-dot strong"></div>이슈 검색</div>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-box">
+            <div class="flow-num">STEP 1</div>
+            <div class="flow-cmd">/jira-task start</div>
+            <div class="flow-name">시작</div>
+            <div class="flow-out">브랜치 생성<br>In Progress 전환</div>
+            <div class="jira-sync"><div class="jira-dot strong"></div>상태 전이</div>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-box">
+            <div class="flow-num">STEP 2</div>
+            <div class="flow-cmd">/jira-task plan</div>
+            <div class="flow-name">기획</div>
+            <div class="flow-out">plan.md 자동 생성<br>docs/plan/</div>
+            <div class="jira-sync"><div class="jira-dot strong"></div>첨부파일 업로드</div>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-box">
+            <div class="flow-num">STEP 3</div>
+            <div class="flow-cmd">/jira-task design</div>
+            <div class="flow-name">설계</div>
+            <div class="flow-out">design.md 자동 생성<br>코드베이스 분석 기반</div>
+            <div class="jira-sync"><div class="jira-dot strong"></div>첨부파일 업로드</div>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-box">
+            <div class="flow-num">STEP 4</div>
+            <div class="flow-cmd">/jira-task impl</div>
+            <div class="flow-name">구현</div>
+            <div class="flow-out">설계 문서 기반<br>코드 구현</div>
+            <div class="jira-sync"><div class="jira-dot"></div>진행 코멘트</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Row break -->
+      <div class="flow-row-break">
+        <div class="flow-row-break-line"></div>
+        <div class="flow-row-break-label">↓ 이어서</div>
+        <div class="flow-row-break-line"></div>
+      </div>
+
+      <!-- Row 2 (STEP 5–8~9) -->
+      <div class="flow-wrap">
+
+        <div class="flow-step">
+          <div class="flow-box">
+            <div class="flow-num">STEP 5</div>
+            <div class="flow-cmd">/jira-task test</div>
+            <div class="flow-name">테스트</div>
+            <div class="flow-out">Playwright E2E<br>unit 테스트 + 리포트</div>
+            <div class="jira-sync"><div class="jira-dot strong"></div>리포트+스크린샷</div>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-box">
+            <div class="flow-num">STEP 6</div>
+            <div class="flow-cmd">/jira-task review</div>
+            <div class="flow-name">코드 리뷰</div>
+            <div class="flow-out">설계-구현 Gap 분석<br>코드 품질 검사</div>
+            <div class="jira-sync"><div class="jira-dot strong"></div>리뷰 코멘트</div>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-box">
+            <div class="flow-num">STEP 7</div>
+            <div class="flow-cmd">/jira-task merge</div>
+            <div class="flow-name">병합</div>
+            <div class="flow-out">로컬 병합 (전략 선택)<br>worktree 정리 안내</div>
+            <div class="jira-sync"><div class="jira-dot strong"></div>In Review 전환</div>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-box done-box">
+            <div class="flow-num">STEP 8~9</div>
+            <div class="flow-cmd">/jira-task pr · done</div>
+            <div class="flow-name">PR · 완료</div>
+            <div class="flow-out">gh CLI로 PR 생성<br>Done 전환 + 완료 리포트</div>
+            <div class="jira-sync"><div class="jira-dot strong" style="background:var(--green);"></div>PR링크 + 상태 전이</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TASK-ID 자동 감지 -->
+    <div class="reveal" style="margin-top:32px;padding:24px 28px;border:1px solid var(--border);background:rgba(8,7,8,0.02);">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">TASK-ID 자동 감지</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);margin-bottom:4px;">① Git 브랜치명</div>
+          <div style="font-size:12px;color:var(--text-mid);">feature/PROJ-123 → PROJ-123 자동 추출</div>
+        </div>
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);margin-bottom:4px;">② 디렉토리명</div>
+          <div style="font-size:12px;color:var(--text-mid);">[A-Z]+-\d+ 패턴 인식 → TASK-ID로 사용</div>
+        </div>
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);margin-bottom:4px;">③ .jira-context.json</div>
+          <div style="font-size:12px;color:var(--text-mid);">저장된 활성 태스크 ID 자동 로드</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text-mid);border-top:1px solid var(--border);padding-top:12px;">
+        → worktree 안에서는 <strong style="color:var(--text);">TASK-ID 인자 없이</strong> 커맨드만 입력하면 자동 감지
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────── SECTION 2: 핵심 기능 ─────────────── -->
+<section>
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-num">02</span>
+      <h2 class="section-title">핵심 기능</h2>
+    </div>
+
+    <div class="feature-grid reveal">
+      <div class="feature-card">
+        <div class="feature-icon">🗂️</div>
+        <div class="feature-title">Multi-Worktree 병렬 개발</div>
+        <div class="feature-text"><code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);">/jira-task init 5</code> 하나로 할당된 태스크 N개의 git worktree를 일괄 생성합니다. 각 태스크가 <strong>독립된 디렉토리와 브랜치</strong>에서 병렬 진행되며, 컨텍스트 전환 없이 여러 이슈를 동시에 다룰 수 있습니다.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📄</div>
+        <div class="feature-title">문서 자동 생성 & Jira 연동</div>
+        <div class="feature-text">기획(plan.md), 설계(design.md), 테스트 리포트, 코드 리뷰 결과가 자동 생성되어 <strong>Jira 이슈에 첨부파일과 코멘트로 즉시 게시</strong>됩니다. 별도 복사·붙여넣기 없이 개발 산출물이 Jira에 축적됩니다.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔄</div>
+        <div class="feature-title">상태 전이 자동화</div>
+        <div class="feature-text">start → In Progress, merge → In Review, done → Done까지 <strong>Jira 상태 전이가 커맨드에 연동</strong>됩니다. 개발자가 Jira를 직접 열지 않아도 이슈 상태가 자동으로 갱신됩니다.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔍</div>
+        <div class="feature-title">설계-구현 Gap 분석</div>
+        <div class="feature-text"><code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);">/jira-task review</code>는 설계 문서와 실제 구현 코드를 비교해 <strong>Gap을 자동 분석</strong>하고, 코드 품질까지 검사해 Jira 코멘트로 게시합니다.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <div class="feature-title">Progress 자동 추적</div>
+        <div class="feature-text"><code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);">.jira-context.json</code>에 완료 단계가 기록되어, 다음 실행 시 현재 진행 상황이 자동으로 표시됩니다. 세션이 끊겨도 <strong>어디까지 했는지 항상 파악</strong>할 수 있습니다.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🪝</div>
+        <div class="feature-title">Session Hooks</div>
+        <div class="feature-text">세션 시작 시 활성 태스크 정보를 자동 표시하고, 세션 종료 시 <strong>진행 중인 태스크가 있으면 Jira 동기화 리마인더</strong>를 표시합니다. 작업 컨텍스트가 세션 간에 자동 복원됩니다.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────── SECTION 3: Multi-Worktree & 충돌 전략 ─────────────── -->
+<section>
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-num">03</span>
+      <h2 class="section-title">Multi-Worktree 구조와 PR 병합 전략</h2>
+    </div>
+
+    <p class="reveal" style="font-size:14px;color:var(--text-mid);line-height:1.8;margin-bottom:36px;max-width:640px;">
+      모든 worktree는 동일한 base 브랜치(main/develop)에서 생성됩니다.
+      서로 다른 태스크가 같은 파일을 수정하면 병합 시 충돌이 발생할 수 있어,
+      설계 단계에서 미리 전략을 정하는 것이 핵심입니다.
+    </p>
+
+    <!-- Worktree structure -->
+    <div class="worktree-wrap reveal" style="margin-bottom:36px;">
+      <div class="worktree-box structure">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:14px;">Worktree 구조</div>
+        <div><span class="dim">workspace/</span></div>
+        <div><span class="dim">├── </span><span class="hl">your-project/</span><span class="dim">         # main 브랜치</span></div>
+        <div><span class="dim">└── </span><span class="hl">your-project_worktree/</span></div>
+        <div><span class="dim">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── </span><span class="hl-green">PROJ-101/</span><span class="dim">   # feature/PROJ-101</span></div>
+        <div><span class="dim">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── </span><span class="hl-green">PROJ-102/</span><span class="dim">   # feature/PROJ-102</span></div>
+        <div><span class="dim">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── </span><span class="hl-green">PROJ-103/</span><span class="dim">   # feature/PROJ-103</span></div>
+      </div>
+      <div style="padding:24px 28px;border:1px solid var(--border);">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:14px;">충돌 발생 원리</div>
+        <div style="font-size:12px;color:var(--text-mid);line-height:1.85;">
+          모든 브랜치가 <strong style="color:var(--text);">동일 시점의 main</strong>에서 분기됩니다.<br>
+          PROJ-101이 main에 병합되면, PROJ-102는 그 변경을 모르는 상태가 됩니다.<br><br>
+          충돌 여부는 <strong style="color:var(--text);">파일 중복 여부</strong>로만 결정됩니다.<br>
+          설계 단계에서 <code style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);">git diff --name-only main feature/PROJ-XXX</code> 로 미리 확인하는 것이 핵심입니다.
+        </div>
+      </div>
+    </div>
+
+    <!-- PR 전략 -->
+    <div class="strategy-grid reveal">
+      <div class="strategy-card" style="border-color:var(--border-accent);background:var(--accent-dim);">
+        <div class="strategy-num">전략 1</div>
+        <div class="strategy-title">순차 Rebase-and-Merge</div>
+        <div class="strategy-text">병합 순서를 사전에 정하고, 앞 태스크가 main에 합쳐진 뒤 뒷 태스크를 rebase해서 PR을 올립니다. 충돌을 작은 단위로 나눠 해결합니다.</div>
+        <div class="strategy-when"><strong>적합한 경우:</strong> 태스크 간 의존 관계 있음, 같은 파일 수정</div>
+      </div>
+      <div class="strategy-card">
+        <div class="strategy-num">전략 2</div>
+        <div class="strategy-title">통합 브랜치</div>
+        <div class="strategy-text">별도 통합 브랜치(feature/sprint-42)를 만들고, 각 태스크 PR을 그곳으로 먼저 합친 뒤 스프린트 종료 시 main으로 PR 1개만 올립니다.</div>
+        <div class="strategy-when"><strong>적합한 경우:</strong> 여러 태스크를 함께 릴리즈, 개별 배포 불가</div>
+      </div>
+      <div class="strategy-card" style="border-color:var(--green-border);background:var(--green-dim);">
+        <div class="strategy-num">전략 3</div>
+        <div class="strategy-title">사전 파일 영역 분리</div>
+        <div class="strategy-text">설계 단계에서 수정 파일이 다른 진행 태스크와 겹치지 않도록 설계합니다. 겹치는 파일이 없으면 어떤 순서로 병합해도 충돌이 없습니다.</div>
+        <div class="strategy-when"><strong>적합한 경우:</strong> 독립적인 기능 영역, 가장 단순한 방법</div>
+      </div>
+    </div>
+
+    <div class="reveal" style="margin-top:20px;padding:20px 24px;border:1px solid var(--border);font-size:12px;color:var(--text-mid);line-height:1.8;">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--accent);letter-spacing:0.08em;text-transform:uppercase;margin-right:12px;">의사결정 흐름</span>
+      파일 중복 없음 → <strong style="color:var(--text);">전략 3</strong> &nbsp;|&nbsp;
+      중복 있음 + 각자 배포 가능 → <strong style="color:var(--text);">전략 1</strong> &nbsp;|&nbsp;
+      중복 있음 + 함께 릴리즈 → <strong style="color:var(--text);">전략 2</strong><br>
+      <span style="color:var(--text-dim);">개발 기간 중에는 매일 또는 세션 시작 시 </span><code style="font-family:'JetBrains Mono',monospace;font-size:10px;">git fetch + rebase origin/main</code><span style="color:var(--text-dim);">으로 충돌을 조금씩 해소하는 것이 최선</span>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────── SECTION 4: 설치 & 셋업 ─────────────── -->
+<section>
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-num">04</span>
+      <h2 class="section-title">설치 & 셋업</h2>
+    </div>
+
+    <div class="setup-steps reveal">
+      <div class="setup-step">
+        <div class="setup-step-num">Step 1</div>
+        <div class="setup-step-title">플러그인 설치</div>
+        <div class="setup-step-text">Claude Code 마켓플레이스에서 플러그인을 설치합니다.</div>
+        <code class="setup-step-code">claude plugin marketplace add mzd-hseokkim/jira-claude-code-integration</code>
+        <code class="setup-step-code" style="margin-top:4px;">claude plugin install jira-integration@jira-claude-code-integration</code>
+      </div>
+      <div class="setup-step">
+        <div class="setup-step-num">Step 2</div>
+        <div class="setup-step-title">Jira API Token 생성</div>
+        <div class="setup-step-text">Atlassian 계정 설정에서 API Token을 생성합니다. 토큰은 생성 시 한 번만 표시됩니다.</div>
+        <code class="setup-step-code">id.atlassian.com → Security → API tokens</code>
+      </div>
+      <div class="setup-step">
+        <div class="setup-step-num">Step 3</div>
+        <div class="setup-step-title">MCP 서버 등록</div>
+        <div class="setup-step-text">mcp-atlassian을 Claude Code에 등록합니다. uvx로 실행해 별도 설치 불필요. 환경변수 4개 설정 필요.</div>
+        <code class="setup-step-code">claude mcp add atlassian -e JIRA_URL=... -e JIRA_USERNAME=... -e JIRA_API_TOKEN=... -- uvx mcp-atlassian</code>
+      </div>
+      <div class="setup-step">
+        <div class="setup-step-num">Step 4</div>
+        <div class="setup-step-title">연결 확인 & 시작</div>
+        <div class="setup-step-text">Claude Code 실행 후 연결을 확인하고 할당 태스크를 가져옵니다.</div>
+        <code class="setup-step-code">> /jira</code>
+        <code class="setup-step-code" style="margin-top:4px;">> /jira-task init 5</code>
+      </div>
+    </div>
+
+    <div class="reveal" style="margin-top:16px;padding:18px 24px;border:1px solid var(--amber-border);background:var(--amber-dim);font-size:12px;color:var(--text-mid);line-height:1.75;">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--amber);letter-spacing:0.08em;text-transform:uppercase;margin-right:10px;">주의</span>
+      API 토큰이 저장되는 <code style="font-family:'JetBrains Mono',monospace;font-size:10px;">.claude/settings.local.json</code>은 반드시 <code style="font-family:'JetBrains Mono',monospace;font-size:10px;">.gitignore</code>에 추가할 것.
+      기존 <strong style="color:var(--text);">bkit 플러그인이 설치되어 있다면 먼저 삭제</strong> 필요 (스킬/훅 충돌).
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────── SECTION 5: 로드맵 ─────────────── -->
+<section>
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-num">05</span>
+      <h2 class="section-title">로드맵</h2>
+    </div>
+
+    <div class="roadmap-grid reveal">
+      <div class="roadmap-card">
+        <div class="roadmap-category">Git Hosting 확장</div>
+        <ul class="roadmap-items">
+          <li>Bitbucket Cloud PR 생성 지원 (현재 GitHub gh CLI만 지원)</li>
+          <li>GitLab MR 생성 지원 (glab CLI)</li>
+          <li>Git remote URL 자동 감지 → 플랫폼 분기 처리</li>
+        </ul>
+      </div>
+      <div class="roadmap-card">
+        <div class="roadmap-category">Jira 확장</div>
+        <ul class="roadmap-items">
+          <li>Jira Server/Data Center 지원 (Personal Access Token 모드)</li>
+          <li>커스텀 워크플로우 매핑 (회사별 transition 이름 설정)</li>
+          <li>Sub-task 자동 생성 (설계 Task Breakdown → Jira sub-task)</li>
+          <li>Time Tracking 자동 기록</li>
+        </ul>
+      </div>
+      <div class="roadmap-card">
+        <div class="roadmap-category">테스트 & 품질</div>
+        <ul class="roadmap-items">
+          <li>Playwright 테스트 자동 생성 고도화 (acceptance criteria 기반)</li>
+          <li>테스트 커버리지 Jira 코멘트 연동</li>
+          <li>CI/CD 결과 Jira 자동 게시 (GitHub Actions / Jenkins)</li>
+        </ul>
+      </div>
+      <div class="roadmap-card">
+        <div class="roadmap-category">알림 & 사용성</div>
+        <ul class="roadmap-items">
+          <li>Slack / Teams 알림 연동 (PR 생성, 완료 시)</li>
+          <li>대화형 설정 마법사 (/jira setup)</li>
+          <li>전체 태스크 현황 대시보드 뷰</li>
+          <li>npm 패키지화 → 원클릭 설치</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────── FOOTER ─────────────── -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-meta">
+        <div>플러그인: jira-claude-code-integration</div>
+        <div>요구사항: Claude Code · Python 3.10+ · uv · Git · Jira Cloud API Token</div>
+        <div>선택사항: GitHub CLI (gh) — PR 생성 기능 사용 시</div>
+        <div>라이선스: MIT</div>
+      </div>
+      <div class="footer-brand">Plugin Overview</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const s = window.scrollY, t = document.documentElement.scrollHeight - window.innerHeight;
+    document.getElementById('progressBar').style.width = (s / t * 100) + '%';
+  });
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } });
+  }, { threshold: 0.08 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
+</body>
+</html>
