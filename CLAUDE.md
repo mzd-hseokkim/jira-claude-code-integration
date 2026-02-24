@@ -9,6 +9,7 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 **Don't assume. Don't hide confusion. Surface tradeoffs.**
 
 Before implementing:
+
 - State your assumptions explicitly. If uncertain, ask.
 - If multiple interpretations exist, present them - don't pick silently.
 - If a simpler approach exists, say so. Push back when warranted.
@@ -31,12 +32,14 @@ Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, sim
 **Touch only what you must. Clean up only your own mess.**
 
 When editing existing code:
+
 - Don't "improve" adjacent code, comments, or formatting.
 - Don't refactor things that aren't broken.
 - Match existing style, even if you'd do it differently.
 - If you notice unrelated dead code, mention it - don't delete it.
 
 When your changes create orphans:
+
 - Remove imports/variables/functions that YOUR changes made unused.
 - Don't remove pre-existing dead code unless asked.
 
@@ -47,11 +50,13 @@ The test: Every changed line should trace directly to the user's request.
 **Define success criteria. Loop until verified.**
 
 Transform tasks into verifiable goals:
+
 - "Add validation" → "Write tests for invalid inputs, then make them pass"
 - "Fix the bug" → "Write a test that reproduces it, then make it pass"
 - "Refactor X" → "Ensure tests pass before and after"
 
 For multi-step tasks, state a brief plan:
+
 ```
 1. [Step] → verify: [check]
 2. [Step] → verify: [check]
@@ -73,11 +78,12 @@ This project is a Claude Code plugin that integrates Jira with the software deve
 ### PDCA Documents
 
 `/jira-task` 워크플로에서 생성하는 문서:
+
 - Plan: `docs/plan/<TASK-ID>.plan.md`
 - Design: `docs/design/<TASK-ID>.design.md`
 - Test Report: `docs/test/<TASK-ID>.test-report.md`
 
-### MCP Server: atlassian (mcp-atlassian)
+### MCP Server: atlassian (mcp-atlassian)~~~~
 
 The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스: `docs/mcp-atlassian-tools.md`
 
@@ -168,6 +174,7 @@ The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스
 유효한 단계: `init`, `start`, `plan`, `design`, `impl`, `test`, `review`, `merge`, `pr`, `done`
 
 규칙:
+
 - 스킬 완료 시 `.jira-context.json`을 읽고, `completedSteps`에 현재 단계를 추가 (중복 방지)
 - Completion Summary 출력 시, `completedSteps`를 기반으로 Progress 라인의 `✓` 표시를 생성
 - `done` 단계 완료 시 `status`를 `"Done"`으로 변경
