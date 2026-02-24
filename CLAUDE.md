@@ -130,8 +130,9 @@ The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스
 - `/jira-task impl <ID>` - Implement based on design document
 - `/jira-task test <ID>` - Run tests (Playwright E2E, unit) and report to Jira
 - `/jira-task review <ID>` - Code review with Jira reporting
-- `/jira-task pr <ID>` - Create pull request and link to Jira
-- `/jira-task done <ID>` - Complete task (PR, transition, report)
+- `/jira-local-merge <ID>` - [worktree에서] 로컬 병합 후 worktree 세션 종료
+- `/jira-task pr <ID>` - [메인 레포에서] Create pull request and link to Jira
+- `/jira-task done <ID>` - Complete task (transition, report)
 - `/jira-task report` - Sprint progress report
 
 ### Conventions
@@ -164,7 +165,7 @@ The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스
 }
 ```
 
-유효한 단계: `init`, `start`, `plan`, `design`, `impl`, `test`, `review`, `pr`, `done`
+유효한 단계: `init`, `start`, `plan`, `design`, `impl`, `test`, `review`, `merge`, `pr`, `done`
 
 규칙:
 - 스킬 완료 시 `.jira-context.json`을 읽고, `completedSteps`에 현재 단계를 추가 (중복 방지)

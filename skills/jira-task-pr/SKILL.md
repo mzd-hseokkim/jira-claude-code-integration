@@ -22,6 +22,8 @@ allowed-tools:
 예외: 코드, 변수명, 브랜치명, 파일명, 명령어는 영어를 유지한다.
 
 ## Prerequisites
+- **메인 레포에서 실행**: worktree가 아닌 원본 레포 디렉토리에서 실행해야 함
+- `jira-local-merge`가 먼저 완료되어야 함 (feature 브랜치가 로컬 base에 병합된 상태)
 - `gh` CLI 설치 및 인증됨 (`gh auth status`로 확인)
 - Feature branch `feature/<TASK-ID>`에 커밋이 있어야 함
 - Remote에 push 되어 있어야 함
@@ -144,7 +146,7 @@ mcp__atlassian__jira_transition_issue with transitionId: <In Review transition I
 - Files: <count> changed
 - Jira 코멘트 게시됨
 
-**Progress**: init → start → plan → design → impl → test → review → **pr ✓** → done
+**Progress**: init → start → plan → design → impl → test → review → merge → **pr ✓** → done
 
 **Next**: PR 머지 후 `/jira-task done <TASK-ID>` — 태스크를 완료 처리합니다
 ---

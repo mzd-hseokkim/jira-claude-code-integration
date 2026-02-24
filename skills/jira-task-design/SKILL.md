@@ -120,7 +120,7 @@ HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
 - Jira 코멘트 게시됨
 - Jira 첨부파일 업로드됨 (또는 실패 시 로컬 경로 안내)
 
-**Progress**: init → start → plan → **design ✓** → impl → test → review → pr → done
+**Progress**: init → start → plan → **design ✓** → impl → test → review → merge → pr → done
 
 **Next**: `/jira-task impl <TASK-ID>` — 설계 기반으로 구현을 시작합니다
 ---

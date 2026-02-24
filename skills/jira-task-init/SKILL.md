@@ -316,7 +316,7 @@ Use mcp__atlassian__jira_add_comment:
 - Jira 코멘트 게시됨
 - 컨텍스트 `.jira-context.json`에 저장됨
 
-**Progress**: **init ✓** → start → plan → design → impl → test → review → pr → done
+**Progress**: **init ✓** → start → plan → design → impl → test → review → merge → pr → done
 
 **Next**: `cd <worktree-path>` → `/jira-task start <TASK-ID>`
 ---

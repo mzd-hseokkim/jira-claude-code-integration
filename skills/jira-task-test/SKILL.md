@@ -240,7 +240,7 @@ done
 - Jira 코멘트 게시됨
 - Jira 첨부파일: 리포트 + 스크린샷 <N>개 (또는 실패 시 로컬 경로 안내)
 
-**Progress**: init → start → plan → design → impl → **test ✓** → review → pr → done
+**Progress**: init → start → plan → design → impl → **test ✓** → review → merge → pr → done
 
 **Next**: `/jira-task review <TASK-ID>` — 코드 리뷰를 실행합니다
 ---
@@ -256,7 +256,7 @@ done
   - <test name>: <error summary>
 - 테스트 리포트: `docs/test/<TASK-ID>.test-report.md`
 
-**Progress**: init → start → plan → design → impl → **test ✗** → review → pr → done
+**Progress**: init → start → plan → design → impl → **test ✗** → review → merge → pr → done
 
 **Next**: 실패 항목 수정 후 `/jira-task test <TASK-ID>` 재실행
 ---

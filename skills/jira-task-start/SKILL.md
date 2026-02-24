@@ -142,7 +142,7 @@ worktree 디렉토리와 원본 레포 양쪽에 저장:
 - Worktree: <path>
 - Jira 코멘트 게시됨
 
-**Progress**: init → **start ✓** → plan → design → impl → test → review → pr → done
+**Progress**: init → **start ✓** → plan → design → impl → test → review → merge → pr → done
 
 **Next**: `/jira-task plan <TASK-ID>` — 기획 문서를 작성합니다
 ---

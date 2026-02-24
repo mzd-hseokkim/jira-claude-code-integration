@@ -157,7 +157,7 @@ PYEOF
 - `.jira-context.json` 업데이트됨
 - 워크트리 MCP config 정리됨 (`~/.claude.json`)
 
-**Progress**: init → start → plan → design → impl → test → review → pr → **done ✓**
+**Progress**: init → start → plan → design → impl → test → review → merge → pr → **done ✓**
 
 🎉 모든 단계가 완료되었습니다!
 ---

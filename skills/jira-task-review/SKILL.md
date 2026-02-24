@@ -147,9 +147,9 @@ Approve 시 `.jira-context.json`의 `completedSteps`에 `"review"` 추가 (Reque
 - Jira 코멘트 게시됨
 - Jira 첨부파일 업로드됨 (또는 실패 시 로컬 경로 안내)
 
-**Progress**: init → start → plan → design → impl → test → **review ✓** → pr → done
+**Progress**: init → start → plan → design → impl → test → **review ✓** → merge → pr → done
 
-**Next**: `/jira-task pr <TASK-ID>` — Pull Request를 생성합니다
+**Next**: `/jira-local-merge <TASK-ID>` — 로컬 병합 후, 메인 레포에서 `/jira-task pr <TASK-ID>`
 ---
 ```
 
@@ -163,7 +163,7 @@ Approve 시 `.jira-context.json`의 `completedSteps`에 `"review"` 추가 (Reque
   - <Critical/Warning findings>
 - Jira 코멘트 게시됨
 
-**Progress**: init → start → plan → design → impl → test → **review ✗** → pr → done
+**Progress**: init → start → plan → design → impl → test → **review ✗** → merge → pr → done
 
 **Next**: 이슈 수정 후 `/jira-task review <TASK-ID>` 재실행
 ---
