@@ -86,8 +86,15 @@ npx vitest run --reporter=verbose 2>&1
 # Jest
 npx jest --verbose 2>&1
 
-# pytest
-python -m pytest -v 2>&1
+# pytest (cross-platform Python detection)
+_python3=$(command -v python3 2>/dev/null)
+if echo "$_python3" | grep -qi "WindowsApps"; then _python3=""; fi
+if [ -z "$_python3" ]; then
+    _python3=$(command -v python 2>/dev/null)
+    if echo "$_python3" | grep -qi "WindowsApps"; then _python3=""; fi
+fi
+if [ -z "$_python3" ]; then echo "ERROR: Python not found" >&2; exit 1; fi
+"$_python3" -m pytest -v 2>&1
 ```
 
 #### Playwright E2E Tests
