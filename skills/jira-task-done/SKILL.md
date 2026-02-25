@@ -91,7 +91,16 @@ Use `mcp__atlassian__jira_get_transitions` to fetch available transitions, then 
 entry 전체는 삭제하지 않고 `mcpServers` 키만 제거하여 Claude Code의 다른 메타데이터는 보존한다.
 
 ```bash
-WORKTREE_PATH="<worktreePath from .jira-context.json>" python3 << 'PYEOF'
+# Python 탐지: WindowsApps 스텁 제외, python3 → python 순으로 탐색 (cross-platform)
+_python3=$(command -v python3 2>/dev/null)
+if echo "$_python3" | grep -qi "WindowsApps"; then _python3=""; fi
+if [ -z "$_python3" ]; then
+    _python3=$(command -v python 2>/dev/null)
+    if echo "$_python3" | grep -qi "WindowsApps"; then _python3=""; fi
+fi
+if [ -z "$_python3" ]; then echo "ERROR: Python not found" >&2; exit 1; fi
+
+WORKTREE_PATH="<worktreePath from .jira-context.json>" "$_python3" << 'PYEOF'
 import json, os
 
 claude_json_path = os.path.expanduser("~/.claude.json")
