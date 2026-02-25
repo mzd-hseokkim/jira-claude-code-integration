@@ -6,29 +6,29 @@
 <title>Jira + Claude Code Integration — 플러그인 개요</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Noto+Serif+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #F7F5FB;
-    --text: #080708;
-    --accent: #3B60E4;
-    --accent-dim: rgba(59,96,228,0.08);
-    --accent-mid: rgba(59,96,228,0.18);
-    --border: rgba(8,7,8,0.1);
-    --border-accent: rgba(59,96,228,0.35);
-    --text-dim: rgba(8,7,8,0.38);
-    --text-mid: rgba(8,7,8,0.62);
-    --green: #1a7a3a;
-    --green-dim: rgba(26,122,58,0.08);
-    --green-border: rgba(26,122,58,0.28);
-    --amber: #7a4f1a;
-    --amber-dim: rgba(122,79,26,0.08);
-    --amber-border: rgba(122,79,26,0.25);
+    --text: #111013;
+    --accent: #2B50D4;
+    --accent-dim: rgba(43,80,212,0.07);
+    --accent-mid: rgba(43,80,212,0.15);
+    --border: rgba(8,7,8,0.12);
+    --border-accent: rgba(43,80,212,0.35);
+    --text-dim: #6B6878;
+    --text-mid: #3D3A47;
+    --green: #156030;
+    --green-dim: rgba(21,96,48,0.07);
+    --green-border: rgba(21,96,48,0.28);
+    --amber: #6B3A0E;
+    --amber-dim: rgba(107,58,14,0.08);
+    --amber-border: rgba(107,58,14,0.28);
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
-  body { background: var(--bg); color: var(--text); font-family: 'Noto Serif KR', serif; overflow-x: hidden; }
+  body { background: var(--bg); color: var(--text); font-family: 'Noto Sans KR', sans-serif; overflow-x: hidden; font-size: 15px; line-height: 1.7; }
 
   .progress-bar { position: fixed; top: 0; left: 0; height: 2px; background: var(--accent); z-index: 9999; box-shadow: 0 0 6px rgba(59,96,228,0.4); transition: width 0.1s linear; }
 
@@ -36,8 +36,8 @@
   section { padding: 88px 0; border-bottom: 1px solid var(--border); }
 
   .section-header { display: flex; align-items: baseline; gap: 18px; margin-bottom: 56px; }
-  .section-num { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 0.12em; }
-  .section-title { font-family: 'DM Serif Display', serif; font-size: clamp(26px, 3.5vw, 42px); line-height: 1.1; }
+  .section-num { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.12em; }
+  .section-title { font-family: 'DM Serif Display', serif; font-size: clamp(28px, 3.5vw, 44px); line-height: 1.1; }
 
   /* ── HERO ── */
   .hero {
@@ -50,20 +50,20 @@
     background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
     background-size: 64px 64px; opacity: 0.45; pointer-events: none;
   }
-  .hero-tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 28px; display: flex; gap: 28px; flex-wrap: wrap; opacity: 0; animation: fadeUp 0.7s 0.1s ease forwards; }
+  .hero-tag { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 28px; display: flex; gap: 28px; flex-wrap: wrap; opacity: 0; animation: fadeUp 0.7s 0.1s ease forwards; }
   .hero-tag span::before { content: '▸ '; opacity: 0.5; }
   .hero-title { font-family: 'DM Serif Display', serif; font-size: clamp(44px, 6.5vw, 88px); line-height: 1.0; letter-spacing: -0.02em; margin-bottom: 22px; opacity: 0; animation: fadeUp 0.7s 0.25s ease forwards; }
   .hero-title em { font-style: italic; color: var(--accent); }
-  .hero-sub { font-size: 15px; color: var(--text-mid); max-width: 580px; line-height: 1.8; margin-bottom: 56px; opacity: 0; animation: fadeUp 0.7s 0.4s ease forwards; }
+  .hero-sub { font-size: 16px; color: var(--text-mid); max-width: 580px; line-height: 1.85; margin-bottom: 56px; opacity: 0; animation: fadeUp 0.7s 0.4s ease forwards; }
 
   .hero-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); opacity: 0; animation: fadeUp 0.7s 0.55s ease forwards; }
   .kpi { background: var(--bg); padding: 28px 24px; transition: background 0.25s; position: relative; }
   .kpi:hover { background: var(--accent-dim); }
   .kpi::after { content: ''; position: absolute; bottom: 0; left: 0; height: 2px; width: 0; background: var(--accent); transition: width 0.4s ease; }
   .kpi:hover::after { width: 100%; }
-  .kpi-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
-  .kpi-value { font-size: 28px; font-weight: 700; line-height: 1.1; margin-bottom: 4px; color: var(--accent); }
-  .kpi-note { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); line-height: 1.5; }
+  .kpi-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
+  .kpi-value { font-size: 30px; font-weight: 700; line-height: 1.1; margin-bottom: 4px; color: var(--accent); }
+  .kpi-note { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); line-height: 1.6; }
 
   /* ── WORKFLOW STEPS ── */
   .flow-rows { display: flex; flex-direction: column; gap: 0; }
@@ -125,11 +125,11 @@
   .flow-box.featured { background: var(--accent-dim); border-color: var(--border-accent); }
   .flow-box.done-box { background: var(--green-dim); border-color: var(--green-border); }
 
-  .flow-num { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-dim); margin-bottom: 6px; }
-  .flow-cmd { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); font-weight: 500; margin-bottom: 6px; }
+  .flow-num { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); margin-bottom: 6px; }
+  .flow-cmd { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent); font-weight: 500; margin-bottom: 6px; }
   .flow-box.done-box .flow-cmd { color: var(--green); }
-  .flow-name { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
-  .flow-out { font-size: 10px; color: var(--text-dim); line-height: 1.5; }
+  .flow-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .flow-out { font-size: 11px; color: var(--text-mid); line-height: 1.6; }
 
   /* Jira sync indicator */
   .jira-sync {
@@ -138,7 +138,7 @@
     gap: 6px;
     margin-top: 8px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: 10px;
     color: var(--text-dim);
   }
   .jira-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: 0.5; }
@@ -149,13 +149,13 @@
   .feature-card { padding: 26px; border: 1px solid var(--border); transition: background 0.25s, border-color 0.25s; }
   .feature-card:hover { background: var(--accent-dim); border-color: var(--border-accent); }
   .feature-icon { font-size: 20px; margin-bottom: 12px; }
-  .feature-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
-  .feature-text { font-size: 12px; color: var(--text-mid); line-height: 1.75; }
+  .feature-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+  .feature-text { font-size: 13px; color: var(--text-mid); line-height: 1.8; }
   .feature-text strong { color: var(--text); }
 
   /* ── WORKTREE DIAGRAM ── */
   .worktree-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-  .worktree-box { padding: 28px; border: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.9; color: var(--text-mid); }
+  .worktree-box { padding: 28px; border: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 2.0; color: var(--text-mid); }
   .worktree-box.structure { background: rgba(8,7,8,0.02); }
   .worktree-box .hl { color: var(--accent); font-weight: 500; }
   .worktree-box .hl-green { color: var(--green); font-weight: 500; }
@@ -164,36 +164,36 @@
   /* ── STRATEGY TABLE ── */
   .strategy-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
   .strategy-card { padding: 26px; border: 1px solid var(--border); }
-  .strategy-num { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
-  .strategy-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--accent); }
-  .strategy-text { font-size: 12px; color: var(--text-mid); line-height: 1.75; margin-bottom: 12px; }
-  .strategy-when { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); padding-top: 12px; border-top: 1px solid var(--border); line-height: 1.6; }
+  .strategy-num { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
+  .strategy-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; color: var(--accent); }
+  .strategy-text { font-size: 13px; color: var(--text-mid); line-height: 1.8; margin-bottom: 12px; }
+  .strategy-when { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); padding-top: 12px; border-top: 1px solid var(--border); line-height: 1.65; }
   .strategy-when strong { color: var(--text); }
 
   /* ── ROADMAP ── */
   .roadmap-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
   .roadmap-card { padding: 24px; border: 1px solid var(--border); }
-  .roadmap-category { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+  .roadmap-category { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
   .roadmap-items { list-style: none; }
-  .roadmap-items li { font-size: 12px; color: var(--text-mid); padding: 5px 0; border-bottom: 1px solid rgba(8,7,8,0.05); display: flex; align-items: flex-start; gap: 8px; line-height: 1.5; }
-  .roadmap-items li::before { content: '○'; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-dim); flex-shrink: 0; margin-top: 2px; }
+  .roadmap-items li { font-size: 13px; color: var(--text-mid); padding: 6px 0; border-bottom: 1px solid rgba(8,7,8,0.06); display: flex; align-items: flex-start; gap: 8px; line-height: 1.6; }
+  .roadmap-items li::before { content: '○'; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); flex-shrink: 0; margin-top: 2px; }
   .roadmap-items li:last-child { border-bottom: none; }
 
   /* ── SETUP STRIP ── */
   .setup-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); }
   .setup-step { background: var(--bg); padding: 24px 20px; }
-  .setup-step-num { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
-  .setup-step-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
-  .setup-step-text { font-size: 11px; color: var(--text-dim); line-height: 1.65; }
-  .setup-step-code { font-family: 'JetBrains Mono', monospace; font-size: 10px; background: rgba(59,96,228,0.06); border: 1px solid var(--border-accent); padding: 4px 8px; margin-top: 8px; color: var(--accent); border-radius: 2px; display: block; word-break: break-all; }
+  .setup-step-num { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
+  .setup-step-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+  .setup-step-text { font-size: 12px; color: var(--text-mid); line-height: 1.7; }
+  .setup-step-code { font-family: 'JetBrains Mono', monospace; font-size: 11px; background: rgba(43,80,212,0.06); border: 1px solid var(--border-accent); padding: 5px 9px; margin-top: 8px; color: var(--accent); border-radius: 3px; display: block; word-break: break-all; }
 
   /* ── FOOTER ── */
   footer { padding: 56px 0; }
   .footer-inner { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 24px; }
-  .footer-meta { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); line-height: 1.9; }
+  .footer-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); line-height: 2.0; }
   .footer-brand { font-family: 'DM Serif Display', serif; font-size: 28px; color: rgba(8,7,8,0.07); }
 
-  .badge { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 9px; padding: 2px 7px; border-radius: 2px; letter-spacing: 0.05em; white-space: nowrap; }
+  .badge { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 7px; border-radius: 2px; letter-spacing: 0.05em; white-space: nowrap; }
   .badge-blue  { background: var(--accent-mid); color: var(--accent); border: 1px solid var(--border-accent); }
   .badge-green { background: var(--green-dim);  color: var(--green);  border: 1px solid var(--green-border); }
   .badge-amber { background: var(--amber-dim);  color: var(--amber);  border: 1px solid var(--amber-border); }
@@ -271,7 +271,7 @@
       <h2 class="section-title">전체 개발 워크플로우</h2>
     </div>
 
-    <p class="reveal" style="font-size:14px;color:var(--text-mid);line-height:1.8;margin-bottom:36px;max-width:640px;">
+    <p class="reveal" style="font-size:15px;color:var(--text-mid);line-height:1.8;margin-bottom:36px;max-width:640px;">
       Jira 이슈를 받아 git worktree를 생성하는 것부터 시작해,
       기획→설계→구현→테스트→리뷰→병합→PR→완료까지 10단계가 하나의 흐름으로 연결됩니다.
       각 단계 산출물은 Jira에 자동 첨부·코멘트됩니다.
@@ -391,19 +391,19 @@
       <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">TASK-ID 자동 감지</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
         <div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);margin-bottom:4px;">① Git 브랜치명</div>
-          <div style="font-size:12px;color:var(--text-mid);">feature/PROJ-123 → PROJ-123 자동 추출</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);margin-bottom:4px;">① Git 브랜치명</div>
+          <div style="font-size:13px;color:var(--text-mid);">feature/PROJ-123 → PROJ-123 자동 추출</div>
         </div>
         <div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);margin-bottom:4px;">② 디렉토리명</div>
-          <div style="font-size:12px;color:var(--text-mid);">[A-Z]+-\d+ 패턴 인식 → TASK-ID로 사용</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);margin-bottom:4px;">② 디렉토리명</div>
+          <div style="font-size:13px;color:var(--text-mid);">[A-Z]+-\d+ 패턴 인식 → TASK-ID로 사용</div>
         </div>
         <div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);margin-bottom:4px;">③ .jira-context.json</div>
-          <div style="font-size:12px;color:var(--text-mid);">저장된 활성 태스크 ID 자동 로드</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);margin-bottom:4px;">③ .jira-context.json</div>
+          <div style="font-size:13px;color:var(--text-mid);">저장된 활성 태스크 ID 자동 로드</div>
         </div>
       </div>
-      <div style="margin-top:12px;font-size:12px;color:var(--text-mid);border-top:1px solid var(--border);padding-top:12px;">
+      <div style="margin-top:12px;font-size:13px;color:var(--text-mid);border-top:1px solid var(--border);padding-top:12px;">
         → worktree 안에서는 <strong style="color:var(--text);">TASK-ID 인자 없이</strong> 커맨드만 입력하면 자동 감지
       </div>
     </div>
@@ -461,7 +461,7 @@
       <h2 class="section-title">Multi-Worktree 구조와 PR 병합 전략</h2>
     </div>
 
-    <p class="reveal" style="font-size:14px;color:var(--text-mid);line-height:1.8;margin-bottom:36px;max-width:640px;">
+    <p class="reveal" style="font-size:15px;color:var(--text-mid);line-height:1.8;margin-bottom:36px;max-width:640px;">
       모든 worktree는 동일한 base 브랜치(main/develop)에서 생성됩니다.
       서로 다른 태스크가 같은 파일을 수정하면 병합 시 충돌이 발생할 수 있어,
       설계 단계에서 미리 전략을 정하는 것이 핵심입니다.
@@ -480,11 +480,11 @@
       </div>
       <div style="padding:24px 28px;border:1px solid var(--border);">
         <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:14px;">충돌 발생 원리</div>
-        <div style="font-size:12px;color:var(--text-mid);line-height:1.85;">
+        <div style="font-size:13px;color:var(--text-mid);line-height:1.85;">
           모든 브랜치가 <strong style="color:var(--text);">동일 시점의 main</strong>에서 분기됩니다.<br>
           PROJ-101이 main에 병합되면, PROJ-102는 그 변경을 모르는 상태가 됩니다.<br><br>
           충돌 여부는 <strong style="color:var(--text);">파일 중복 여부</strong>로만 결정됩니다.<br>
-          설계 단계에서 <code style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);">git diff --name-only main feature/PROJ-XXX</code> 로 미리 확인하는 것이 핵심입니다.
+          설계 단계에서 <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);">git diff --name-only main feature/PROJ-XXX</code> 로 미리 확인하는 것이 핵심입니다.
         </div>
       </div>
     </div>
@@ -511,8 +511,8 @@
       </div>
     </div>
 
-    <div class="reveal" style="margin-top:20px;padding:20px 24px;border:1px solid var(--border);font-size:12px;color:var(--text-mid);line-height:1.8;">
-      <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--accent);letter-spacing:0.08em;text-transform:uppercase;margin-right:12px;">의사결정 흐름</span>
+    <div class="reveal" style="margin-top:20px;padding:20px 24px;border:1px solid var(--border);font-size:13px;color:var(--text-mid);line-height:1.8;">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);letter-spacing:0.08em;text-transform:uppercase;margin-right:12px;">의사결정 흐름</span>
       파일 중복 없음 → <strong style="color:var(--text);">전략 3</strong> &nbsp;|&nbsp;
       중복 있음 + 각자 배포 가능 → <strong style="color:var(--text);">전략 1</strong> &nbsp;|&nbsp;
       중복 있음 + 함께 릴리즈 → <strong style="color:var(--text);">전략 2</strong><br>
@@ -558,19 +558,87 @@
       </div>
     </div>
 
-    <div class="reveal" style="margin-top:16px;padding:18px 24px;border:1px solid var(--amber-border);background:var(--amber-dim);font-size:12px;color:var(--text-mid);line-height:1.75;">
-      <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--amber);letter-spacing:0.08em;text-transform:uppercase;margin-right:10px;">주의</span>
+    <div class="reveal" style="margin-top:16px;padding:18px 24px;border:1px solid var(--amber-border);background:var(--amber-dim);font-size:13px;color:var(--text-mid);line-height:1.75;">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--amber);letter-spacing:0.08em;text-transform:uppercase;margin-right:10px;">주의</span>
       API 토큰이 저장되는 <code style="font-family:'JetBrains Mono',monospace;font-size:10px;">.claude/settings.local.json</code>은 반드시 <code style="font-family:'JetBrains Mono',monospace;font-size:10px;">.gitignore</code>에 추가할 것.
       기존 <strong style="color:var(--text);">bkit 플러그인이 설치되어 있다면 먼저 삭제</strong> 필요 (스킬/훅 충돌).
     </div>
   </div>
 </section>
 
-<!-- ─────────────── SECTION 5: 로드맵 ─────────────── -->
+<!-- ─────────────── SECTION 5: 기대 효과 ─────────────── -->
 <section>
   <div class="container">
     <div class="section-header reveal">
       <span class="section-num">05</span>
+      <h2 class="section-title">기대 효과 & 핵심 비전</h2>
+    </div>
+
+    <p class="reveal" style="font-size:15px;color:var(--text-mid);line-height:1.85;margin-bottom:48px;max-width:660px;">
+      이 플러그인이 궁극적으로 바꾸려는 것은 단순한 도구의 편의성이 아닙니다.
+      개발자가 <strong style="color:var(--text);">Jira를 여는 행위 자체를 없애는 것</strong>, 그리고
+      개발 산출물이 자연스럽게 프로젝트 기록으로 축적되는 워크플로우를 만드는 것입니다.
+    </p>
+
+    <!-- Impact metrics -->
+    <div class="reveal" style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:36px;">
+      <div style="background:var(--bg);padding:32px 28px;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">컨텍스트 전환 제거</div>
+        <div style="font-size:32px;font-weight:700;color:var(--accent);line-height:1.1;margin-bottom:8px;">Zero<br>Context Switch</div>
+        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">IDE → Jira → 슬랙 → 다시 IDE로 오가는 흐름이 사라집니다. 개발자는 터미널 커맨드 하나로 상태를 전파하고, 집중을 유지합니다.</div>
+      </div>
+      <div style="background:var(--bg);padding:32px 28px;border-left:1px solid var(--border);">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">산출물 자동 축적</div>
+        <div style="font-size:32px;font-weight:700;color:var(--accent);line-height:1.1;margin-bottom:8px;">100%<br>Traceability</div>
+        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">기획·설계·테스트·리뷰가 Jira에 자동 첨부됩니다. 6개월 후 "왜 이렇게 구현했나"에 대한 답이 이슈 안에 남아 있습니다.</div>
+      </div>
+      <div style="background:var(--bg);padding:32px 28px;border-left:1px solid var(--border);">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">병렬 처리 역량</div>
+        <div style="font-size:32px;font-weight:700;color:var(--accent);line-height:1.1;margin-bottom:8px;">1인 ×<br>N 태스크</div>
+        <div style="font-size:13px;color:var(--text-mid);line-height:1.75;">Multi-Worktree로 개발자 1명이 N개 이슈를 동시 진행합니다. AI 코딩 시대에 맞는 새로운 개인 처리량 기준을 만듭니다.</div>
+      </div>
+    </div>
+
+    <!-- Before / After comparison -->
+    <div class="reveal" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:36px;">
+      <div style="padding:28px;border:1px solid var(--border);background:rgba(8,7,8,0.02);">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:18px;">Before — 기존 방식</div>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:10px;">
+          <li style="font-size:13px;color:var(--text-mid);display:flex;gap:10px;align-items:flex-start;line-height:1.65;"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#b04040;flex-shrink:0;">✕</span>Jira에서 이슈 확인 → IDE 전환 → 개발 → Jira 재접속 → 수동 상태 변경</li>
+          <li style="font-size:13px;color:var(--text-mid);display:flex;gap:10px;align-items:flex-start;line-height:1.65;"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#b04040;flex-shrink:0;">✕</span>기획·설계 문서는 별도 노션/Confluence에 작성, Jira와 연결 단절</li>
+          <li style="font-size:13px;color:var(--text-mid);display:flex;gap:10px;align-items:flex-start;line-height:1.65;"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#b04040;flex-shrink:0;">✕</span>테스트 결과·코드 리뷰는 PR 코멘트에 산재, 이슈와 연결 안 됨</li>
+          <li style="font-size:13px;color:var(--text-mid);display:flex;gap:10px;align-items:flex-start;line-height:1.65;"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#b04040;flex-shrink:0;">✕</span>하나의 태스크가 끝나야 다음 착수, 병렬 진행은 브랜치 혼란 초래</li>
+        </ul>
+      </div>
+      <div style="padding:28px;border:1px solid var(--green-border);background:var(--green-dim);">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);margin-bottom:18px;">After — 플러그인 적용</div>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:10px;">
+          <li style="font-size:13px;color:var(--text-mid);display:flex;gap:10px;align-items:flex-start;line-height:1.65;"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);flex-shrink:0;">✓</span>터미널에서 커맨드 하나 → Jira 상태 전이·코멘트 자동 완료</li>
+          <li style="font-size:13px;color:var(--text-mid);display:flex;gap:10px;align-items:flex-start;line-height:1.65;"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);flex-shrink:0;">✓</span>plan.md · design.md가 Jira 이슈에 첨부파일로 자동 게시</li>
+          <li style="font-size:13px;color:var(--text-mid);display:flex;gap:10px;align-items:flex-start;line-height:1.65;"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);flex-shrink:0;">✓</span>테스트 리포트·스크린샷·리뷰 결과가 이슈 코멘트에 자동 누적</li>
+          <li style="font-size:13px;color:var(--text-mid);display:flex;gap:10px;align-items:flex-start;line-height:1.65;"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);flex-shrink:0;">✓</span>N개 worktree로 여러 이슈를 독립 브랜치에서 동시 진행</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Vision statement -->
+    <div class="reveal" style="padding:32px 36px;border:1px solid var(--border-accent);background:var(--accent-dim);position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;right:0;font-family:'DM Serif Display',serif;font-size:96px;color:rgba(43,80,212,0.05);line-height:1;pointer-events:none;padding:12px 24px;">"</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:16px;">Core Vision</div>
+      <p style="font-family:'DM Serif Display',serif;font-size:clamp(17px,2vw,22px);color:var(--text);line-height:1.65;max-width:680px;">
+        개발자가 Jira를 직접 조작하는 시간을 <em style="color:var(--accent);">0으로 수렴</em>시키는 것.<br>
+        코드를 작성하는 행위 자체가 프로젝트 관리와 문서화를 동시에 완성하는<br>
+        <em style="color:var(--accent);">단일 루프</em>를 만드는 것이 이 플러그인의 존재 이유입니다.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────── SECTION 6: 로드맵 ─────────────── -->
+<section>
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-num">06</span>
       <h2 class="section-title">로드맵</h2>
     </div>
 
