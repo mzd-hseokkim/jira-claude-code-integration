@@ -8,12 +8,10 @@
 [![MCP](https://img.shields.io/badge/MCP-mcp--atlassian-purple)](https://github.com/sooperset/mcp-atlassian)
 
 > **Automate your entire dev workflow — from Jira issue to merged PR — inside Claude Code.**
->
-> Jira 이슈 할당부터 PR 병합까지, 개발 전 단계를 Claude Code 하나로 자동화합니다.
 
 ---
 
-## Why This Plugin? · 차별화 포인트
+## Why This Plugin?
 
 Most Jira + AI tools stop at CRUD (read/create/update issues). This plugin automates the **entire development lifecycle**: planning → design → implementation → testing → review → PR → done, with every step synced back to Jira automatically.
 
@@ -29,19 +27,19 @@ Most Jira + AI tools stop at CRUD (read/create/update issues). This plugin autom
 
 ---
 
-## Workflow · 워크플로우
+## Workflow
 
 ```mermaid
 graph LR
-    A["/jira-task init\n할당 태스크 일괄 세팅"] --> B["/jira-task start\nIn Progress 전환"]
-    B --> C["/jira-task plan\n기획 문서 생성"]
-    C --> D["/jira-task design\n설계 문서 생성"]
-    D --> E["/jira-task impl\n구현"]
-    E --> F["/jira-task test\nE2E + unit 테스트"]
-    F --> G["/jira-task review\nGap 분석 + 코드 리뷰"]
-    G --> H["/jira-task merge\n로컬 병합"]
-    H --> I["/jira-task pr\nGitHub PR 생성"]
-    I --> J["/jira-task done\n완료 처리"]
+    A["/jira-task init\nBatch worktree setup"] --> B["/jira-task start\nIn Progress"]
+    B --> C["/jira-task plan\nPlanning doc"]
+    C --> D["/jira-task design\nDesign doc"]
+    D --> E["/jira-task impl\nImplement"]
+    E --> F["/jira-task test\nE2E + unit tests"]
+    F --> G["/jira-task review\nGap analysis + review"]
+    G --> H["/jira-task merge\nLocal merge"]
+    H --> I["/jira-task pr\nCreate GitHub PR"]
+    I --> J["/jira-task done\nDone"]
 
     style A fill:#2B50D4,color:#fff
     style J fill:#156030,color:#fff
@@ -49,25 +47,23 @@ graph LR
 
 Each step automatically posts a comment and/or attachment to the Jira issue and transitions its status.
 
-모든 단계가 Jira 이슈에 코멘트·첨부파일을 게시하고 상태를 자동 전환합니다.
-
 ---
 
-## Key Features · 주요 기능
+## Key Features
 
-**Multi-Worktree Parallel Development · 병렬 개발 환경**
+**Multi-Worktree Parallel Development**
 `/jira-task init 5` creates isolated git worktrees for each assigned task at once. Work on multiple issues simultaneously without context switching.
 
-**Document Auto-generation · 문서 자동 생성**
+**Document Auto-generation**
 Generates `plan.md`, `design.md`, test reports, and review results — then immediately posts them as Jira attachments and comments. No copy-paste required.
 
-**Status Transition Automation · 상태 전이 자동화**
+**Status Transition Automation**
 `start` → In Progress, `merge` → In Review, `done` → Done. Jira stays up to date without opening a browser.
 
-**Design-Impl Gap Analysis · 설계-구현 Gap 분석**
+**Design-Impl Gap Analysis**
 `/jira-task review` compares your design document against actual code changes and flags discrepancies alongside code quality issues.
 
-**Session Continuity · 세션 연속성**
+**Session Continuity**
 Progress is tracked in `.jira-context.json`. Reopen Claude Code anytime and see exactly where you left off:
 ```
 Progress: init ✓ → start ✓ → plan ✓ → design → impl → test → review → merge → pr → done
@@ -75,7 +71,7 @@ Progress: init ✓ → start ✓ → plan ✓ → design → impl → test → r
 
 ---
 
-## Prerequisites · 사전 요구사항
+## Prerequisites
 
 | Requirement | Required | Purpose |
 |---|:---:|---|
@@ -87,7 +83,7 @@ Progress: init ✓ → start ✓ → plan ✓ → design → impl → test → r
 
 ---
 
-## Quick Start · 빠른 시작
+## Quick Start
 
 ```bash
 # 1. Install the plugin
@@ -127,9 +123,9 @@ claude
 
 ---
 
-## Setup · 상세 설정
+## Setup
 
-### Step 1 · 플러그인 설치
+### Step 1: Install the Plugin
 
 ```bash
 claude plugin marketplace add mzd-hseokkim/jira-claude-code-integration
@@ -139,14 +135,14 @@ claude plugin install jira-integration@jira-claude-code-integration
 claude --plugin-dir /path/to/jira-claude-code-integration
 ```
 
-### Step 2 · Jira API Token 생성
+### Step 2: Create a Jira API Token
 
 1. Go to https://id.atlassian.com/manage-profile/security/api-tokens
 2. Click **"Create API token"**
 3. Enter a label (e.g. `claude-code`) → **Create**
 4. Copy the token (shown only once)
 
-### Step 3 · MCP 서버 등록
+### Step 3: Register the MCP Server
 
 ```bash
 claude mcp add atlassian \
@@ -169,7 +165,7 @@ This saves credentials to `.claude/settings.local.json`. **Add it to `.gitignore
 | `JIRA_API_TOKEN` | Yes | API token from Step 2 |
 | `JIRA_PROJECTS_FILTER` | No | Comma-separated project keys (e.g. `PROJ,DEV`) |
 
-### Step 4 · 연결 확인
+### Step 4: Verify Connection
 
 ```bash
 claude
@@ -178,7 +174,7 @@ claude
 
 ---
 
-## Commands · 커맨드 목록
+## Commands
 
 | Command | Run from | Description |
 |---|---|---|
@@ -196,7 +192,7 @@ claude
 | `/jira-task report` | anywhere | My assigned issues status report |
 | `/jira-task status` | anywhere | Current active task status |
 
-### TASK-ID Auto-detection · 자동 감지
+### TASK-ID Auto-detection
 
 When working inside a worktree, `[ID]` can be omitted. It is resolved in this order:
 
@@ -206,7 +202,7 @@ When working inside a worktree, `[ID]` can be omitted. It is resolved in this or
 
 ---
 
-## Project Structure · 프로젝트 구조
+## Project Structure
 
 ```
 jira-claude-code-integration/
@@ -248,7 +244,7 @@ jira-claude-code-integration/
     └── report.template.md
 ```
 
-### Worktree Layout · Worktree 구조
+### Worktree Layout
 
 ```
 workspace/
@@ -261,15 +257,15 @@ workspace/
 
 ---
 
-## Multi-Worktree Merge Strategy · 병합 전략
+## Multi-Worktree Merge Strategy
 
 When multiple tasks touch the same files, merging in the wrong order causes conflicts.
 
 ```
-설계 단계에서 파일 중복 확인
-├─ 중복 없음         → 어떤 순서로든 PR 가능
-├─ 중복 있음 (독립 배포 가능) → 순차 rebase-and-merge
-└─ 중복 있음 (함께 릴리즈)    → 통합 브랜치 전략
+Check for file overlap at design time
+├─ No overlap            → PR in any order
+├─ Overlap (independent releases) → Sequential rebase-and-merge
+└─ Overlap (release together)     → Integration branch strategy
 ```
 
 Check before starting implementation:
@@ -288,7 +284,7 @@ Available merge strategies when running `/jira-task merge`:
 
 ---
 
-## Troubleshooting · 문제 해결
+## Troubleshooting
 
 **"Atlassian MCP server not connected"**
 ```bash
@@ -300,7 +296,7 @@ pip install uv                   # Install uv if missing
 
 **"Transition failed"**
 ```
-"PROJ-123 이슈의 가능한 상태 전환 보여줘"
+"Show available transitions for PROJ-123"
 ```
 Transition names vary by Jira workflow. Common names: `To Do`, `In Progress`, `In Review`, `Done`.
 
