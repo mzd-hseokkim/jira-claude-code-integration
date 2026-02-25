@@ -1,6 +1,6 @@
 {
   "name": "jira-integration",
-  "version": "0.4.10",
+  "version": "0.4.11",
   "description": "Jira + Claude Code integration plugin for automating the full software development lifecycle. Supports task management, planning, design, code review, and reporting through Jira.",
   "author": {
     "name": "bory9"

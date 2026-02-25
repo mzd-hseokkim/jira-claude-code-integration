@@ -171,7 +171,16 @@ fi
 워크트리는 별도 경로라 MCP 설정이 자동 상속되지 않으므로 직접 주입해야 한다.
 
 ```bash
-REPO_ROOT="<REPO_ROOT값>" WORKTREE_PATH="<워크트리 절대경로>" python3 << 'PYEOF'
+# Windows git bash에서 python3가 WindowsApps 스텁일 수 있으므로 실제 Python 경로를 찾는다
+_python3=$(where python3 2>/dev/null | grep -iv "WindowsApps" | head -1 | tr '\\' '/' | sed 's|^C:|/c|')
+if [ -z "$_python3" ]; then
+    _python3=$(where python 2>/dev/null | grep -iv "WindowsApps" | head -1 | tr '\\' '/' | sed 's|^C:|/c|')
+fi
+if [ -z "$_python3" ]; then
+    _python3="python3"  # fallback: Linux/macOS
+fi
+
+REPO_ROOT="<REPO_ROOT값>" WORKTREE_PATH="<워크트리 절대경로>" "$_python3" << 'PYEOF'
 import json, os, sys
 
 claude_json_path = os.path.expanduser("~/.claude.json")
@@ -217,6 +226,7 @@ PYEOF
 
 - `mcpServers`가 비어있거나 없으면 주입을 건너뜀 (오류 아님)
 - 경로 정규화: 백슬래시/슬래시 혼용 처리, 후행 슬래시 제거
+- Windows git bash에서 `python3`가 WindowsApps 스텁으로 연결되어 exit 49로 실패하는 문제를 우회: `where python3`로 실제 Python 경로를 먼저 탐색
 
 ### Step 6: Generate README for Each Worktree
 
