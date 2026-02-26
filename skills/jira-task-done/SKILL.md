@@ -85,6 +85,8 @@ Use `mcp__atlassian__jira_get_transitions` to fetch available transitions, then 
 - If "In Review" is not available, try "Done"
 - If both fail, inform the user of available transitions
 
+**Important**: Do NOT pass a `comment` parameter to `jira_transition_issue`. The `comment` field requires Atlassian Document Format (ADF) JSON — passing plain text will cause an error. Add comments separately using `jira_add_comment`.
+
 ### Step 7: Cleanup MCP Config from Worktree Entry
 
 `.jira-context.json`의 `worktreePath`를 읽어 `~/.claude.json`에서 해당 경로의 `mcpServers`를 제거한다.

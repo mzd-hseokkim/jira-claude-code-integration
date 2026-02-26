@@ -50,6 +50,8 @@ Use `mcp__atlassian__jira_get_transitions` to fetch available transitions, then 
 - `issueKey`: The TASK-ID
 - `transitionId`: ID for "In Progress" (or similar like "Start Progress", "Begin Work")
 
+**Important**: Do NOT pass a `comment` parameter to `jira_transition_issue`. The `comment` field requires Atlassian Document Format (ADF) JSON — passing plain text will cause an error. Add comments separately using `jira_add_comment`.
+
 If the transition fails, the issue may already be in progress or the transition name differs.
 In that case, inform the user of the current status and continue with the remaining steps.
 

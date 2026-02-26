@@ -132,6 +132,8 @@ PR URL을 캡처.
 mcp__atlassian__jira_transition_issue with transitionId: <In Review transition ID>
 ```
 
+**주의**: `jira_transition_issue`에 `comment` 파라미터를 절대 사용하지 말 것. `comment` 필드는 ADF JSON을 요구하므로 일반 텍스트를 넣으면 오류가 발생한다. 코멘트는 별도로 `jira_add_comment`를 호출하여 추가한다.
+
 ### Step 7: Completion Summary
 
 `.jira-context.json`의 `completedSteps`에 `"pr"` 추가 후, 아래 형식으로 완료 요약 출력:
