@@ -41,39 +41,40 @@ If auto-detection succeeds, proceed with the detected TASK-ID. If it fails and t
 
 각 action은 대응하는 스킬의 워크플로를 그대로 따른다. 세부 절차는 각 스킬의 SKILL.md를 참조.
 
+**중요: 서브 스킬 실행 시 반드시 `Skill` 도구를 사용한다. `Task` 도구는 절대 사용하지 않는다.**
+
 ### `init [count]`
-Execute the `jira-task-init` skill. 할당된 태스크를 가져와 worktree를 일괄 생성한다.
+Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-init", args: "[count]" })`
 
 ### `start <TASK-ID>`
-Execute the `jira-task-start` skill. 이슈 조회, "In Progress" 전환, 브랜치/worktree 생성.
+Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-start", args: "<TASK-ID>" })`
 
 ### `plan <TASK-ID>`
-Execute the `jira-task-plan` skill. Jira 컨텍스트 기반 기획 문서를 `docs/plan/<TASK-ID>.plan.md`에 생성.
+Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-plan", args: "<TASK-ID>" })`
 
 ### `design <TASK-ID>`
-Execute the `jira-task-design` skill. 코드베이스 분석 기반 설계 문서를 `docs/design/<TASK-ID>.design.md`에 생성.
+Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-design", args: "<TASK-ID>" })`
 
 ### `impl <TASK-ID>`
-Execute the `jira-task-impl` skill. 설계 문서(또는 Jira 이슈) 기반으로 구현.
+Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-impl", args: "<TASK-ID>" })`
 
 ### `test <TASK-ID>`
-Execute the `jira-task-test` skill. 테스트 실행, 리포트 생성(`docs/test/<TASK-ID>.test-report.md`), Jira에 결과 게시.
+Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-test", args: "<TASK-ID>" })`
 
 ### `review <TASK-ID>`
-Execute the `jira-task-review` skill. Gap 분석 + 코드 품질 리뷰, 리포트 저장(`docs/review/<TASK-ID>.review.md`), Jira에 게시.
+Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-review", args: "<TASK-ID>" })`
 
 ### `pr <TASK-ID>`
-Execute the `jira-task-pr` skill. `gh` CLI로 PR 생성, Jira에 PR 링크 게시.
+Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-pr", args: "<TASK-ID>" })`
 
 ### `merge <TASK-ID>`
-Execute the `jira-local-merge` skill. remote 없이 로컬 병합 (전략 선택 → merge → Jira 전환 → worktree 정리).
-`pr` + `done` 대신 사용하는 no-remote 워크플로.
+Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-local-merge", args: "<TASK-ID>" })`
 
 ### `done <TASK-ID>`
-Execute the `jira-task-done` skill. 완료 리포트 게시, 상태 전이, 컨텍스트 정리.
+Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-done", args: "<TASK-ID>" })`
 
 ### `report`
-Execute the `jira-task-report` skill. 내 할당 이슈 현황 리포트 생성.
+Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-report", args: "" })`
 
 ### `status`
 Quick status check — `.jira-context.json`에서 활성 태스크 정보를 읽고, Jira에서 최신 상태를 조회하여 표시.
