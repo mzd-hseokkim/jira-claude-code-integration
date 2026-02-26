@@ -171,16 +171,8 @@ fi
 워크트리는 별도 경로라 MCP 설정이 자동 상속되지 않으므로 직접 주입해야 한다.
 
 ```bash
-# Python 탐지: WindowsApps 스텁 제외, python3 → python 순으로 탐색 (cross-platform)
-_python3=$(command -v python3 2>/dev/null)
-if echo "$_python3" | grep -qi "WindowsApps"; then _python3=""; fi
-if [ -z "$_python3" ]; then
-    _python3=$(command -v python 2>/dev/null)
-    if echo "$_python3" | grep -qi "WindowsApps"; then _python3=""; fi
-fi
-if [ -z "$_python3" ]; then echo "ERROR: Python not found" >&2; exit 1; fi
-
-REPO_ROOT="<REPO_ROOT값>" WORKTREE_PATH="<워크트리 절대경로>" "$_python3" << 'PYEOF'
+REPO_ROOT="<REPO_ROOT 절대경로>" WORKTREE_PATH="<워크트리 절대경로>" \
+  "$( { command -v python3; command -v python; } 2>/dev/null | grep -iv "WindowsApps" | head -1 | tr -d '\r\n' )" << 'PYEOF'
 import json, os, sys
 
 claude_json_path = os.path.expanduser("~/.claude.json")
@@ -224,9 +216,10 @@ print(f"MCP servers injected into {worktree_path}: {list(mcp_servers.keys())}")
 PYEOF
 ```
 
+- Python 탐지를 명령어 라인에 인라인으로 포함: `$( { command -v python3; command -v python; } | grep -iv WindowsApps | head -1 )` — `$_python3` 변수 불필요, 명령 분리 시에도 항상 올바른 Python을 탐지
 - `mcpServers`가 비어있거나 없으면 주입을 건너뜀 (오류 아님)
 - 경로 정규화: 백슬래시/슬래시 혼용 처리, 후행 슬래시 제거
-- Windows/Linux/macOS 공통: `command -v`로 `python3` → `python` 순 탐색, WindowsApps 스텁 자동 제외
+- Windows/Linux/macOS 공통: python3 → python 순 탐색, WindowsApps 스텁 자동 제외
 
 ### Step 6: Generate README for Each Worktree
 
