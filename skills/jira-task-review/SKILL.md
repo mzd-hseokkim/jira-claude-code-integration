@@ -17,8 +17,9 @@ allowed-tools:
 
 ## Language Rule
 
-모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 등 모든 텍스트가 대상이다.
+모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 내용 등 모든 텍스트가 대상이다.
 예외: 코드, 변수명, 브랜치명, 파일명, 명령어는 영어를 유지한다.
+Jira 코멘트: 섹션 제목(##, ###)은 영어로, 내용(설명·요약·노트)은 한국어로 작성한다.
 
 ## Workflow
 
@@ -105,27 +106,27 @@ Use `mcp__atlassian__jira_add_comment` to post the review:
 ```
 ## Code Review: <TASK-ID>
 
-**Result**: <Approve | Request Changes | Needs Discussion>
-**Files Reviewed**: <count>
-**Commits**: <count>
+**결과**: <Approve | Request Changes | Needs Discussion>
+**검토 파일 수**: <count>개
+**커밋 수**: <count>개
 
 ### Gap Analysis
-**Design-Implementation Match**: <percentage>%
-- <gaps or mismatches if any>
+**설계-구현 일치율**: <percentage>%
+- <차이점 또는 불일치 사항>
 
 ### Code Quality Findings
 
 #### Critical
-- <finding with file:line reference>
+- <파일:라인 참조와 함께 발견 사항>
 
 #### Warnings
-- <finding with file:line reference>
+- <파일:라인 참조와 함께 발견 사항>
 
 #### Info
-- <suggestion or note>
+- <제안 또는 참고 사항>
 
 ### Positive Notes
-- <things done well>
+- <잘 된 점>
 
 ---
 Reviewed by Claude Code

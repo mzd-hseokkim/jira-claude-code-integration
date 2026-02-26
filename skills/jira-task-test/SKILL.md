@@ -18,8 +18,9 @@ allowed-tools:
 
 ## Language Rule
 
-모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 등 모든 텍스트가 대상이다.
+모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 내용 등 모든 텍스트가 대상이다.
 예외: 코드, 변수명, 브랜치명, 파일명, 명령어는 영어를 유지한다.
+Jira 코멘트: 섹션 제목(##, ###)은 영어로, 내용(설명·요약·노트)은 한국어로 작성한다.
 
 ## Prerequisites
 - Implementation should be complete for the task
@@ -175,22 +176,22 @@ Use `mcp__atlassian__jira_add_comment` to post the test summary:
 ```
 ## Test Results: <TASK-ID>
 
-**Result**: PASS / FAIL
-**Date**: <date>
+**결과**: PASS / FAIL
+**날짜**: <날짜>
 
-| Type | Total | Passed | Failed |
+| 유형 | 전체 | 통과 | 실패 |
 |------|-------|--------|--------|
 | Unit | <n> | <n> | <n> |
 | E2E (Playwright) | <n> | <n> | <n> |
 
 ### Duration
-- Unit: <time>
-- E2E: <time>
+- Unit: <시간>
+- E2E: <시간>
 
 ### Failed Tests
-<list of failed test names and brief error, or "None">
+<실패한 테스트 이름 및 간단한 오류, 없으면 "없음">
 
-See full report: docs/test/<TASK-ID>.test-report.md
+전체 리포트: docs/test/<TASK-ID>.test-report.md
 ```
 
 테스트 리포트와 실패 스크린샷을 Jira 이슈에 첨부파일로 업로드:

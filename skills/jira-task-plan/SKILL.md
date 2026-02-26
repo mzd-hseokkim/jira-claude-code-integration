@@ -19,8 +19,9 @@ allowed-tools:
 
 ## Language Rule
 
-모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 등 모든 텍스트가 대상이다.
+모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 내용 등 모든 텍스트가 대상이다.
 예외: 코드, 변수명, 브랜치명, 파일명, 명령어는 영어를 유지한다.
+Jira 코멘트: 섹션 제목(##, ###)은 영어로, 내용(설명·요약·노트)은 한국어로 작성한다.
 
 ## Workflow
 
@@ -98,16 +99,16 @@ Use `mcp__atlassian__jira_add_comment` to post a brief summary:
 ```
 ## Planning Document Created
 
-A planning document has been created for this issue.
+이슈에 대한 기획 문서가 생성되었습니다.
 
-**Key Points:**
-- Objective: <1-line summary>
-- Scope: <brief scope>
-- Dependencies: <list>
-- Risks: <key risks>
-- Estimated sub-tasks: <count>
+**주요 내용:**
+- 목표: <1줄 요약>
+- 범위: <간단한 범위>
+- 의존성: <목록>
+- 위험 요소: <주요 위험>
+- 예상 하위 작업 수: <개수>
 
-See: docs/plan/<TASK-ID>.plan.md
+문서 경로: docs/plan/<TASK-ID>.plan.md
 ```
 
 ### Step 4.5: Attach Plan Document to Jira

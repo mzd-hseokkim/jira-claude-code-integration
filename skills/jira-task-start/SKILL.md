@@ -19,8 +19,9 @@ allowed-tools:
 
 ## Language Rule
 
-모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 등 모든 텍스트가 대상이다.
+모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 내용 등 모든 텍스트가 대상이다.
 예외: 코드, 변수명, 브랜치명, 파일명, 명령어는 영어를 유지한다.
+Jira 코멘트: 섹션 제목(##, ###)은 영어로, 내용(설명·요약·노트)은 한국어로 작성한다.
 
 ## Prerequisites
 - Jira MCP server must be connected (check with `/jira`)
@@ -110,7 +111,7 @@ Create a `README.md` in the worktree directory (or project root for branch) with
 
 Use `mcp__atlassian__jira_add_comment` with:
 - `issueKey`: The TASK-ID
-- `comment`: "Development started on branch `feature/<TASK-ID>`. Working directory: `<worktree-path or branch>`"
+- `comment`: "브랜치 `feature/<TASK-ID>`에서 개발을 시작했습니다. 작업 디렉토리: `<worktree-path or branch>`"
 
 ### Step 6: Save Local Context
 

@@ -143,7 +143,7 @@ The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스
 
 ### Conventions
 
-- When posting comments to Jira, use markdown format.
+- When posting comments to Jira, use markdown format. Jira 코멘트 언어 표준: 섹션 제목(##, ###)은 영어로, 내용(설명·요약·노트)은 한국어로 작성한다.
 - Always fetch issue details before transitioning status.
 - Use `jira_get_transitions`로 전환 목록 조회 후 `jira_transition_issue`에 **transitionId**를 전달.
 - `jira_get_sprints_from_board`는 `boardId`가 필요하므로 먼저 `jira_get_agile_boards`로 보드 ID를 조회해야 한다.

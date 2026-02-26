@@ -18,8 +18,9 @@ allowed-tools:
 
 ## Language Rule
 
-모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 등 모든 텍스트가 대상이다.
+모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 내용 등 모든 텍스트가 대상이다.
 예외: 코드, 변수명, 브랜치명, 파일명, 명령어는 영어를 유지한다.
+Jira 코멘트: 섹션 제목(##, ###)은 영어로, 내용(설명·요약·노트)은 한국어로 작성한다.
 
 ## Prerequisites
 - **메인 레포에서 실행**: worktree가 아닌 원본 레포 디렉토리에서 실행해야 함
@@ -118,10 +119,10 @@ PR URL을 캡처.
 ## Pull Request Created
 
 **PR**: <PR URL>
-**Branch**: feature/<TASK-ID> → <base-branch>
-**Files Changed**: <count>
+**브랜치**: feature/<TASK-ID> → <base-branch>
+**변경 파일 수**: <count>개
 
-<PR description 요약>
+<PR 설명 요약>
 ```
 
 ### Step 6: Transition Issue (Optional)

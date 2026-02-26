@@ -20,8 +20,9 @@ allowed-tools:
 
 ## Language Rule
 
-모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 등 모든 텍스트가 대상이다.
+모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 내용 등 모든 텍스트가 대상이다.
 예외: 코드, 변수명, 브랜치명, 파일명, 명령어는 영어를 유지한다.
+Jira 코멘트: 섹션 제목(##, ###)은 영어로, 내용(설명·요약·노트)은 한국어로 작성한다.
 
 나에게 할당된 Jira 태스크를 우선순위 순으로 가져와서 각각 git worktree를 생성하고
 작업 컨텍스트를 세팅하는 일괄 처리 워크플로우.
@@ -262,7 +263,7 @@ PYEOF
 각 태스크에 코멘트 게시:
 ```
 Use mcp__atlassian__jira_add_comment:
-  "Worktree initialized for branch `feature/<TASK-ID>` at `<worktree-path>`"
+  "브랜치 `feature/<TASK-ID>`의 worktree가 `<worktree-path>`에 초기화되었습니다."
 ```
 
 ### Step 8: Save Context

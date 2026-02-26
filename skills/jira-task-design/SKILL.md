@@ -17,8 +17,9 @@ allowed-tools:
 
 ## Language Rule
 
-모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 등 모든 텍스트가 대상이다.
+모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 내용 등 모든 텍스트가 대상이다.
 예외: 코드, 변수명, 브랜치명, 파일명, 명령어는 영어를 유지한다.
+Jira 코멘트: 섹션 제목(##, ###)은 영어로, 내용(설명·요약·노트)은 한국어로 작성한다.
 
 ## Workflow
 
@@ -63,18 +64,18 @@ Use `mcp__atlassian__jira_add_comment` to post:
 ```
 ## Design Document Created
 
-Technical design has been created for this issue.
+이슈에 대한 기술 설계 문서가 생성되었습니다.
 
-**Architecture:**
-- <key architectural decisions>
+**아키텍처:**
+- <주요 아키텍처 결정 사항>
 
-**Files to modify:**
-- <list of key files>
+**수정 파일:**
+- <주요 파일 목록>
 
-**Test approach:**
-- <brief test strategy>
+**테스트 전략:**
+- <간단한 테스트 방식>
 
-See: docs/design/<TASK-ID>.design.md
+문서 경로: docs/design/<TASK-ID>.design.md
 ```
 
 ### Step 4.5: Attach Design Document to Jira
