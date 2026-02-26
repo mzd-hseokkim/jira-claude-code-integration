@@ -10,7 +10,6 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-  - Task
   - Skill
   - mcp__atlassian
 ---

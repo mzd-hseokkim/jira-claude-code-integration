@@ -173,14 +173,19 @@ fi
 ```bash
 REPO_ROOT="<REPO_ROOT 절대경로>" WORKTREE_PATH="<워크트리 절대경로>" \
   "$( { command -v python3; command -v python; } 2>/dev/null | grep -iv "WindowsApps" | head -1 | tr -d '\r\n' )" << 'PYEOF'
-import json, os, sys
+import json, os, re, sys
 
 claude_json_path = os.path.expanduser("~/.claude.json")
 with open(claude_json_path, "r", encoding="utf-8") as f:
     data = json.load(f)
 
 def norm(p):
-    return p.replace("\\", "/").rstrip("/")
+    p = p.replace("\\", "/").rstrip("/")
+    # Convert Unix-style Windows drive path: /c/path → C:/path
+    m = re.match(r'^/([a-zA-Z])(/.*)', p)
+    if m:
+        p = m.group(1).upper() + ':' + m.group(2)
+    return p
 
 projects = data.setdefault("projects", {})
 repo_root = norm(os.environ.get("REPO_ROOT", ""))
