@@ -2,15 +2,22 @@
 name: jira
 description: Show Jira integration status, available tools, and help for jira-task commands. Use when user types /jira, asks about Jira connection, or wants to see available Jira commands.
 user-invocable: true
+argument-hint: "[setup]"
 allowed-tools:
   - Read
   - Bash
+  - Skill
   - mcp__atlassian
 ---
 
 # /jira - Jira Integration Help & Status
 
-Show the user the following information:
+## Argument Parsing
+
+If the argument is `setup`, run the setup wizard:
+`Skill({ skill: "jira-integration:jira-setup" })`
+
+Otherwise, show the following information:
 
 ## 1. Connection Status
 
@@ -36,7 +43,9 @@ Display the available workflow commands:
 
 | Command | Description |
 |---------|-------------|
+| `/jira setup` | Interactive setup wizard for Jira MCP server registration |
 | `/jira-task init [N]` | Fetch my top N assigned tasks and create worktrees for each |
+| `/jira-task auto <TASK-ID>` | Auto-execute full workflow (start → plan → design → impl → test → review) |
 | `/jira-task start <TASK-ID>` | Start working on a task (fetch context, create branch, transition to In Progress) |
 | `/jira-task plan <TASK-ID>` | Generate a planning document from Jira issue |
 | `/jira-task design <TASK-ID>` | Generate a design document |

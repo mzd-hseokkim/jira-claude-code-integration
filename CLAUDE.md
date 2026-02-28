@@ -129,7 +129,9 @@ The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스
 ### Workflow Commands
 
 - `/jira` - Help and connection status
+- `/jira setup` - Interactive setup wizard for Jira MCP server registration
 - `/jira-task init [N]` - Fetch my top N assigned tasks, create worktrees for each
+- `/jira-task auto <ID>` - Auto-execute full workflow (start → plan → design → impl → test → review)
 - `/jira-task start <ID>` - Start working on a task (fetch, branch, transition)
 - `/jira-task plan <ID>` - Generate planning document
 - `/jira-task design <ID>` - Generate design document

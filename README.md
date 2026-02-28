@@ -2,7 +2,7 @@
 
 **[English]** | [한국어](#korean)
 
-[![Version](https://img.shields.io/badge/version-0.5.0-blue)](#)
+[![Version](https://img.shields.io/badge/version-0.6.0-blue)](#)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-orange)](https://docs.anthropic.com/en/docs/claude-code)
 [![MCP](https://img.shields.io/badge/MCP-mcp--atlassian-purple)](https://github.com/sooperset/mcp-atlassian)
@@ -41,15 +41,26 @@ graph LR
     H --> I["/jira-task pr\nCreate GitHub PR"]
     I --> J["/jira-task done\nDone"]
 
+    AUTO["⚡ /jira-task auto\nstart→review (auto)"]
+
     style A fill:#2B50D4,color:#fff
     style J fill:#156030,color:#fff
+    style AUTO fill:#7B2D8B,color:#fff
 ```
+
+> **Shortcut**: `/jira-task auto <ID>` runs `start → plan → design → impl → test → review` automatically, resuming from any already-completed step.
 
 Each step automatically posts a comment and/or attachment to the Jira issue and transitions its status.
 
 ---
 
 ## Key Features
+
+**Auto Mode** *(new in v0.6.0)*
+`/jira-task auto PROJ-123` runs the full `start → plan → design → impl → test → review` pipeline automatically. Already-completed steps are skipped based on `.jira-context.json`. Stops immediately on test failure or review rejection.
+
+**Interactive Setup Wizard** *(new in v0.6.0)*
+`/jira setup` guides you through prerequisites (uv, Python 3.10+), credential collection, MCP server registration, and connection validation — no manual CLI commands needed.
 
 **Multi-Worktree Parallel Development**
 `/jira-task init 5` creates isolated git worktrees for each assigned task at once. Work on multiple issues simultaneously without context switching.
@@ -105,8 +116,11 @@ claude
 # 4. Fetch your top tasks and set up worktrees
 > /jira-task init 5
 
-# 5. Work through a task (TASK-ID is auto-detected from branch/directory)
+# 5a. Auto mode — run the full pipeline in one command
 > cd ../your-project_worktree/PROJ-123
+> /jira-task auto       # start → plan → design → impl → test → review
+
+# 5b. Or step-by-step (TASK-ID is auto-detected from branch/directory)
 > /jira-task start      # Transition to In Progress
 > /jira-task plan       # Generate planning doc
 > /jira-task design     # Generate design doc
@@ -134,6 +148,12 @@ claude plugin install jira-integration@jira-claude-code-integration
 # For local dev / testing:
 claude --plugin-dir /path/to/jira-claude-code-integration
 ```
+
+> **Tip**: Instead of running `claude mcp add` manually, you can use the interactive wizard after installing the plugin:
+> ```
+> > /jira setup
+> ```
+> The wizard checks prerequisites, collects your credentials, registers the MCP server, and validates the connection.
 
 ### Step 2: Create a Jira API Token
 
@@ -179,7 +199,9 @@ claude
 | Command | Run from | Description |
 |---|---|---|
 | `/jira` | anywhere | Connection status + help |
+| `/jira setup` | anywhere | **Interactive setup wizard** (prerequisites → credentials → MCP registration → validation) |
 | `/jira-task init [N]` | main repo | Fetch top N tasks + create worktrees |
+| `/jira-task auto <ID>` | worktree | **Auto-run full pipeline** (start → plan → design → impl → test → review) |
 | `/jira-task start [ID]` | worktree | Start task (branch, In Progress) |
 | `/jira-task plan [ID]` | worktree | Generate `docs/plan/<ID>.plan.md` |
 | `/jira-task design [ID]` | worktree | Generate `docs/design/<ID>.design.md` |
@@ -216,6 +238,8 @@ jira-claude-code-integration/
 │   └── jira-task.md             # /jira-task (router)
 │
 ├── skills/                      # One SKILL.md per workflow step
+│   ├── jira-task-auto/          # ← new: auto-run full pipeline
+│   ├── jira-setup/              # ← new: interactive setup wizard
 │   ├── jira-task-init/
 │   ├── jira-task-start/
 │   ├── jira-task-plan/
@@ -325,13 +349,14 @@ git worktree prune               # Clean stale worktree refs
 
 ## Roadmap
 
+- [x] Interactive setup wizard: `/jira setup` *(v0.6.0)*
+- [x] Auto mode: `/jira-task auto` *(v0.6.0)*
 - [ ] Bitbucket Cloud + GitLab MR support for `/jira-task pr`
 - [ ] Jira Server / Data Center (Personal Access Token)
 - [ ] Sub-task auto-creation from design doc task breakdown
 - [ ] Time tracking: auto-log work sessions to Jira
 - [ ] CI/CD result posting (GitHub Actions, Bitbucket Pipelines)
 - [ ] Slack / Teams notifications on PR creation and task completion
-- [ ] Interactive setup wizard: `/jira setup`
 - [ ] English documentation for all templates
 
 ---
@@ -351,6 +376,8 @@ MIT
 ### 핵심 특징
 
 - `/jira-task init 5` 하나로 할당된 태스크 5개의 **git worktree 일괄 생성**
+- **Auto 모드** (`/jira-task auto PROJ-123`): `start → plan → design → impl → test → review` 자동 연쇄 실행, 완료된 단계 자동 스킵 *(v0.6.0)*
+- **설정 위자드** (`/jira setup`): 사전 요건 확인 → 자격증명 입력 → MCP 등록 → 연결 검증 대화형 안내 *(v0.6.0)*
 - 기획 → 설계 → 구현 → 테스트 → 리뷰 → PR → 완료까지 **전 단계 커맨드화**
 - 각 단계 완료 시 **Jira 코멘트·첨부파일·상태 전이 자동 처리**
 - 설계 문서와 실제 구현 코드 간 **Gap 자동 분석**
@@ -361,7 +388,11 @@ MIT
 ```bash
 claude plugin marketplace add mzd-hseokkim/jira-claude-code-integration
 claude plugin install jira-integration@jira-claude-code-integration
+```
 
+플러그인 설치 후 `/jira setup`을 실행하면 대화형으로 MCP 서버를 설정할 수 있습니다. 또는 직접 등록:
+
+```bash
 claude mcp add atlassian \
   -e JIRA_URL=https://your-domain.atlassian.net \
   -e JIRA_USERNAME=your-email@company.com \
