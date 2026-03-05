@@ -1,0 +1,22 @@
+{
+    "sourceFile": ".gitignore",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 1,
+            "patches": [
+                {
+                    "date": 1772683155567,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1772683161958,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -29,4 +29,5 @@\n # MCP server (if cloned locally)\n mcp-jira-cloud/\n docs/best-practices/인천공항_식음서비스_개발_자동화.html\n docs/best-practices/일신비츠온_테스트_자동화.html\n+.lh/.lhignore\n"
+                }
+            ],
+            "date": 1772683155566,
+            "name": "Commit-0",
+            "content": "# Dependencies\nnode_modules/\n\n# Environment\n.env\n.env.*\n!.env.example\n\n# MCP config (contains credentials)\n.mcp.json\n\n# Build\ndist/\n\n# OS\n.DS_Store\nThumbs.db\n\n# IDE\n.idea/\n.vscode/\n*.swp\n*.swo\n\n# Local state\n.jira-context.json\n.claude/\n\n# MCP server (if cloned locally)\nmcp-jira-cloud/\ndocs/best-practices/인천공항_식음서비스_개발_자동화.html\ndocs/best-practices/일신비츠온_테스트_자동화.html\n"
+        }
+    ]
+}
