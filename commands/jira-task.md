@@ -43,8 +43,17 @@ If auto-detection succeeds, proceed with the detected TASK-ID. If it fails and t
 
 **중요: 서브 스킬 실행 시 반드시 `Skill` 도구를 사용한다. `Task` 도구는 절대 사용하지 않는다.**
 
-### `init [count]`
-Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-init", args: "[count]" })`
+### `init [count | ISSUE-KEY | 자연어설명]`
+
+**강제 규칙**: 인자 형식(숫자, 이슈 키, 자연어)과 무관하게 `init` 키워드가 감지되면 **반드시** 아래 Skill 도구를 호출한다. Claude가 직접 처리하거나 스킬 호출을 건너뛰는 것을 금지한다.
+
+Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-init", args: "<사용자가 입력한 init 이후의 전체 인자를 그대로 전달>" })`
+
+인자 예시:
+- `init` → args: `""`
+- `init 3` → args: `"3"`
+- `init MAE-2` → args: `"MAE-2"`
+- `init MAE-2 하위작업 분석해서 착수 가능한 것만` → args: `"MAE-2 하위작업 분석해서 착수 가능한 것만"`
 
 ### `start <TASK-ID>`
 Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-start", args: "<TASK-ID>" })`
