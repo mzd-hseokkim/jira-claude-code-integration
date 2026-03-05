@@ -73,18 +73,22 @@ git diff --name-only <base-branch>..feature/<TASK-ID>
 저장한 `docs/review/<TASK-ID>.review.md`를 Jira 이슈에 첨부파일로 업로드:
 
 ```bash
-# 1. 자격증명 확보 (환경변수 우선, 없으면 .claude/settings.local.json에서 읽기)
+# 1. 자격증명 확보 (환경변수 → .mcp.json → ~/.claude.json → .claude/settings.local.json)
 JIRA_URL="${JIRA_URL:-}"
 JIRA_USERNAME="${JIRA_USERNAME:-}"
 JIRA_API_TOKEN="${JIRA_API_TOKEN:-}"
 
 if [ -z "$JIRA_URL" ]; then
-  _s="$(git rev-parse --show-toplevel 2>/dev/null)/.claude/settings.local.json"
-  if [ -f "$_s" ]; then
-    JIRA_URL=$(node -e "const s=require('$_s');const e=(s.mcpServers?.atlassian||s.mcpServers?.jira||{}).env||{};console.log(e.JIRA_URL||'')" 2>/dev/null)
-    JIRA_USERNAME=$(node -e "const s=require('$_s');const e=(s.mcpServers?.atlassian||s.mcpServers?.jira||{}).env||{};console.log(e.JIRA_USERNAME||'')" 2>/dev/null)
-    JIRA_API_TOKEN=$(node -e "const s=require('$_s');const e=(s.mcpServers?.atlassian||s.mcpServers?.jira||{}).env||{};console.log(e.JIRA_API_TOKEN||'')" 2>/dev/null)
-  fi
+  _root="$(git rev-parse --show-toplevel 2>/dev/null)"
+  _extract='const e=(s.mcpServers?.atlassian||s.mcpServers?.jira||{}).env||{}'
+  for _f in "${_root}/.mcp.json" "${HOME}/.claude.json" "${_root}/.claude/settings.local.json"; do
+    [ -f "$_f" ] || continue
+    JIRA_URL=$(node -e "const s=require('$_f');${_extract};console.log(e.JIRA_URL||'')" 2>/dev/null)
+    [ -n "$JIRA_URL" ] || continue
+    JIRA_USERNAME=$(node -e "const s=require('$_f');${_extract};console.log(e.JIRA_USERNAME||'')" 2>/dev/null)
+    JIRA_API_TOKEN=$(node -e "const s=require('$_f');${_extract};console.log(e.JIRA_API_TOKEN||'')" 2>/dev/null)
+    break
+  done
 fi
 
 # 2. 첨부파일 업로드

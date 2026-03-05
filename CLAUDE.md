@@ -104,7 +104,7 @@ The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스
 - `jira_download_attachments` - 첨부파일 다운로드
 - 첨부파일 **업로드**는 Jira REST API 직접 호출로 처리:
   `POST $JIRA_URL/rest/api/3/issue/<KEY>/attachments` (Basic Auth + X-Atlassian-Token: no-check)
-  자격증명은 환경변수(`JIRA_URL`, `JIRA_USERNAME`, `JIRA_API_TOKEN`) 또는 `.claude/settings.local.json`에서 읽음
+  자격증명 조회 순서: 환경변수 → `.mcp.json` (project) → `~/.claude.json` (global) → `.claude/settings.local.json` (legacy)
 
 **Sprint & Agile:**
 
