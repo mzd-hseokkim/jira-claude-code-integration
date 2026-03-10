@@ -89,7 +89,10 @@ if [ -z "$JIRA_URL" ]; then
   _proj='const p=Object.values(s.projects||{}).find(p=>p.mcpServers?.atlassian||p.mcpServers?.jira);const pm=p?(p.mcpServers.atlassian||p.mcpServers.jira):{};'
   _env='const e=(m.env&&m.env.JIRA_URL?m:pm).env||{}'
   _extract="${_top}${_proj}${_env}"
-  for _f in "${_root}/.mcp.json" "${HOME}/.claude.json" "${_root}/.claude/settings.local.json" "${HOME}/.claude/settings.json"; do
+  # $HOME(MSYS2: /c/Users/...)도, os.homedir()(Win: C:\Users\...)도
+  # Node.js require() 안에서 문제 발생 → 슬래시 변환 필수
+  _home=$(node -p "require('os').homedir().split(String.fromCharCode(92)).join('/')")
+  for _f in "${_root}/.mcp.json" "${_home}/.claude.json" "${_root}/.claude/settings.local.json" "${_home}/.claude/settings.json"; do
     [ -f "$_f" ] || continue
     JIRA_URL=$(node -e "const s=require('$_f');${_extract};console.log(e.JIRA_URL||'')" 2>/dev/null)
     [ -n "$JIRA_URL" ] || continue
