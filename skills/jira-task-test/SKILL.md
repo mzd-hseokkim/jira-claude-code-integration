@@ -197,15 +197,23 @@ Use `mcp__atlassian__jira_add_comment` to post the test summary:
 테스트 리포트와 실패 스크린샷을 Jira 이슈에 첨부파일로 업로드:
 
 ```bash
-# 1. 자격증명 확보 (환경변수 → .mcp.json → ~/.claude.json → .claude/settings.local.json)
+# 1. 자격증명 확보 (환경변수 → .mcp.json → ~/.claude.json → settings)
 JIRA_URL="${JIRA_URL:-}"
 JIRA_USERNAME="${JIRA_USERNAME:-}"
 JIRA_API_TOKEN="${JIRA_API_TOKEN:-}"
 
 if [ -z "$JIRA_URL" ]; then
   _root="$(git rev-parse --show-toplevel 2>/dev/null)"
-  _extract='const e=(s.mcpServers?.atlassian||s.mcpServers?.jira||{}).env||{}'
-  for _f in "${_root}/.mcp.json" "${HOME}/.claude.json" "${_root}/.claude/settings.local.json"; do
+  # worktree인 경우 .jira-context.json의 repoRoot 사용
+  if [ -f ".jira-context.json" ]; then
+    _ctx_root=$(node -e "try{console.log(require('./.jira-context.json').repoRoot||'')}catch{console.log('')}" 2>/dev/null)
+    [ -n "$_ctx_root" ] && _root="$_ctx_root"
+  fi
+  _top='const m=s.mcpServers?.atlassian||s.mcpServers?.jira||{};'
+  _proj='const p=Object.values(s.projects||{}).find(p=>p.mcpServers?.atlassian||p.mcpServers?.jira);const pm=p?(p.mcpServers.atlassian||p.mcpServers.jira):{};'
+  _env='const e=(m.env&&m.env.JIRA_URL?m:pm).env||{}'
+  _extract="${_top}${_proj}${_env}"
+  for _f in "${_root}/.mcp.json" "${HOME}/.claude.json" "${_root}/.claude/settings.local.json" "${HOME}/.claude/settings.json"; do
     [ -f "$_f" ] || continue
     JIRA_URL=$(node -e "const s=require('$_f');${_extract};console.log(e.JIRA_URL||'')" 2>/dev/null)
     [ -n "$JIRA_URL" ] || continue
