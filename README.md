@@ -2,7 +2,7 @@
 
 **[English]** | [한국어](#korean)
 
-[![Version](https://img.shields.io/badge/version-0.6.0-blue)](#)
+[![Version](https://img.shields.io/badge/version-0.9.0-blue)](#)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-orange)](https://docs.anthropic.com/en/docs/claude-code)
 [![MCP](https://img.shields.io/badge/MCP-mcp--atlassian-purple)](https://github.com/sooperset/mcp-atlassian)
@@ -23,6 +23,7 @@ Most Jira + AI tools stop at CRUD (read/create/update issues). This plugin autom
 | Auto Jira status transitions | ✅ | ✅ | manual |
 | Plan / Design / Test docs | ✅ | ❌ | ❌ |
 | Design-Impl gap analysis | ✅ | ❌ | ❌ |
+| Iterative review (auto-fix + retry) | ✅ | ❌ | ❌ |
 | Progress tracking across sessions | ✅ | ❌ | ❌ |
 
 ---
@@ -48,7 +49,7 @@ graph LR
     style AUTO fill:#7B2D8B,color:#fff
 ```
 
-> **Shortcut**: `/jira-task auto <ID>` runs `start → plan → design → impl → test → review` automatically, resuming from any already-completed step.
+> **Shortcut**: `/jira-task auto <ID>` runs `start → plan → design → impl → test → review` automatically. Each step runs as an isolated sub-agent, and already-completed steps are skipped. If review fails, it auto-fixes and retries (up to 2×).
 
 Each step automatically posts a comment and/or attachment to the Jira issue and transitions its status.
 
@@ -56,14 +57,18 @@ Each step automatically posts a comment and/or attachment to the Jira issue and 
 
 ## Key Features
 
-**Auto Mode** *(new in v0.6.0)*
-`/jira-task auto PROJ-123` runs the full `start → plan → design → impl → test → review` pipeline automatically. Already-completed steps are skipped based on `.jira-context.json`. Stops immediately on test failure or review rejection.
+**Auto Mode** *(v0.9.0)*
+`/jira-task auto PROJ-123` runs the full `start → plan → design → impl → test → review` pipeline automatically.
+- **Sub-agent isolation**: Each step runs as an independent sub-agent, preventing context pollution between stages.
+- **Iterative review**: When review finds issues (gap analysis or code quality), auto-fix → test → review retries up to 2 times before stopping.
+- **Smart resume**: Already-completed steps are skipped based on `.jira-context.json`.
+- **Scope boundary**: `merge`, `pr`, `done` are excluded (cross-worktree / externally visible actions require manual confirmation).
 
-**Interactive Setup Wizard** *(new in v0.6.0)*
+**Interactive Setup Wizard** *(v0.6.0)*
 `/jira setup` guides you through prerequisites (uv, Python 3.10+), credential collection, MCP server registration, and connection validation — no manual CLI commands needed.
 
-**Multi-Worktree Parallel Development**
-`/jira-task init 5` creates isolated git worktrees for each assigned task at once. Work on multiple issues simultaneously without context switching.
+**Multi-Worktree Parallel Development** *(v0.7.0)*
+`/jira-task init` supports three argument modes: count (`init 5` — bulk setup), issue key (`init PROJ-123` — sub-task analysis), or natural language (`init "auth 관련 작업"` — filtered search). Creates isolated git worktrees for each task.
 
 **Document Auto-generation**
 Generates `plan.md`, `design.md`, test reports, and review results — then immediately posts them as Jira attachments and comments. No copy-paste required.
@@ -200,8 +205,8 @@ claude
 |---|---|---|
 | `/jira` | anywhere | Connection status + help |
 | `/jira setup` | anywhere | **Interactive setup wizard** (prerequisites → credentials → MCP registration → validation) |
-| `/jira-task init [N]` | main repo | Fetch top N tasks + create worktrees |
-| `/jira-task auto <ID>` | worktree | **Auto-run full pipeline** (start → plan → design → impl → test → review) |
+| `/jira-task init [N\|KEY\|desc]` | main repo | Fetch tasks + create worktrees (count, issue key, or natural language) |
+| `/jira-task auto <ID>` | worktree | **Auto-run full pipeline** with sub-agent isolation + iterative review |
 | `/jira-task start [ID]` | worktree | Start task (branch, In Progress) |
 | `/jira-task plan [ID]` | worktree | Generate `docs/plan/<ID>.plan.md` |
 | `/jira-task design [ID]` | worktree | Generate `docs/design/<ID>.design.md` |
@@ -351,6 +356,9 @@ git worktree prune               # Clean stale worktree refs
 
 - [x] Interactive setup wizard: `/jira setup` *(v0.6.0)*
 - [x] Auto mode: `/jira-task auto` *(v0.6.0)*
+- [x] Init argument expansion: count, issue key, natural language *(v0.7.0)*
+- [x] Iterative review: auto-fix + test + review retry loop *(v0.8.0)*
+- [x] Sub-agent isolation: each auto step in independent context *(v0.9.0)*
 - [ ] Bitbucket Cloud + GitLab MR support for `/jira-task pr`
 - [ ] Jira Server / Data Center (Personal Access Token)
 - [ ] Sub-task auto-creation from design doc task breakdown
@@ -375,8 +383,8 @@ MIT
 
 ### 핵심 특징
 
-- `/jira-task init 5` 하나로 할당된 태스크 5개의 **git worktree 일괄 생성**
-- **Auto 모드** (`/jira-task auto PROJ-123`): `start → plan → design → impl → test → review` 자동 연쇄 실행, 완료된 단계 자동 스킵 *(v0.6.0)*
+- `/jira-task init` — 숫자(`init 5`), 이슈 키(`init PROJ-123`), 자연어(`init "인증 관련"`) 세 가지 모드로 **worktree 일괄 생성** *(v0.7.0)*
+- **Auto 모드** (`/jira-task auto PROJ-123`): 각 단계를 **독립 sub-agent**로 실행하여 컨텍스트 오염 방지. review 미통과 시 **자동 수정 → 재테스트 → 재리뷰** 최대 2회 반복 *(v0.9.0)*
 - **설정 위자드** (`/jira setup`): 사전 요건 확인 → 자격증명 입력 → MCP 등록 → 연결 검증 대화형 안내 *(v0.6.0)*
 - 기획 → 설계 → 구현 → 테스트 → 리뷰 → PR → 완료까지 **전 단계 커맨드화**
 - 각 단계 완료 시 **Jira 코멘트·첨부파일·상태 전이 자동 처리**
