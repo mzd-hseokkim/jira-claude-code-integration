@@ -94,10 +94,10 @@ Use `mcp__atlassian__jira_get_transitions` to fetch available transitions, then 
 entry 전체는 삭제하지 않고 `mcpServers` 키만 제거하여 Claude Code의 다른 메타데이터는 보존한다.
 
 ```bash
-WORKTREE_PATH="<worktreePath from .jira-context.json>" \
-  "$( { command -v python3; command -v python; } 2>/dev/null | grep -iv 'WindowsApps' | head -1 | tr -d '\r\n' )" << 'PYEOF'
-import json, os
+python - "<worktreePath from .jira-context.json>" << 'PYEOF'
+import json, os, sys
 
+worktree_path = sys.argv[1]
 claude_json_path = os.path.expanduser("~/.claude.json")
 with open(claude_json_path, "r", encoding="utf-8") as f:
     data = json.load(f)
@@ -105,12 +105,12 @@ with open(claude_json_path, "r", encoding="utf-8") as f:
 def norm(p):
     return p.replace("\\", "/").rstrip("/")
 
-worktree_path = norm(os.environ.get("WORKTREE_PATH", ""))
+wt = norm(worktree_path)
 projects = data.get("projects", {})
 
 matched_key = None
 for k in list(projects.keys()):
-    if norm(k) == worktree_path:
+    if norm(k) == wt:
         matched_key = k
         break
 
@@ -118,9 +118,9 @@ if matched_key and isinstance(projects[matched_key], dict):
     projects[matched_key].pop("mcpServers", None)
     with open(claude_json_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
-    print(f"MCP config removed from {worktree_path}")
+    print(f"MCP config removed from {wt}")
 else:
-    print(f"No entry found for {worktree_path}, skipping")
+    print(f"No entry found for {wt}, skipping")
 PYEOF
 ```
 

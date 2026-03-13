@@ -231,9 +231,11 @@ fi
 워크트리는 별도 경로라 MCP 설정이 자동 상속되지 않으므로 직접 주입해야 한다.
 
 ```bash
-REPO_ROOT="<REPO_ROOT 절대경로>" WORKTREE_PATH="<워크트리 절대경로>" \
-  "$( { command -v python3; command -v python; } 2>/dev/null | grep -iv "WindowsApps" | head -1 | tr -d '\r\n' )" << 'PYEOF'
+python - "<REPO_ROOT 절대경로>" "<워크트리 절대경로>" << 'PYEOF'
 import json, os, re, sys
+
+repo_root_arg = sys.argv[1]
+worktree_path_arg = sys.argv[2]
 
 claude_json_path = os.path.expanduser("~/.claude.json")
 with open(claude_json_path, "r", encoding="utf-8") as f:
@@ -241,17 +243,15 @@ with open(claude_json_path, "r", encoding="utf-8") as f:
 
 def norm(p):
     p = p.replace("\\", "/").rstrip("/")
-    # Convert Unix-style Windows drive path: /c/path → C:/path
     m = re.match(r'^/([a-zA-Z])(/.*)', p)
     if m:
         p = m.group(1).upper() + ':' + m.group(2)
     return p
 
 projects = data.setdefault("projects", {})
-repo_root = norm(os.environ.get("REPO_ROOT", ""))
-worktree_path = norm(os.environ.get("WORKTREE_PATH", ""))
+repo_root = norm(repo_root_arg)
+worktree_path = norm(worktree_path_arg)
 
-# 현재 프로젝트의 mcpServers 찾기
 mcp_servers = {}
 for k, v in projects.items():
     if isinstance(v, dict) and norm(k) == repo_root:
@@ -262,7 +262,6 @@ if not mcp_servers:
     print("No mcpServers in current project, skipping")
     sys.exit(0)
 
-# 워크트리 entry 업데이트 또는 생성
 matched = False
 for k in list(projects.keys()):
     if norm(k) == worktree_path:
@@ -281,10 +280,8 @@ print(f"MCP servers injected into {worktree_path}: {list(mcp_servers.keys())}")
 PYEOF
 ```
 
-- Python 탐지를 명령어 라인에 인라인으로 포함: `$( { command -v python3; command -v python; } | grep -iv WindowsApps | head -1 )` — `$_python3` 변수 불필요, 명령 분리 시에도 항상 올바른 Python을 탐지
 - `mcpServers`가 비어있거나 없으면 주입을 건너뜀 (오류 아님)
 - 경로 정규화: 백슬래시/슬래시 혼용 처리, 후행 슬래시 제거
-- Windows/Linux/macOS 공통: python3 → python 순 탐색, WindowsApps 스텁 자동 제외
 
 ### Step 6: Generate README for Each Worktree
 

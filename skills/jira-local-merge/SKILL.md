@@ -161,10 +161,10 @@ merge 충돌 발생 시 사용자에게 알리고 중단. 충돌 해결 후 재�
 `worktreePath`를 기준으로 `~/.claude.json`의 해당 entry에서 `mcpServers` 제거:
 
 ```bash
-WORKTREE_PATH="<worktreePath>" \
-  "$( { command -v python3; command -v python; } 2>/dev/null | grep -iv 'WindowsApps' | head -1 | tr -d '\r\n' )" << 'PYEOF'
-import json, os
+python - "<worktreePath>" << 'PYEOF'
+import json, os, sys
 
+worktree_path = sys.argv[1]
 claude_json_path = os.path.expanduser("~/.claude.json")
 with open(claude_json_path, "r", encoding="utf-8") as f:
     data = json.load(f)
@@ -172,12 +172,12 @@ with open(claude_json_path, "r", encoding="utf-8") as f:
 def norm(p):
     return p.replace("\\", "/").rstrip("/")
 
-worktree_path = norm(os.environ.get("WORKTREE_PATH", ""))
+wt = norm(worktree_path)
 projects = data.get("projects", {})
 
 matched_key = None
 for k in list(projects.keys()):
-    if norm(k) == worktree_path:
+    if norm(k) == wt:
         matched_key = k
         break
 
@@ -185,9 +185,9 @@ if matched_key and isinstance(projects[matched_key], dict):
     projects[matched_key].pop("mcpServers", None)
     with open(claude_json_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
-    print(f"MCP config removed from {worktree_path}")
+    print(f"MCP config removed from {wt}")
 else:
-    print(f"No entry found for {worktree_path}, skipping")
+    print(f"No entry found for {wt}, skipping")
 PYEOF
 ```
 
@@ -199,23 +199,26 @@ PYEOF
 - `mergedAt`에 현재 ISO 8601 타임스탬프 추가
 
 ```bash
-# repoRoot의 .jira-context.json도 동기화
-CONTEXT_FILE="<repoRoot>/.jira-context.json"
-if [ -f "$CONTEXT_FILE" ]; then
-  "$( { command -v python3; command -v python; } 2>/dev/null | grep -iv 'WindowsApps' | head -1 | tr -d '\r\n' )" -c "
-import json, datetime
-with open('$CONTEXT_FILE', 'r') as f:
+python - "<repoRoot>/.jira-context.json" << 'PYEOF'
+import json, datetime, os, sys
+
+ctx_file = sys.argv[1]
+if not os.path.isfile(ctx_file):
+    print(f"No context file at {ctx_file}, skipping")
+    sys.exit(0)
+
+with open(ctx_file, "r") as f:
     ctx = json.load(f)
-steps = ctx.get('completedSteps', [])
-if 'merge' not in steps:
-    steps.append('merge')
-ctx['completedSteps'] = steps
-ctx['status'] = 'In Review'
-ctx['mergedAt'] = datetime.datetime.now().isoformat()
-with open('$CONTEXT_FILE', 'w') as f:
+steps = ctx.get("completedSteps", [])
+if "merge" not in steps:
+    steps.append("merge")
+ctx["completedSteps"] = steps
+ctx["status"] = "In Review"
+ctx["mergedAt"] = datetime.datetime.now().isoformat()
+with open(ctx_file, "w") as f:
     json.dump(ctx, f, indent=2, ensure_ascii=False)
-"
-fi
+print(f"Context updated: {ctx_file}")
+PYEOF
 ```
 
 아래 형식으로 완료 요약 출력:

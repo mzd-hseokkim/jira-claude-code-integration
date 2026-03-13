@@ -47,6 +47,85 @@ git diff --name-only <base-branch>..feature/<TASK-ID>
 
 설계 문서가 없으면 이 단계를 스킵하고 코드 품질 리뷰만 수행.
 
+### Step 2.5: Lint & Format Check
+
+변경된 파일에 대해 프로젝트 타입을 감지하고 lint/format 체크를 실행한다.
+**대상 파일**: Step 1에서 `git diff --name-only`로 추출한 변경 파일 목록 중 해당 언어 파일만.
+
+#### 프로젝트 타입 감지
+
+프로젝트 루트의 설정 파일로 타입을 판별한다 (복수 해당 시 모두 실행):
+
+| 감지 파일 | 프로젝트 타입 | 대상 확장자 |
+|-----------|-------------|------------|
+| `package.json` | Node.js | `.js`, `.ts`, `.jsx`, `.tsx`, `.mjs`, `.cjs` |
+| `pyproject.toml`, `setup.py`, `requirements.txt` | Python | `.py` |
+| `pom.xml`, `build.gradle`, `build.gradle.kts` | Java/Kotlin | `.java`, `.kt`, `.kts` |
+
+#### 실행 규칙
+
+1. **변경 파일 필터링**: 해당 확장자를 가진 변경 파일이 없으면 해당 타입 스킵
+2. **도구 존재 확인**: `command -v` 또는 프로젝트 내 실행 스크립트 존재 여부로 판별. 도구가 없으면 경고 메시지 출력 후 스킵
+3. **기존 설정 우선**: 프로젝트에 `.eslintrc*`, `.prettierrc*`, `ruff.toml`, `pyproject.toml [tool.ruff]`, `checkstyle.xml` 등 설정 파일이 있으면 해당 설정을 사용
+4. **변경 파일만 대상**: 전체 프로젝트가 아닌 변경된 파일만 검사
+
+#### Node.js
+
+```bash
+# ESLint (lint 체크)
+CHANGED_JS=$(git diff --name-only <base-branch>..feature/<TASK-ID> -- '*.js' '*.ts' '*.jsx' '*.tsx' '*.mjs' '*.cjs')
+if [ -n "$CHANGED_JS" ]; then
+  npx eslint --no-error-on-unmatched-pattern $CHANGED_JS 2>&1 || true
+fi
+
+# Prettier (format 체크)
+if [ -n "$CHANGED_JS" ]; then
+  npx prettier --check $CHANGED_JS 2>&1 || true
+fi
+```
+
+#### Python
+
+```bash
+CHANGED_PY=$(git diff --name-only <base-branch>..feature/<TASK-ID> -- '*.py')
+if [ -n "$CHANGED_PY" ]; then
+  # ruff 우선, 없으면 flake8 시도
+  if command -v ruff &>/dev/null; then
+    ruff check $CHANGED_PY 2>&1 || true
+    ruff format --check $CHANGED_PY 2>&1 || true
+  elif command -v flake8 &>/dev/null; then
+    flake8 $CHANGED_PY 2>&1 || true
+  fi
+fi
+```
+
+#### Java/Kotlin
+
+```bash
+# Maven 프로젝트
+if [ -f "pom.xml" ]; then
+  ./mvnw checkstyle:check 2>&1 || true
+fi
+
+# Gradle 프로젝트
+if [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
+  ./gradlew checkstyleMain 2>&1 || true
+fi
+```
+
+#### 결과 정리
+
+실행 결과를 다음 형식으로 정리하여 Step 4 리포트에 포함:
+
+| 도구 | 대상 파일 수 | 결과 | 주요 이슈 |
+|------|------------|------|----------|
+| ESLint | <N>개 | Pass / <N> errors, <N> warnings | <요약> |
+| Prettier | <N>개 | Pass / <N> files unformatted | <파일 목록> |
+| ruff | <N>개 | Pass / <N> issues | <요약> |
+
+- lint/format 이슈가 있어도 리뷰를 중단하지 않는다 (정보로 포함)
+- Critical 수준의 lint 오류(미사용 import 수준이 아닌 실제 버그 가능성)는 Code Quality Findings의 Warning으로도 반영
+
 ### Step 3: Code Quality Review
 
 변경된 파일을 직접 읽고 다음을 검토:
@@ -60,6 +139,7 @@ git diff --name-only <base-branch>..feature/<TASK-ID>
 분석 결과를 통합하여 구조화된 리뷰 생성:
 - **Summary**: Overall assessment (Approve / Request Changes / Needs Discussion)
 - **Gap Analysis**: 설계-구현 매칭률 및 주요 차이
+- **Lint & Format**: 도구별 실행 결과 표 (Step 2.5 결과)
 - **Code Quality**: 이슈별 심각도 분류 (Critical / Warning / Info)
 - **Positive Notes**: 잘 된 점
 
@@ -128,6 +208,11 @@ Use `mcp__atlassian__jira_add_comment` to post the review:
 ### Gap Analysis
 **설계-구현 일치율**: <percentage>%
 - <차이점 또는 불일치 사항>
+
+### Lint & Format
+| 도구 | 대상 파일 수 | 결과 |
+|------|------------|------|
+| <tool> | <N>개 | Pass / <issues> |
 
 ### Code Quality Findings
 
