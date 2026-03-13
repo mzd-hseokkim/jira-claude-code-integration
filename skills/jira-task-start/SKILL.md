@@ -85,7 +85,7 @@ git worktree add -b "feature/<TASK-ID>" "$WORKTREE_BASE/<TASK-ID>" <base-branch>
 
 ### Step 4: Generate Task Context README
 
-Create a `README.md` in the worktree directory (or project root for branch) with:
+Create a `TASK-README.md` in the worktree directory (or project root for branch) with:
 
 ```markdown
 # <TASK-ID>: <Summary>
