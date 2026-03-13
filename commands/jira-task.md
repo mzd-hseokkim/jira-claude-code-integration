@@ -1,8 +1,8 @@
 ---
 name: jira-task
-description: Main workflow command for Jira-integrated development. Routes to specialized skills based on the action argument. Usage /jira-task [action] [TASK-ID]. Actions init, start, plan, design, impl, test, review, merge, pr, done, report, status. Triggers jira-task, jira task, init tasks, setup tasks, start task, begin task, implement task, test task, review task, create PR, complete task, task report, 현황 리포트, 작업 환경 세팅, 작업 시작, 구현 시작, 테스트 실행, 코드 리뷰, PR 만들어, 작업 완료
+description: Main workflow command for Jira-integrated development. Routes to specialized skills based on the action argument. Usage /jira-task [action] [TASK-ID]. Actions init, start, plan, design, impl, test, review, merge, pr, done, report, status, clean. Triggers jira-task, jira task, init tasks, setup tasks, start task, begin task, implement task, test task, review task, create PR, complete task, task report, clean worktree, 현황 리포트, 작업 환경 세팅, 작업 시작, 구현 시작, 테스트 실행, 코드 리뷰, PR 만들어, 작업 완료, 워크트리 정리
 user-invocable: true
-argument-hint: "[init|start|plan|design|impl|test|review|pr|merge|done|report|auto] [TASK-ID]"
+argument-hint: "[init|start|plan|design|impl|test|review|pr|merge|done|report|auto|clean] [TASK-ID]"
 allowed-tools:
   - Read
   - Write
@@ -22,7 +22,7 @@ Parse the user's argument to determine the action and task ID, then execute the 
 
 The argument format is: `[action] [TASK-ID]`
 
-- **action**: One of `init`, `start`, `plan`, `design`, `impl`, `test`, `review`, `pr`, `merge`, `done`, `report`, `status`, `auto`
+- **action**: One of `init`, `start`, `plan`, `design`, `impl`, `test`, `review`, `pr`, `merge`, `done`, `report`, `status`, `auto`, `clean`
 - **TASK-ID**: Jira issue key (e.g., `PROJ-123`). Optional — if omitted, auto-detect from context. Not required for `init`, `report`, `status`.
 
 If no action is provided, show the help text (same as `/jira` command).
@@ -86,6 +86,11 @@ Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-done", args: "
 Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-auto", args: "<TASK-ID>" })`
 
 `start → plan → design → impl → test → review`를 자동으로 연결하여 순차 실행. 이미 완료된 단계는 건너뜀. `merge/pr/done`은 포함하지 않음.
+
+### `clean [TASK-ID ...] | --all | --list`
+Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-clean", args: "<TASK-ID(s) 또는 --all 또는 --list>" })`
+
+Worktree와 branch를 정리한다. `--list`로 현황 조회, `--all`로 병합/완료된 것 일괄 정리.
 
 ### `report`
 Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-report", args: "" })`

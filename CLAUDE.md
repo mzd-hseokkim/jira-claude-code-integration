@@ -141,6 +141,7 @@ The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스
 - `/jira-local-merge <ID>` - [worktree에서] 로컬 병합 후 worktree 세션 종료
 - `/jira-task pr <ID>` - [메인 레포에서] Create pull request and link to Jira
 - `/jira-task done <ID>` - Complete task (transition, report)
+- `/jira-task clean <ID> [ID ...] | --all | --list` - [메인 레포에서] Worktree와 branch 정리
 - `/jira-task report` - Sprint progress report
 
 ### Conventions
