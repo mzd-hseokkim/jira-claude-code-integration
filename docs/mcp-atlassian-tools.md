@@ -68,7 +68,7 @@ MCP 서버: `atlassian` (패키지: [mcp-atlassian](https://github.com/sooperset
 | `jira_create_issue_link` | 이슈 간 링크 생성 | `link_type`, `inward_issue`, `outward_issue` |
 | `jira_remove_issue_link` | 이슈 링크 제거 | `link_id` |
 | `jira_link_to_epic` | 에픽에 이슈 연결 | `issue_key`, `epic_key` |
-| `jira_get_issue_link_types` | 링크 타입 목록 조회 | - |
+| `jira_get_link_types` | 링크 타입 목록 조회 (반환: `name`, `inward`, `outward`) | `name_filter` (optional) |
 
 ### 사용자/워크로그
 

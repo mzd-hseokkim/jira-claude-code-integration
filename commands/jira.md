@@ -44,6 +44,7 @@ Display the available workflow commands:
 | Command | Description |
 |---------|-------------|
 | `/jira setup` | Interactive setup wizard for Jira MCP server registration |
+| `/jira-task create [힌트]` | 신규 Jira 이슈를 대화형으로 생성 (서브태스크/의존성/에픽 연결 포함) |
 | `/jira-task init [N]` | Fetch my top N assigned tasks and create worktrees for each |
 | `/jira-task auto <TASK-ID>` | Auto-execute full workflow (start → plan → design → impl → test → review) |
 | `/jira-task start <TASK-ID>` | Start working on a task (fetch context, create branch, transition to In Progress) |

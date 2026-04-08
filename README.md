@@ -2,7 +2,7 @@
 
 **[English]** | [한국어](#korean)
 
-[![Version](https://img.shields.io/badge/version-0.9.0-blue)](#)
+[![Version](https://img.shields.io/badge/version-0.12.0-blue)](#)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-orange)](https://docs.anthropic.com/en/docs/claude-code)
 [![MCP](https://img.shields.io/badge/MCP-mcp--atlassian-purple)](https://github.com/sooperset/mcp-atlassian)
@@ -32,7 +32,8 @@ Most Jira + AI tools stop at CRUD (read/create/update issues). This plugin autom
 
 ```mermaid
 graph LR
-    A["/jira-task init\nBatch worktree setup"] --> B["/jira-task start\nIn Progress"]
+    N["/jira-task create\nNew issue + sub-tasks"] -.-> A["/jira-task init\nBatch worktree setup"]
+    A --> B["/jira-task start\nIn Progress"]
     B --> C["/jira-task plan\nPlanning doc"]
     C --> D["/jira-task design\nDesign doc"]
     D --> E["/jira-task impl\nImplement"]
@@ -44,6 +45,7 @@ graph LR
 
     AUTO["⚡ /jira-task auto\nstart→review (auto)"]
 
+    style N fill:#8B4513,color:#fff
     style A fill:#2B50D4,color:#fff
     style J fill:#156030,color:#fff
     style AUTO fill:#7B2D8B,color:#fff
@@ -56,6 +58,12 @@ Each step automatically posts a comment and/or attachment to the Jira issue and 
 ---
 
 ## Key Features
+
+**Interactive Issue Creation** *(v0.12.0)*
+`/jira-task create [hint]` registers a brand-new Jira issue from conversation context. If context is thin, it asks a few batched questions; if the scope warrants it, it proposes a sub-task breakdown (with `Blocks` links for dependencies so downstream `init` can auto-detect ready-to-start sub-tasks). Supports linking to an existing epic.
+- **No raw `jira_create_issue` footguns**: the skill encodes the exact `mcp-atlassian` schema (e.g. `additional_fields` is a JSON string, `parent` is a bare key, `priority` is `{"name": "..."}`, `components` is a CSV string, `assignee` must be top-level).
+- **Auto sub-task decision**: the skill judges whether to split based on scope; no flag needed.
+- **Silent-skip guard**: re-fetches created issues to verify priority/labels actually landed (unknown `additional_fields` keys are otherwise dropped with only a warning).
 
 **Auto Mode** *(v0.9.0)*
 `/jira-task auto PROJ-123` runs the full `start → plan → design → impl → test → review` pipeline automatically.
@@ -118,7 +126,10 @@ claude mcp add atlassian \
 claude
 > /jira
 
-# 4. Fetch your top tasks and set up worktrees
+# 4a. (Optional) Create a brand-new issue interactively
+> /jira-task create auth 모듈에 OTP 2차 인증 추가    # → parent + sub-tasks + Blocks links
+
+# 4b. Fetch your top tasks and set up worktrees
 > /jira-task init 5
 
 # 5a. Auto mode — run the full pipeline in one command
@@ -205,6 +216,7 @@ claude
 |---|---|---|
 | `/jira` | anywhere | Connection status + help |
 | `/jira setup` | anywhere | **Interactive setup wizard** (prerequisites → credentials → MCP registration → validation) |
+| `/jira-task create [hint]` | anywhere | **Interactively create a new Jira issue** with optional sub-tasks, dependency links, and epic linking |
 | `/jira-task init [N\|KEY\|desc]` | main repo | Fetch tasks + create worktrees (count, issue key, or natural language) |
 | `/jira-task auto <ID>` | worktree | **Auto-run full pipeline** with sub-agent isolation + iterative review |
 | `/jira-task start [ID]` | worktree | Start task (branch, In Progress) |
@@ -383,6 +395,7 @@ MIT
 
 ### 핵심 특징
 
+- **`/jira-task create [힌트]`** — 대화 컨텍스트 기반으로 **신규 Jira 이슈를 대화형 생성**. 범위가 크면 서브태스크 분해를 스킬이 직접 제안하고, 의존성은 `Blocks` 링크로 등록되어 이후 `init`의 "착수 가능 분석"과 자연 연동. 기존 에픽 연결 지원. `mcp-atlassian`의 `jira_create_issue` 필드 규약(JSON string `additional_fields`, bare-key `parent`, CSV `components` 등)을 스킬에 박아 반복 실패 방지 *(v0.12.0)*
 - `/jira-task init` — 숫자(`init 5`), 이슈 키(`init PROJ-123`), 자연어(`init "인증 관련"`) 세 가지 모드로 **worktree 일괄 생성** *(v0.7.0)*
 - **Auto 모드** (`/jira-task auto PROJ-123`): 각 단계를 **독립 sub-agent**로 실행하여 컨텍스트 오염 방지. review 미통과 시 **자동 수정 → 재테스트 → 재리뷰** 최대 2회 반복 *(v0.9.0)*
 - **설정 위자드** (`/jira setup`): 사전 요건 확인 → 자격증명 입력 → MCP 등록 → 연결 검증 대화형 안내 *(v0.6.0)*
