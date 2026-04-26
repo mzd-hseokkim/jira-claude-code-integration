@@ -24,6 +24,7 @@ Thumbs.db
 
 # Local state
 .jira-context.json
+TASK-README.md
 .claude/
 
 # MCP server (if cloned locally)
