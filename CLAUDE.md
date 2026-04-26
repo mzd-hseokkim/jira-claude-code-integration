@@ -174,7 +174,7 @@ The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스
 }
 ```
 
-유효한 단계: `init`, `start`, `plan`, `design`, `impl`, `test`, `review`, `merge`, `pr`, `done`
+유효한 단계: `discover`, `create`, `init`, `start`, `plan`, `design`, `impl`, `test`, `review`, `merge`, `pr`, `done`
 
 규칙:
 

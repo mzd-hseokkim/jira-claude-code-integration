@@ -86,7 +86,7 @@ function main() {
   const lines = [];
 
   lines.push('Jira integration plugin active. Use /jira to check connection status.');
-  lines.push('Available commands: /jira [setup] (status/wizard), /jira-task [init|start|plan|design|impl|test|review|pr|done|report|status|auto] <TASK-ID>');
+  lines.push('Available commands: /jira [setup] (status/wizard), /jira-task [discover|create|init|start|plan|design|impl|test|review|pr|done|report|status|auto] <TASK-ID>');
 
   // Check for active task context
   const contextPath = path.join(process.cwd(), '.jira-context.json');
@@ -101,7 +101,7 @@ function main() {
         lines.push(`Status: ${context.status || 'In Progress'}`);
 
         // Show workflow progress
-        const steps = ['init', 'start', 'plan', 'design', 'impl', 'test', 'review', 'pr', 'done'];
+        const steps = ['discover', 'create', 'init', 'start', 'plan', 'design', 'impl', 'test', 'review', 'pr', 'done'];
         const completed = context.completedSteps || [];
         const progress = steps.map(s => completed.includes(s) ? `${s} ✓` : s).join(' → ');
         lines.push(`Progress: ${progress}`);
@@ -129,6 +129,7 @@ function main() {
 
         // Suggest next step based on completedSteps
         const nextStepMap = {
+          discover: 'create', create: 'init',
           init: 'start', start: 'plan', plan: 'design', design: 'impl',
           impl: 'test', test: 'review', review: 'pr', pr: 'done'
         };
