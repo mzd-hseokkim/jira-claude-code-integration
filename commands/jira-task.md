@@ -1,8 +1,8 @@
 ---
 name: jira-task
-description: Main workflow command for Jira-integrated development. Routes to specialized skills based on the action argument. Usage /jira-task [action] [TASK-ID]. Actions create, init, start, plan, design, impl, test, review, merge, pr, done, report, status, clean. Triggers jira-task, jira task, create task, new task, init tasks, setup tasks, start task, begin task, implement task, test task, review task, create PR, complete task, task report, clean worktree, 태스크 생성, 이슈 등록, 현황 리포트, 작업 환경 세팅, 작업 시작, 구현 시작, 테스트 실행, 코드 리뷰, PR 만들어, 작업 완료, 워크트리 정리
+description: Main workflow command for Jira-integrated development. Routes to specialized skills based on the action argument. Usage /jira-task [action] [TASK-ID]. Actions create, discover, init, start, plan, design, impl, test, review, merge, pr, done, report, status, clean. Triggers jira-task, jira task, create task, new task, discover requirements, init tasks, setup tasks, start task, begin task, implement task, test task, review task, create PR, complete task, task report, clean worktree, 태스크 생성, 이슈 등록, 요구사항 수집, 현황 리포트, 작업 환경 세팅, 작업 시작, 구현 시작, 테스트 실행, 코드 리뷰, PR 만들어, 작업 완료, 워크트리 정리
 user-invocable: true
-argument-hint: "[create|init|start|plan|design|impl|test|review|pr|merge|done|report|auto|clean] [TASK-ID 또는 힌트]"
+argument-hint: "[create|discover|init|start|plan|design|impl|test|review|pr|merge|done|report|auto|clean] [TASK-ID 또는 힌트/주제]"
 allowed-tools:
   - Read
   - Write
@@ -22,9 +22,10 @@ Parse the user's argument to determine the action and task ID, then execute the 
 
 The argument format is: `[action] [TASK-ID 또는 힌트]`
 
-- **action**: One of `create`, `init`, `start`, `plan`, `design`, `impl`, `test`, `review`, `pr`, `merge`, `done`, `report`, `status`, `auto`, `clean`
-- **TASK-ID**: Jira issue key (e.g., `PROJ-123`). Optional — if omitted, auto-detect from context. Not required for `create`, `init`, `report`, `status`.
+- **action**: One of `create`, `discover`, `init`, `start`, `plan`, `design`, `impl`, `test`, `review`, `pr`, `merge`, `done`, `report`, `status`, `auto`, `clean`
+- **TASK-ID**: Jira issue key (e.g., `PROJ-123`). Optional — if omitted, auto-detect from context. Not required for `create`, `discover`, `init`, `report`, `status`.
 - For `create`, any text after the action is treated as an initial hint (자연어 설명) and passed to the skill as-is.
+- For `discover`, any text after the action (자연어 주제) 및 `--lite`, `--from <파일경로>` 등의 플래그는 원문 그대로 스킬에 위임된다.
 
 If no action is provided, show the help text (same as `/jira` command).
 
@@ -56,6 +57,19 @@ Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-create", args:
 - `create auth 모듈에 OTP 2차 인증 붙이기` → args: `"auth 모듈에 OTP 2차 인증 붙이기"`
 
 서브태스크 분해 여부는 스킬이 자동 판단한다 (별도 플래그 없음).
+
+### `discover [자연어 주제] [--lite] [--from <파일경로>]`
+
+**강제 규칙**: `discover` 키워드가 감지되면 **반드시** 아래 Skill 도구를 호출한다. Claude가 직접 코드베이스를 탐색하거나 요구사항 문서를 작성하는 것을 금지한다 — 질문 패턴/문서 템플릿/문서 경로 규약을 박아둔 스킬을 통해서만 처리한다.
+
+Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-discover", args: "<사용자가 입력한 discover 이후의 전체 인자를 그대로 전달>" })`
+
+인자 예시:
+- `discover 사용자 알림 시스템` → args: `"사용자 알림 시스템"`
+- `discover "결제 모듈 리뉴얼" --lite` → args: `"\"결제 모듈 리뉴얼\" --lite"`
+- `discover --from docs/raw/req.md` → args: `"--from docs/raw/req.md"`
+
+자연어 주제가 비어 있어도 그대로 위임한다 — 스킬 Step 0에서 사용자에게 재입력을 요청한다.
 
 ### `init [count | ISSUE-KEY | 자연어설명]`
 
