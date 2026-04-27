@@ -37,8 +37,7 @@ git branch --list "feature/<TASK-ID>"
 
 ### Step 2: Fetch Current Issue Status
 
-Use `mcp__atlassian__jira_get_issue` to confirm the issue exists and check its current status.
-- **Context optimization**: `fields="summary,status,issuetype,assignee"`, `comment_limit=0`
+**Cache-first**: `.jira-context.json`의 `cachedIssue`를 먼저 확인 (CLAUDE.md "Issue Cache" 참고). hit이면 호출 생략하고 캐시된 `status`만 사용. miss이면 `mcp__atlassian__jira_get_issue` 호출 (`fields="summary,status,issuetype,assignee"`, `comment_limit=0`) 후 cache 갱신. **단 done 단계는 상태 전이 직전이므로 사용자가 신선도가 의심되면 cache 무시하고 재조회할 수 있음**.
 
 ### Step 3: Summarize Changes
 

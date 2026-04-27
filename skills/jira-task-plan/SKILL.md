@@ -28,8 +28,9 @@ allowed-tools:
 - `jira_search`: `fields="summary,status,issuetype,priority"`, `limit=20` (description 제외, 결과는 요약 카드 용도)
 
 1. Use `mcp__atlassian__jira_get_issue` to fetch the issue details (위 fields/comment_limit 사용)
-2. If the issue has a parent epic, fetch the epic details too (동일 fields 사용; epic 본문은 description만 추가로 필요하면 별도 호출)
-3. Use `mcp__atlassian__jira_search` with JQL to find related issues.
+2. **이슈 결과를 `.jira-context.json`의 `cachedIssue`에 저장** (후속 단계에서 재호출 회피용 — `cachedIssue: { key, summary, status, description, issuetype, priority, assignee, parent, labels, components, fetchedAt }`)
+3. If the issue has a parent epic, fetch the epic details too (동일 fields 사용; epic 본문은 description만 추가로 필요하면 별도 호출)
+4. Use `mcp__atlassian__jira_search` with JQL to find related issues.
    **JIRA_DEFAULT_PROJECT가 설정되어 있으면 모든 JQL에 `project = <JIRA_DEFAULT_PROJECT>` 조건을 반드시 포함:**
    - Same epic: `project = <JIRA_DEFAULT_PROJECT> AND "Epic Link" = <epic-key>`
    - Same component: `project = <JIRA_DEFAULT_PROJECT> AND component = <component>`

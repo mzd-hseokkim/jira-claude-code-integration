@@ -26,7 +26,7 @@ allowed-tools:
 
 ### Context Optimization
 
-이 스킬에서 `mcp__atlassian__jira_get_issue`를 호출하는 경우 다음 파라미터를 사용한다 (테스트 실행/리포트가 주이므로 이슈 메타만 필요):
+이 스킬에서 `mcp__atlassian__jira_get_issue`를 호출해야 하면 먼저 `.jira-context.json`의 `cachedIssue`를 확인한다 (CLAUDE.md "Issue Cache" 참고). hit이면 호출 생략. miss이면 다음 파라미터로 호출 후 cache 갱신:
 - `fields="summary,status,issuetype"`
 - `comment_limit=0`
 

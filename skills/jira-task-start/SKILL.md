@@ -34,6 +34,8 @@ Use `mcp__atlassian__jira_get_issue` with the provided TASK-ID.
 - `fields="summary,status,priority,assignee,issuetype,description,subtasks,issuelinks"`
 - `comment_limit=0` (start 단계에서는 코멘트 이력 불필요)
 
+호출 후 결과를 `.jira-context.json`의 `cachedIssue`에 저장한다 (CLAUDE.md "Issue Cache" 참고 — 후속 단계가 재조회를 생략할 수 있게).
+
 Display to the user:
 - **Key**: Issue key
 - **Summary**: Issue title
@@ -126,7 +128,17 @@ worktree 디렉토리와 원본 레포 양쪽에 저장:
   "startedAt": "<ISO 8601 timestamp>",
   "summary": "<issue summary>",
   "status": "In Progress",
-  "completedSteps": ["start"]
+  "completedSteps": ["start"],
+  "cachedIssue": {
+    "key": "<TASK-ID>",
+    "summary": "<...>",
+    "status": "<...>",
+    "priority": "<...>",
+    "assignee": "<...>",
+    "issuetype": "<...>",
+    "description": "<...>",
+    "fetchedAt": "<ISO 8601 timestamp>"
+  }
 }
 ```
 

@@ -30,9 +30,8 @@ allowed-tools:
 ### Step 1: Gather Context
 
 1. `.jira-context.json`에서 활성 태스크 정보 읽기
-2. `mcp__atlassian__jira_get_issue`로 이슈 상세 조회
-   - **Context optimization**: `fields="summary,status,description,issuetype,labels"`, `comment_limit=0` (PR 본문 생성에 필요한 항목만)
-3. **Jira 호스트 URL 추출**: `get-issue` 응답의 `self` 필드(예: `https://company.atlassian.net/rest/api/...`)에서 호스트 부분을 추출하여 Jira 이슈 링크 생성에 사용. 예: `https://company.atlassian.net/browse/<TASK-ID>`
+2. **Cache-first**: `.jira-context.json`의 `cachedIssue` 확인 (CLAUDE.md "Issue Cache" 참고). hit이면 호출 생략 후 캐시된 description/issuetype을 PR 본문 생성에 사용. miss이면 `mcp__atlassian__jira_get_issue` 호출 (`fields="summary,status,description,issuetype,labels"`, `comment_limit=0` — PR 본문 생성에 필요한 항목만) 후 cache 갱신.
+3. **Jira 호스트 URL 추출**: `get-issue` 응답의 `self` 필드(예: `https://company.atlassian.net/rest/api/...`)에서 호스트 부분을 추출하여 Jira 이슈 링크 생성에 사용. 예: `https://company.atlassian.net/browse/<TASK-ID>`. cache hit이라 신선한 응답이 없으면 `JIRA_URL` 환경변수에서 추출하거나 `.mcp.json`의 `JIRA_URL`을 fallback으로 사용.
 4. Base branch 확인:
    ```bash
    git rev-parse --abbrev-ref HEAD  # 현재 브랜치 확인

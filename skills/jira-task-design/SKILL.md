@@ -24,8 +24,7 @@ allowed-tools:
 1. Check if `docs/plan/<TASK-ID>.plan.md` exists
    - If yes, read it for context
    - If no, suggest running `/jira-task plan <TASK-ID>` first (but proceed if user wants)
-2. Use `mcp__atlassian__jira_get_issue` to fetch current issue details
-   - **Context optimization**: `fields="summary,status,description,labels,issuetype,parent"`, `comment_limit=0`
+2. **Cache-first**: `.jira-context.json`의 `cachedIssue`를 먼저 확인 (CLAUDE.md "Issue Cache" 참고). hit이면 호출 생략. miss이면 `mcp__atlassian__jira_get_issue` 호출 (`fields="summary,status,description,labels,issuetype,parent"`, `comment_limit=0`) 후 결과를 `cachedIssue`에 갱신.
 
 ### Step 2: Analyze Codebase
 
