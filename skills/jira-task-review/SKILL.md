@@ -216,7 +216,7 @@ Approve 시 `.jira-context.json`의 `completedSteps`에 `"review"` 추가 (Reque
 
 **Progress**: init → start → plan → design → impl → test → **review ✓** → merge → pr → done
 
-**Next**: `/jira-local-merge <TASK-ID>` — 로컬 병합 후, 메인 레포에서 `/jira-task pr <TASK-ID>`
+**Next**: `/jira-task merge <TASK-ID>` — 로컬 병합 후, 메인 레포에서 `/jira-task pr <TASK-ID>`
 ---
 ```
 

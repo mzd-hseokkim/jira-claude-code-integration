@@ -141,7 +141,7 @@ The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스
 - `/jira-task impl <ID>` - Implement based on design document
 - `/jira-task test <ID>` - Run tests (Playwright E2E, unit) and report to Jira
 - `/jira-task review <ID>` - Code review with Jira reporting
-- `/jira-local-merge <ID>` - [worktree에서] 로컬 병합 후 worktree 세션 종료
+- `/jira-task merge <ID>` - [worktree에서] 로컬 병합 후 worktree 세션 종료
 - `/jira-task pr <ID>` - [메인 레포에서] Create pull request and link to Jira
 - `/jira-task done <ID>` - Complete task (transition, report)
 - `/jira-task clean <ID> [ID ...] | --all | --list` - [메인 레포에서] Worktree와 branch 정리

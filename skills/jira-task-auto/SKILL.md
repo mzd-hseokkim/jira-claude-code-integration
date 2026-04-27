@@ -158,7 +158,7 @@ review를 제외한 단계 실패 시 즉시 중단하고 안내:
 ✅ 완료된 단계: start → plan → design → impl → test → review
 
 **다음 단계** (수동 실행 필요):
-- merge: `/jira-local-merge <TASK-ID>` — worktree에서 로컬 병합
+- merge: `/jira-task merge <TASK-ID>` — worktree에서 로컬 병합
 - pr:    `/jira-task pr <TASK-ID>`    — Pull Request 생성
 - done:  `/jira-task done <TASK-ID>`  — 작업 완료 처리
 ─────────────────────────────────────────

@@ -20,7 +20,7 @@ allowed-tools:
 
 ## Prerequisites
 - **메인 레포에서 실행**: worktree가 아닌 원본 레포 디렉토리에서 실행해야 함
-- `jira-local-merge`가 먼저 완료되어야 함 (feature 브랜치가 로컬 base에 병합된 상태)
+- `/jira-task merge`가 먼저 완료되어야 함 (feature 브랜치가 로컬 base에 병합된 상태)
 - `gh` CLI 설치 및 인증됨 (`gh auth status`로 확인)
 - Feature branch `feature/<TASK-ID>`에 커밋이 있어야 함
 - Remote에 push 되어 있어야 함
