@@ -44,6 +44,16 @@ Plan 문서 + 코드베이스 분석 결과를 기반으로 `docs/design/<TASK-I
 
 문서에 포함할 내용:
 - **Architecture**: 관련 컴포넌트/모듈 구조
+- **Data Model**: 데이터 모델링 합의 (엔티티 / 스키마 / DTO / 도메인 / 상태 / 흐름)
+  - 권장 하위 항목 6종 (모두 **해당 시 (applicable when)** 채움 — 권장(recommended)이며 강제 아님):
+    1. **새/변경되는 엔티티**: 속성 · 타입 · 제약 · 관계
+    2. **DB 스키마**: 테이블 / 컬럼 / 인덱스 / FK / 마이그레이션 전략
+    3. **API 페이로드**: 요청 / 응답 DTO 구조 (시그니처 수준)
+    4. **도메인 객체**: 핵심 entity / value object 구조 (이름과 역할)
+    5. **상태 모델**: 상태 전이 다이어그램 (Mermaid `stateDiagram` 권장)
+    6. **데이터 흐름**: source → transform → sink (in-memory 캐시/세션 포함)
+  - **코드 작성 금지**: 실제 코드 스니펫·구현체를 포함하지 않음 (Implementation Plan과 동일). 시그니처 수준의 명세만 허용
+  - 데이터 변경이 전혀 없는 task는 **`N/A — no data changes`** 한 줄로 처리 가능
 - **Sequence Diagram**: 주요 플로우 (Mermaid 형식)
 - **Implementation Plan**: 구현 순서와 파일별 변경 사항 요약
   - 각 파일에 대해 "무엇을 변경하는지"를 1-2줄로 기술 (예: "인증 미들웨어 추가", "API 엔드포인트 정의")
