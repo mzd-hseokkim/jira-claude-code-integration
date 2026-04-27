@@ -1,0 +1,9 @@
+{
+  "name": "jira-claude-code-integration",
+  "private": true,
+  "scripts": {
+    "test:unit": "node --test hooks/scripts/phase-gate.test.js",
+    "test:scenarios": "node hooks/scripts/phase-gate.scenarios.test.js",
+    "test": "npm run test:unit && npm run test:scenarios"
+  }
+}
