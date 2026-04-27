@@ -147,6 +147,17 @@ The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스
 ### Conventions
 
 - **Language Rule (모든 `/jira-task` 스킬 공통)**: 이 플러그인의 모든 스킬에서 생성되는 출력은 한국어로 작성한다. 사용자 응답, 생성 문서, Jira 코멘트 내용 모두 대상이다. 예외: 코드, 변수명, 브랜치명, 파일명, 명령어는 영어 유지. Jira 코멘트의 섹션 제목(##, ###)은 영어, 내용은 한국어.
+- **Jira Attach Script** (plan/design/test/review 공통): Jira 첨부 업로드는 `scripts/jira-attach.sh`(공용)로 처리. 스킬은 사용자 프로젝트(워크트리 포함)에서 실행되므로 cwd에 스크립트가 없다. 호출 직전 아래 한 번으로 경로를 결정하고 환경변수에 담는다.
+  ```bash
+  # 1) cwd, 2) repoRoot(.jira-context.json), 3) 플러그인 설치 경로 순으로 탐색
+  JIRA_ATTACH_SH=""
+  for c in "scripts/jira-attach.sh" \
+           "$(node -e "try{console.log(require('./.jira-context.json').repoRoot)}catch{}" 2>/dev/null)/scripts/jira-attach.sh" \
+           $(find "$HOME/.claude" -name jira-attach.sh -type f 2>/dev/null | head -1); do
+    [ -n "$c" ] && [ -f "$c" ] && JIRA_ATTACH_SH="$c" && break
+  done
+  ```
+  찾지 못하면 사용자에게 안내하고 첨부 업로드는 스킵, 워크플로는 계속 진행.
 - When posting comments to Jira, use markdown format.
 - Always fetch issue details before transitioning status.
 - Use `jira_get_transitions`로 전환 목록 조회 후 `jira_transition_issue`에 **transitionId**를 전달.

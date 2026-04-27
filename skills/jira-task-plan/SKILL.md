@@ -113,49 +113,13 @@ Use `mcp__atlassian__jira_add_comment` to post a brief summary:
 
 ### Step 4.5: Attach Plan Document to Jira
 
-생성한 `docs/plan/<TASK-ID>.plan.md`를 Jira 이슈에 첨부파일로 업로드:
+생성한 `docs/plan/<TASK-ID>.plan.md`를 공용 스크립트로 첨부 업로드 (스크립트 위치는 프로젝트 CLAUDE.md의 "Jira Attach Script" 섹션 참고):
 
 ```bash
-# 1. 자격증명 확보 (환경변수 → .mcp.json → ~/.claude.json → settings)
-JIRA_URL="${JIRA_URL:-}"
-JIRA_USERNAME="${JIRA_USERNAME:-}"
-JIRA_API_TOKEN="${JIRA_API_TOKEN:-}"
-
-if [ -z "$JIRA_URL" ]; then
-  _root="$(git rev-parse --show-toplevel 2>/dev/null)"
-  # worktree인 경우 .jira-context.json의 repoRoot 사용
-  if [ -f ".jira-context.json" ]; then
-    _ctx_root=$(node -e "try{console.log(require('./.jira-context.json').repoRoot||'')}catch{console.log('')}" 2>/dev/null)
-    [ -n "$_ctx_root" ] && _root="$_ctx_root"
-  fi
-  _top='const m=s.mcpServers?.atlassian||s.mcpServers?.jira||{};'
-  _proj='const p=Object.values(s.projects||{}).find(p=>p.mcpServers?.atlassian||p.mcpServers?.jira);const pm=p?(p.mcpServers.atlassian||p.mcpServers.jira):{};'
-  _env='const e=(m.env&&m.env.JIRA_URL?m:pm).env||{}'
-  _extract="${_top}${_proj}${_env}"
-  # $HOME(MSYS2: /c/Users/...)도, os.homedir()(Win: C:\Users\...)도
-  # Node.js require() 안에서 문제 발생 → 슬래시 변환 필수
-  _home=$(node -p "require('os').homedir().split(String.fromCharCode(92)).join('/')")
-  for _f in "${_root}/.mcp.json" "${_home}/.claude.json" "${_root}/.claude/settings.local.json" "${_home}/.claude/settings.json"; do
-    [ -f "$_f" ] || continue
-    JIRA_URL=$(node -e "const s=require('$_f');${_extract};console.log(e.JIRA_URL||'')" 2>/dev/null)
-    [ -n "$JIRA_URL" ] || continue
-    JIRA_USERNAME=$(node -e "const s=require('$_f');${_extract};console.log(e.JIRA_USERNAME||'')" 2>/dev/null)
-    JIRA_API_TOKEN=$(node -e "const s=require('$_f');${_extract};console.log(e.JIRA_API_TOKEN||'')" 2>/dev/null)
-    break
-  done
-fi
-
-# 2. 첨부파일 업로드
-AUTH=$(printf '%s:%s' "$JIRA_USERNAME" "$JIRA_API_TOKEN" | base64 | tr -d '\n')
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
-  -H "Authorization: Basic $AUTH" \
-  -H "X-Atlassian-Token: no-check" \
-  -F "file=@docs/plan/<TASK-ID>.plan.md" \
-  "${JIRA_URL}/rest/api/3/issue/<TASK-ID>/attachments")
+bash "$JIRA_ATTACH_SH" <TASK-ID> docs/plan/<TASK-ID>.plan.md
 ```
 
-- HTTP 200: 첨부 성공
-- 그 외: 업로드 실패를 사용자에게 알리고 계속 진행 (로컬 파일 경로 안내)
+출력은 `HTTP 200: <file>` (성공) / 그 외면 실패. 실패 시 로컬 파일 경로 안내 후 계속 진행.
 
 ### Step 5: Completion Summary
 

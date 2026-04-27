@@ -189,59 +189,18 @@ Use `mcp__atlassian__jira_add_comment` to post the test summary:
 전체 리포트: docs/test/<TASK-ID>.test-report.md
 ```
 
-테스트 리포트와 실패 스크린샷을 Jira 이슈에 첨부파일로 업로드:
+테스트 리포트와 실패 스크린샷을 공용 스크립트로 첨부 업로드 (스크립트 위치는 프로젝트 CLAUDE.md의 "Jira Attach Script" 섹션 참고):
 
 ```bash
-# 1. 자격증명 확보 (환경변수 → .mcp.json → ~/.claude.json → settings)
-JIRA_URL="${JIRA_URL:-}"
-JIRA_USERNAME="${JIRA_USERNAME:-}"
-JIRA_API_TOKEN="${JIRA_API_TOKEN:-}"
+# 리포트
+bash "$JIRA_ATTACH_SH" <TASK-ID> docs/test/<TASK-ID>.test-report.md
 
-if [ -z "$JIRA_URL" ]; then
-  _root="$(git rev-parse --show-toplevel 2>/dev/null)"
-  # worktree인 경우 .jira-context.json의 repoRoot 사용
-  if [ -f ".jira-context.json" ]; then
-    _ctx_root=$(node -e "try{console.log(require('./.jira-context.json').repoRoot||'')}catch{console.log('')}" 2>/dev/null)
-    [ -n "$_ctx_root" ] && _root="$_ctx_root"
-  fi
-  _top='const m=s.mcpServers?.atlassian||s.mcpServers?.jira||{};'
-  _proj='const p=Object.values(s.projects||{}).find(p=>p.mcpServers?.atlassian||p.mcpServers?.jira);const pm=p?(p.mcpServers.atlassian||p.mcpServers.jira):{};'
-  _env='const e=(m.env&&m.env.JIRA_URL?m:pm).env||{}'
-  _extract="${_top}${_proj}${_env}"
-  # $HOME(MSYS2: /c/Users/...)도, os.homedir()(Win: C:\Users\...)도
-  # Node.js require() 안에서 문제 발생 → 슬래시 변환 필수
-  _home=$(node -p "require('os').homedir().split(String.fromCharCode(92)).join('/')")
-  for _f in "${_root}/.mcp.json" "${_home}/.claude.json" "${_root}/.claude/settings.local.json" "${_home}/.claude/settings.json"; do
-    [ -f "$_f" ] || continue
-    JIRA_URL=$(node -e "const s=require('$_f');${_extract};console.log(e.JIRA_URL||'')" 2>/dev/null)
-    [ -n "$JIRA_URL" ] || continue
-    JIRA_USERNAME=$(node -e "const s=require('$_f');${_extract};console.log(e.JIRA_USERNAME||'')" 2>/dev/null)
-    JIRA_API_TOKEN=$(node -e "const s=require('$_f');${_extract};console.log(e.JIRA_API_TOKEN||'')" 2>/dev/null)
-    break
-  done
-fi
-
-AUTH=$(printf '%s:%s' "$JIRA_USERNAME" "$JIRA_API_TOKEN" | base64 | tr -d '\n')
-
-# 2. 테스트 리포트 첨부
-curl -s -o /dev/null -w "%{http_code}" -X POST \
-  -H "Authorization: Basic $AUTH" \
-  -H "X-Atlassian-Token: no-check" \
-  -F "file=@docs/test/<TASK-ID>.test-report.md" \
-  "${JIRA_URL}/rest/api/3/issue/<TASK-ID>/attachments"
-
-# 3. Playwright 실패 스크린샷 첨부 (있는 경우)
-find test-results/ playwright-report/ -name "*.png" -type f 2>/dev/null | while read -r screenshot; do
-  curl -s -o /dev/null -w "%{http_code}: $screenshot\n" -X POST \
-    -H "Authorization: Basic $AUTH" \
-    -H "X-Atlassian-Token: no-check" \
-    -F "file=@${screenshot}" \
-    "${JIRA_URL}/rest/api/3/issue/<TASK-ID>/attachments"
-done
+# Playwright 실패 스크린샷 (있을 때만)
+shots=$(find test-results/ playwright-report/ -name "*.png" -type f 2>/dev/null)
+[ -n "$shots" ] && bash "$JIRA_ATTACH_SH" <TASK-ID> $shots
 ```
 
-- 리포트 및 각 스크린샷 업로드 결과를 확인하고 성공/실패 요약
-- 업로드 실패한 파일은 로컬 경로를 코멘트에 추가
+각 호출의 출력은 `HTTP <code>: <file>` 형식. 200이 아니면 업로드 실패 — 로컬 경로를 안내하고 계속 진행한다.
 
 ### Step 6: Completion Summary
 
