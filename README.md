@@ -32,7 +32,8 @@ Most Jira + AI tools stop at CRUD (read/create/update issues). This plugin autom
 
 ```mermaid
 graph LR
-    N["/jira-task create\nNew issue + sub-tasks"] -.-> A["/jira-task init\nBatch worktree setup"]
+    DSC["/jira-task discover\nTopic → requirements doc"] -.-> N["/jira-task create\nNew issue + sub-tasks"]
+    N -.-> A["/jira-task init\nBatch worktree setup"]
     A --> B["/jira-task start\nIn Progress"]
     B --> C["/jira-task plan\nPlanning doc"]
     C --> D["/jira-task design\nDesign doc"]
@@ -45,11 +46,14 @@ graph LR
 
     AUTO["⚡ /jira-task auto\nstart→review (auto)"]
 
+    style DSC fill:#A0522D,color:#fff
     style N fill:#8B4513,color:#fff
     style A fill:#2B50D4,color:#fff
     style J fill:#156030,color:#fff
     style AUTO fill:#7B2D8B,color:#fff
 ```
+
+> **Discover (optional first step)**: `/jira-task discover "<topic>"` turns a free-form topic into a structured `docs/requirements/<slug>.requirements.md`, which `/jira-task create --from-requirements <file>` can then consume to bulk-register Epic/Story/Sub-tasks.
 
 > **Shortcut**: `/jira-task auto <ID>` runs `start → plan → design → impl → test → review` automatically. Each step runs as an isolated sub-agent, and already-completed steps are skipped. If review fails, it auto-fixes and retries (up to 2×).
 
@@ -395,6 +399,7 @@ MIT
 
 ### 핵심 특징
 
+- **`/jira-task discover [주제]`** — 자연어 주제를 **요구사항 문서(`docs/requirements/<slug>.requirements.md`)로 변환**. `/jira-task create --from-requirements <파일>`과 자연 연동되어 Epic/Story/Sub-task 일괄 등록의 입력으로 사용됨 *(v1.1.x)*
 - **`/jira-task create [힌트]`** — 대화 컨텍스트 기반으로 **신규 Jira 이슈를 대화형 생성**. 범위가 크면 서브태스크 분해를 스킬이 직접 제안하고, 의존성은 `Blocks` 링크로 등록되어 이후 `init`의 "착수 가능 분석"과 자연 연동. 기존 에픽 연결 지원. `mcp-atlassian`의 `jira_create_issue` 필드 규약(JSON string `additional_fields`, bare-key `parent`, CSV `components` 등)을 스킬에 박아 반복 실패 방지 *(v0.12.0)*
 - `/jira-task init` — 숫자(`init 5`), 이슈 키(`init PROJ-123`), 자연어(`init "인증 관련"`) 세 가지 모드로 **worktree 일괄 생성** *(v0.7.0)*
 - **Auto 모드** (`/jira-task auto PROJ-123`): 각 단계를 **독립 sub-agent**로 실행하여 컨텍스트 오염 방지. review 미통과 시 **자동 수정 → 재테스트 → 재리뷰** 최대 2회 반복 *(v0.9.0)*
