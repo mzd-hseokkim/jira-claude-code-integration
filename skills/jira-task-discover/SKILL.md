@@ -89,8 +89,12 @@ $ARGUMENTS = <자연어 주제> [--lite] [--from <파일경로>]
    - `Glob`: 파일명 매칭 (예: `**/*notification*`)
    - `Grep`: 본문 매칭 (대소문자 무시)
 3. 결과를 합쳐 **상위 10개 파일**로 추리고, **파일당 최대 30줄**까지만 발췌한다.
-4. 결과가 0건이면 폴백: 레포 루트의 디렉터리 트리(depth 2)를 컨텍스트로 사용하고, 문서에 "관련 영역 자동 탐색 실패"로 기록.
-5. `--from <path>`가 지정되었으면 해당 파일 내용을 함께 컨텍스트에 포함 (Step 4의 베이스 본문이 됨).
+4. **결과 메타 보존 형식**: 각 발췌는 `(file_path, line_range)` 튜플 형태로 보존한다. 이 메타는 Step 4 marker의 `code:` 부분에 그대로 인용된다.
+   - line_range 표기: `<path>:<start>-<end>` (예: `src/notify.ts:45-60`). 단일 라인이면 `<path>:<line>` (예: `src/notify.ts:45`)
+   - `Glob` 결과는 파일 단위이므로 line_range는 후속 `Grep` 매칭 줄 또는 발췌 범위를 사용
+   - **민감 파일 제외**: `.env*`, `.claude/settings.local.json`, `node_modules/`, 자격증명·토큰을 포함한 파일은 발췌·메타에서 제외한다 (산출 문서가 Jira 첨부로 전송될 수 있음)
+5. 결과가 0건이면 폴백: 레포 루트의 디렉터리 트리(depth 2)를 컨텍스트로 사용하고, 문서에 "관련 영역 자동 탐색 실패"로 기록.
+6. `--from <path>`가 지정되었으면 해당 파일 내용을 함께 컨텍스트에 포함 (Step 4의 베이스 본문이 됨).
 
 ### Step 3: Batched Questions
 
@@ -98,18 +102,23 @@ $ARGUMENTS = <자연어 주제> [--lite] [--from <파일경로>]
 
 **Default 모드 (4건):**
 
-| # | 카테고리 | 질문 |
-|---|---------|------|
-| 1 | 이해관계자 | 이 기능의 주 사용자 또는 호출자는 누구입니까? |
-| 2 | 성공 기준 | "끝났다"고 판단할 측정 가능한 기준은 무엇입니까? |
-| 3 | 제약 | 반드시 지켜야 하는 기술/시간/비용 제약이 있습니까? |
-| 4 | 비기능 요구사항 | 성능·보안·접근성·관측성 등에서 특별히 고려할 항목이 있습니까? |
+| # | 인덱스 | 카테고리 | 질문 |
+|---|--------|---------|------|
+| 1 | `Q1` | 이해관계자 | 이 기능의 주 사용자 또는 호출자는 누구입니까? |
+| 2 | `Q2` | 성공 기준 | "끝났다"고 판단할 측정 가능한 기준은 무엇입니까? |
+| 3 | `Q3` | 제약 | 반드시 지켜야 하는 기술/시간/비용 제약이 있습니까? |
+| 4 | `Q4` | 비기능 요구사항 | 성능·보안·접근성·관측성 등에서 특별히 고려할 항목이 있습니까? |
 
-**`--lite` 모드 (3건):** 위 표에서 4번(비기능 요구사항)을 제외하고 1~3번만 묻는다.
+**Q<N> 인덱스 부여 규칙:**
+- 각 답변에는 위 표의 인덱스(`Q1`~`Q4`)를 그대로 부여한다. 이 인덱스는 Step 4 marker의 `source: Q<N>` 부분에 그대로 인용된다.
+- `--lite` 모드: 4번(비기능 요구사항)이 생략되므로 인덱스는 `Q1`~`Q3`만 사용한다.
+- `--from` 모드: 누락된 카테고리만 선별 질문하더라도 **원래 인덱스를 유지**한다 (예: NFR만 추가로 물으면 그 답변은 `Q4`. 1~3번이 import 본문에 이미 있으면 해당 답변은 `*(source: from)*` 또는 `*(source: from, Q<N>)*`).
 
-**`--from` 모드:** Step 2에서 import한 기존 문서를 분석해 누락된 카테고리만 선별 질문한다 (4건 중 일부만, 또는 전부 생략 가능).
+**`--lite` 모드 (3건):** 위 표에서 4번(비기능 요구사항)을 제외하고 1~3번만 묻는다 (인덱스 `Q1`~`Q3`).
 
-각 질문은 객관식 옵션 2-4개와 "Other → 자유 입력"을 함께 제공한다. 사용자가 모든 항목에 "Other → (빈)"으로 답하면 해당 항목은 문서에 `TBD`로 기록한다.
+**`--from` 모드:** Step 2에서 import한 기존 문서를 분석해 누락된 카테고리만 선별 질문한다 (4건 중 일부만, 또는 전부 생략 가능). 인덱스 보존 규칙은 위 참조.
+
+각 질문은 객관식 옵션 2-4개와 "Other → 자유 입력"을 함께 제공한다. 사용자가 모든 항목에 "Other → (빈)"으로 답하면 해당 항목은 문서에 `TBD`로 기록한다 (이때도 `Q<N>` 인덱스는 유지되어 Step 4 marker에 인용 가능).
 
 ### Step 4: Generate Requirements Document
 
@@ -134,6 +143,59 @@ $ARGUMENTS = <자연어 주제> [--lite] [--from <파일경로>]
 `--from <path>`가 지정된 경우: `<path>` 본문을 베이스로 위 섹션을 보강·재구성한다 (덮어쓰기 X, 보강 O).
 
 **`--lite` 모드 분량 규칙:** 각 섹션 최대 5줄. "Edge Cases"·"Out of Scope" 섹션은 생략. 한 페이지 분량 유지.
+
+#### Trace Marker 자동 부여 규칙
+
+LLM 합성 항목의 출처를 사후 검증 가능하게 만들기 위해, **합성 4종 섹션**의 각 항목 끝에 출처 태그(trace marker)를 자동으로 부여한다.
+
+**Marker 부여 대상 (합성 4종):**
+
+| 대상 (marker 부여) | 비대상 (답변·메타 직접 매핑이라 marker 불요) |
+|----|----|
+| Functional Requirements | Stakeholders (= `Q1`) |
+| Edge Cases | Goals & Success Criteria (= `Q2`) |
+| Out of Scope | Constraints (= `Q3`) |
+| Open Questions | Non-functional Requirements (= `Q4`) |
+| | Codebase Context (Step 2 메타 자체) |
+
+비대상 5종은 답변(`Q<N>`) 또는 Step 2 메타가 곧 출처이므로 marker 불요. 대상 4종(FR/Edge Cases/Out of Scope/Open Questions)에만 항목 단위 marker를 부여한다.
+
+**Marker 형식 표준 (5 case + `--from` 변형):**
+
+```
+| 케이스 | Marker 형식 | 사용 시점 |
+|--------|-------------|----------|
+| 답변 1개에서 유래       | *(source: Q<N>)*                            | Q<N> 답변에서 직접 도출 |
+| 답변 다수에서 유래       | *(source: Q1, Q3)*                          | 콤마 구분, 최대 3개. 4개 이상이면 가장 강한 1개만 |
+| 코드 1곳에서 유래       | *(code: <path>:<line-range>)*               | Step 2 (file_path, line_range) 메타에서 직접 도출 |
+| 코드 다수에서 유래       | *(code: src/a.ts:10-20, src/b.ts:5-15)*     | 콤마 구분, 최대 2개. 3개 이상이면 가장 대표적 1개만 |
+| 답변 + 코드 결합        | *(source: Q<N>, code: <path>:<line>)*       | 답변과 코드 양쪽 모두에서 도출 |
+| 둘 다 없음 (LLM 합성)  | *(synthesized)*                              | 답변·코드 어디에도 직접 근거가 없는 LLM 자체 합성 |
+```
+
+**`--from` 모드 변형 (1 case 추가):**
+
+```
+| 케이스 | Marker 형식 |
+|--------|-------------|
+| --from import 본문 그대로                        | *(source: from)*                          |
+| --from import + 답변 보강                        | *(source: from, Q<N>)*                    |
+| --from import + 코드 보강                        | *(source: from, code: <path>:<line>)*     |
+| --from 본문 외 추가 합성 항목                    | default 모드 규칙 그대로 (Q<N> / code: / synthesized) |
+```
+
+**다중 출처 표기 원칙: 가독성보다 추적성 우선.** 단, marker가 본문보다 길어지면 가독성이 깨지므로 source 최대 3개·code 최대 2개 상한을 둔다. 초과 시 가장 강한/대표적 1개만 표기.
+
+**`*(synthesized)*` 사용 가이드 (남용 방지):**
+
+- **사용 가능 조건**: `Q<N>` 답변 어디에도 직접 근거가 없고, Step 2 코드 발췌(`(file_path, line_range)`) 어디에도 직접 근거가 없는 LLM 자체 합성 항목에만 사용한다.
+- **권장 우선순위**: `Q<N>` 추적 > `code:` 추적 > 둘 다 결합 > `synthesized` (가능하면 `synthesized` 회피).
+- **Open Questions 섹션 예외**: Open Questions는 본질이 "결정 보류"이므로 `*(source: Q<N>)*` (어느 답변이 부족했는지)가 자연스럽다. `*(synthesized)*` 사용은 지양한다.
+- **Edge Cases 기본 marker**: Edge Cases는 거의 LLM 합성이라 `*(synthesized)*` 또는 `*(code: ...)*`가 일반적이다. 사용자 답변에서 직접 도출된 경우(예: "동시 호출 시 어떻게?"라는 답변)에 한해 `*(source: Q<N>)*`를 사용한다.
+
+**`--lite` 모드 정합성:**
+
+`--lite`는 Edge Cases/Out of Scope 섹션이 통째로 생략되므로 marker 적용 대상은 자연 축소되어 **Functional Requirements + Open Questions 2개 섹션**만 남는다. Q 인덱스 범위도 `Q1`~`Q3`로 축소된다 (`Q4` NFR 비활성화). 그 외 marker 형식·`synthesized` 가이드는 default와 동일하게 적용한다.
 
 **파일 쓰기 시점 — 중요:** Step 4의 합성 산출물은 **메모리상 객체로만 보관**한다. 실제 `docs/requirements/<slug>.requirements.md` 파일 쓰기는 **Step 4.5 confirm 통과 후**로 지연한다. 이렇게 해야 "취소" 분기에서 cleanup 비용 없이 종료할 수 있다(임시 파일 누출 방지). 재합성 시에는 Step 2(코드베이스 컨텍스트)와 Step 3(질문 답변)의 결과를 캐시 키 `(slug, mode, fromPath, step3 answers hash)` 단위로 **재사용**하고 Step 4의 합성 부분만 다시 실행한다.
 
@@ -289,30 +351,32 @@ AskUserQuestion(
 
 ## Functional Requirements
 
-<답변과 컨텍스트로부터 합성한 기능 요구사항. 번호 매김>
+<답변과 컨텍스트로부터 합성한 기능 요구사항. 번호 매김. 각 항목 끝에 trace marker 부착>
 
-1. <Req-1>
-2. <Req-2>
+1. <Req-1> *(source: Q2, code: src/notify.ts:45-60)*
+2. <Req-2> *(source: Q1)*
+3. <Req-3> *(code: src/foo.ts:12-30)*
+4. <Req-4> *(synthesized)*
 
 ## Edge Cases
 
-<-- --lite 모드면 이 섹션 통째로 생략 -->
+<-- --lite 모드면 이 섹션 통째로 생략. 각 항목 끝에 trace marker 부착 -->
 
-- <Edge case 1>
-- <Edge case 2>
+- <Edge case 1> *(synthesized)*
+- <Edge case 2> *(code: src/notify.ts:80-95)*
 
 ## Out of Scope
 
-<-- --lite 모드면 이 섹션 통째로 생략 -->
+<-- --lite 모드면 이 섹션 통째로 생략. 각 항목 끝에 trace marker 부착 -->
 
-- <Item 1>
-- <Item 2>
+- <Item 1> *(source: Q3)*
+- <Item 2> *(synthesized)*
 
 ## Open Questions
 
-<TBD로 답변된 항목 또는 답변 부족으로 결정 보류된 항목>
+<TBD로 답변된 항목 또는 답변 부족으로 결정 보류된 항목. 어느 답변이 부족했는지 source: Q<N>로 표기>
 
-- <Q1>
+- <Q1> *(source: Q4)*
 
 ## Proposed Issue Breakdown
 
