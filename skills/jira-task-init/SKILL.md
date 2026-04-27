@@ -219,36 +219,30 @@ fi
 
 ### Step 5.5: Propagate MCP Config to Worktree
 
-워크트리는 별도의 프로젝트 루트로 인식되어 MCP 설정이 자동 상속되지 않는다. 따라서 메인 레포의 MCP 설정을 워크트리에 직접 전파해야 한다.
+워크트리는 별도의 프로젝트 루트로 인식되어 MCP 설정이 자동 상속되지 않는다. 이 플러그인은 `mcp-atlassian` 서버에 의존하므로, **메인 레포에서 atlassian 서버가 어디에 등록되어 있든 찾아내서** 워크트리로 전파해야 한다.
 
-MCP 설정 위치는 두 가지로 나뉘므로 **순서대로** 시도한다:
+Claude Code MCP 서버는 다음 4곳 중 하나에 등록될 수 있다 (우선순위 = 탐색 순서):
 
-1. **프로젝트 루트의 `.mcp.json` (권장, project-scoped)**: 존재하면 워크트리 루트에 그대로 복사한다.
-2. **`~/.claude.json`의 `projects[<repo>].mcpServers` (user-scoped)**: 위 파일이 없을 때만 fallback으로 사용한다. 워크트리 경로에 동일한 `mcpServers`를 주입한다.
+1. **프로젝트 루트 `<repo>/.mcp.json`** (project-scoped, 팀 공유용)
+2. **`~/.claude.json` → `projects[<repo>].mcpServers`** (`claude mcp add --scope project` 또는 IDE 등록 시)
+3. **`~/.claude.json` → top-level `mcpServers`** (`claude mcp add --scope user`, 모든 프로젝트 공통)
+4. 위 어디에도 없음 → 사용자에게 안내하고 스킵 (오류 아님)
 
-둘 다 없으면 사용자에게 안내하고 스킵한다 (오류 아님).
+전파 방식:
+- 출처가 ①이면: 워크트리 루트에 `.mcp.json`을 그대로 복사
+- 출처가 ②/③이면: `~/.claude.json`의 워크트리 경로 항목에 `mcpServers`를 주입
+
+특히 **`atlassian` 서버**가 출처에 들어있는지 검증하고, 없으면 경고를 출력한다 (이 플러그인은 atlassian 없이는 동작하지 않음).
 
 ```bash
 REPO_ROOT_ABS="<REPO_ROOT 절대경로>"
 WORKTREE_ABS="<워크트리 절대경로>"
 
-if [ -f "$REPO_ROOT_ABS/.mcp.json" ]; then
-  cp "$REPO_ROOT_ABS/.mcp.json" "$WORKTREE_ABS/.mcp.json"
-  echo "Copied .mcp.json to $WORKTREE_ABS"
-else
-  python3 - "$REPO_ROOT_ABS" "$WORKTREE_ABS" << 'PYEOF'
-import json, os, re, sys
+python3 - "$REPO_ROOT_ABS" "$WORKTREE_ABS" << 'PYEOF'
+import json, os, re, shutil, sys
 
 repo_root_arg = sys.argv[1]
 worktree_path_arg = sys.argv[2]
-
-claude_json_path = os.path.expanduser("~/.claude.json")
-if not os.path.exists(claude_json_path):
-    print("No .mcp.json and no ~/.claude.json, skipping MCP propagation")
-    sys.exit(0)
-
-with open(claude_json_path, "r", encoding="utf-8") as f:
-    data = json.load(f)
 
 def norm(p):
     p = p.replace("\\", "/").rstrip("/")
@@ -257,42 +251,78 @@ def norm(p):
         p = m.group(1).upper() + ':' + m.group(2)
     return p
 
-projects = data.setdefault("projects", {})
 repo_root = norm(repo_root_arg)
 worktree_path = norm(worktree_path_arg)
 
-mcp_servers = {}
-for k, v in projects.items():
-    if isinstance(v, dict) and norm(k) == repo_root:
-        mcp_servers = v.get("mcpServers", {})
-        break
+# Source candidates (priority order)
+src_mcp_json = os.path.join(repo_root_arg, ".mcp.json")
+claude_json_path = os.path.expanduser("~/.claude.json")
+claude_data = None
+if os.path.exists(claude_json_path):
+    with open(claude_json_path, "r", encoding="utf-8") as f:
+        claude_data = json.load(f)
+
+mcp_servers = None
+source = None
+
+# 1) project-scoped .mcp.json
+if os.path.exists(src_mcp_json):
+    with open(src_mcp_json, "r", encoding="utf-8") as f:
+        mcp_servers = json.load(f).get("mcpServers", {}) or None
+    if mcp_servers:
+        source = "project_mcp_json"
+
+# 2) ~/.claude.json projects[repo].mcpServers
+if not mcp_servers and claude_data:
+    for k, v in claude_data.get("projects", {}).items():
+        if isinstance(v, dict) and norm(k) == repo_root:
+            cand = v.get("mcpServers") or None
+            if cand:
+                mcp_servers = cand
+                source = "claude_json_project"
+            break
+
+# 3) ~/.claude.json top-level mcpServers (user scope)
+if not mcp_servers and claude_data:
+    cand = claude_data.get("mcpServers") or None
+    if cand:
+        mcp_servers = cand
+        source = "claude_json_user"
 
 if not mcp_servers:
-    print("No mcpServers in .mcp.json or ~/.claude.json for this project, skipping")
+    print("No MCP servers found in .mcp.json or ~/.claude.json — skipping propagation")
+    print("WARNING: this plugin requires the 'atlassian' MCP server. Run /jira setup if needed.")
     sys.exit(0)
 
-matched = False
-for k in list(projects.keys()):
-    if norm(k) == worktree_path:
-        if isinstance(projects[k], dict):
-            projects[k]["mcpServers"] = mcp_servers
-        matched = True
-        break
+if "atlassian" not in mcp_servers:
+    print(f"WARNING: 'atlassian' server not found in {source}; this plugin will not work in the worktree.")
+    print(f"Found servers: {list(mcp_servers.keys())}")
 
-if not matched:
-    projects[worktree_path] = {"mcpServers": mcp_servers}
-
-with open(claude_json_path, "w", encoding="utf-8") as f:
-    json.dump(data, f, indent=2, ensure_ascii=False)
-
-print(f"MCP servers injected into ~/.claude.json for {worktree_path}: {list(mcp_servers.keys())}")
+# Propagate
+if source == "project_mcp_json":
+    shutil.copyfile(src_mcp_json, os.path.join(worktree_path_arg, ".mcp.json"))
+    print(f"Copied .mcp.json to worktree (servers: {list(mcp_servers.keys())})")
+else:
+    # Inject into ~/.claude.json projects[worktree]
+    projects = claude_data.setdefault("projects", {})
+    matched = False
+    for k in list(projects.keys()):
+        if norm(k) == worktree_path:
+            if isinstance(projects[k], dict):
+                projects[k]["mcpServers"] = mcp_servers
+            matched = True
+            break
+    if not matched:
+        projects[worktree_path] = {"mcpServers": mcp_servers}
+    with open(claude_json_path, "w", encoding="utf-8") as f:
+        json.dump(claude_data, f, indent=2, ensure_ascii=False)
+    print(f"Injected mcpServers into ~/.claude.json for worktree (source: {source}, servers: {list(mcp_servers.keys())})")
 PYEOF
-fi
 ```
 
-- 워크트리에서 `.mcp.json`을 처음 로드하면 신뢰 승인 프롬프트가 한 번 뜰 수 있다.
-- 메인 레포의 `.mcp.json`이 `.gitignore`되어 있을 수 있으므로, 복사된 워크트리 `.mcp.json`도 동일하게 git에 노출되지 않는지 확인.
-- `mcpServers`가 비어있거나 둘 다 없으면 스킵 (오류 아님)
+- 출처 우선순위: project `.mcp.json` > `~/.claude.json` projects > `~/.claude.json` top-level
+- `atlassian` 서버가 빠져 있으면 경고만 출력하고 진행 (사용자가 다른 서버로 등록했을 수 있음)
+- 워크트리에서 `.mcp.json`을 처음 로드하면 신뢰 승인 프롬프트가 한 번 뜰 수 있다
 - 경로 정규화: 백슬래시/슬래시 혼용 처리, 후행 슬래시 제거
 
 ### Step 6: Generate README for Each Worktree
