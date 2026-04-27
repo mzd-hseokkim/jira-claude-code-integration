@@ -55,8 +55,9 @@ Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-create", args:
 - `create` → args: `""` (대화 컨텍스트만 사용)
 - `create 로그인 기능 추가` → args: `"로그인 기능 추가"`
 - `create auth 모듈에 OTP 2차 인증 붙이기` → args: `"auth 모듈에 OTP 2차 인증 붙이기"`
+- `create --from-requirements docs/requirements/<slug>.requirements.md` → args: `"--from-requirements docs/requirements/<slug>.requirements.md"` (`/jira-task discover` 산출물을 입력으로 Epic/Story/Sub-task 일괄 등록)
 
-서브태스크 분해 여부는 스킬이 자동 판단한다 (별도 플래그 없음).
+서브태스크 분해 여부는 스킬이 자동 판단한다 (별도 플래그 없음). `--from-requirements` 모드에서는 자동 판단을 skip하고 트리를 그대로 사용한다.
 
 ### `discover [자연어 주제] [--lite] [--from <파일경로>]`
 
