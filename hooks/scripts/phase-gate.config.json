@@ -1,0 +1,60 @@
+{
+  "version": "1.0",
+  "_comment": "Phase gate dependency graph. Customize: copy this file and edit `phases.<name>.requires`/`artifacts`/`enforced` for your team's workflow. {TASK_ID} in fileGlob is replaced at runtime.",
+  "phases": {
+    "discover": {
+      "requires": [],
+      "enforced": false
+    },
+    "create": {
+      "requires": [],
+      "enforced": false
+    },
+    "init": {
+      "requires": [],
+      "enforced": true
+    },
+    "start": {
+      "requires": ["init"],
+      "enforced": true
+    },
+    "plan": {
+      "requires": ["start"],
+      "enforced": true
+    },
+    "design": {
+      "requires": ["plan"],
+      "artifacts": [
+        { "fileGlob": "docs/plan/{TASK_ID}.plan.md" }
+      ],
+      "enforced": true
+    },
+    "impl": {
+      "requires": ["design"],
+      "artifacts": [
+        { "fileGlob": "docs/design/{TASK_ID}.design.md" }
+      ],
+      "enforced": true
+    },
+    "test": {
+      "requires": ["impl"],
+      "enforced": true
+    },
+    "review": {
+      "requires": ["test"],
+      "enforced": true
+    },
+    "merge": {
+      "requires": ["review"],
+      "enforced": true
+    },
+    "pr": {
+      "requires": ["merge"],
+      "enforced": true
+    },
+    "done": {
+      "requires": ["pr"],
+      "enforced": true
+    }
+  }
+}

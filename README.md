@@ -282,12 +282,17 @@ jira-claude-code-integration/
 │   ├── hooks.json
 │   └── scripts/
 │       ├── session-start.js     # Show active task on startup
-│       └── stop-sync.js         # Remind to sync Jira on exit
+│       ├── stop-sync.js         # Remind to sync Jira on exit
+│       └── phase-gate.config.json  # Phase dependency graph (customizable)
 │
 └── templates/
     ├── plan.template.md
     └── report.template.md
 ```
+
+### Phase Gate Customization
+
+Edit `hooks/scripts/phase-gate.config.json` to customize phase dependencies (e.g., relax `requires`, change required `artifacts`, or set `enforced: false`) for your team's workflow.
 
 ### Worktree Layout
 
