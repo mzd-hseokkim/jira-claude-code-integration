@@ -20,11 +20,7 @@ allowed-tools:
 
 # jira-task-create: Create New Jira Issue (with Sub-tasks & Dependencies)
 
-## Language Rule
-
-모든 대화/출력을 한국어로 작성한다: 사용자 응답, `AskUserQuestion` 질문/선택지, 생성 이슈 본문(summary/description), Jira 코멘트 내용이 모두 대상이다.
-예외: 코드, 변수명, 이슈 키, 필드명(priority/labels 등), 명령어, JSON 키는 영어 유지.
-Jira 코멘트 섹션 제목(##, ###)은 영어, 내용은 한국어.
+**Language Rule**: 프로젝트 CLAUDE.md의 Conventions 섹션 참고 (한국어 출력). 추가: `AskUserQuestion` 질문/선택지, 생성 이슈 본문(summary/description)도 한국어. 이슈 키, 필드명(priority/labels), JSON 키는 영어 유지.
 
 ## Overview
 

@@ -14,11 +14,7 @@ allowed-tools:
 
 # jira-task-discover: Requirements Discovery from a Topic
 
-## Language Rule
-
-모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 내용 등 모든 텍스트가 대상이다.
-예외: 코드, 변수명, 브랜치명, 파일명, 명령어는 영어를 유지한다.
-Jira 코멘트: 섹션 제목(##, ###)은 영어로, 내용(설명·요약·노트)은 한국어로 작성한다.
+**Language Rule**: 프로젝트 CLAUDE.md의 Conventions 섹션 참고 (한국어 출력, Jira 코멘트 제목은 영어).
 
 ## Overview
 

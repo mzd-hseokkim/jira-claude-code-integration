@@ -18,11 +18,7 @@ allowed-tools:
 
 # jira-task-init: Bulk Sprint/Task Initialization
 
-## Language Rule
-
-모든 출력을 한국어로 작성한다: 사용자 응답, 생성 문서, Jira 코멘트 내용 등 모든 텍스트가 대상이다.
-예외: 코드, 변수명, 브랜치명, 파일명, 명령어는 영어를 유지한다.
-Jira 코멘트: 섹션 제목(##, ###)은 영어로, 내용(설명·요약·노트)은 한국어로 작성한다.
+**Language Rule**: 프로젝트 CLAUDE.md의 Conventions 섹션 참고 (한국어 출력, Jira 코멘트 제목은 영어).
 
 나에게 할당된 Jira 태스크를 우선순위 순으로 가져와서 각각 git worktree를 생성하고
 작업 컨텍스트를 세팅하는 일괄 처리 워크플로우.

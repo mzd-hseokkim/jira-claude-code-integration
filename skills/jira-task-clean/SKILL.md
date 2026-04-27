@@ -10,10 +10,7 @@ allowed-tools:
 
 # jira-task-clean: Worktree & Branch Cleanup
 
-## Language Rule
-
-모든 출력을 한국어로 작성한다.
-예외: 코드, 변수명, 브랜치명, 파일명, 명령어는 영어를 유지한다.
+**Language Rule**: 프로젝트 CLAUDE.md의 Conventions 섹션 참고 (한국어 출력).
 
 ## Overview
 
