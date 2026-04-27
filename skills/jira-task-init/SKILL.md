@@ -219,28 +219,34 @@ fi
 
 ### Step 5.5: Propagate MCP Config to Worktree
 
-각 worktree 생성 직후, `~/.claude.json`의 해당 worktree 경로에 현재 프로젝트의 `mcpServers` 설정을 복사한다.
+워크트리는 별도의 프로젝트 루트로 인식되어 MCP 설정이 자동 상속되지 않는다. 따라서 메인 레포의 MCP 설정을 워크트리에 직접 전파해야 한다.
 
-`~/.claude.json`의 구조:
-```json
-{
-  "projects": {
-    "<project-path>": { "mcpServers": { "atlassian": { ... } } },
-    "<worktree-path>": { "mcpServers": {} }
-  }
-}
-```
+MCP 설정 위치는 두 가지로 나뉘므로 **순서대로** 시도한다:
 
-워크트리는 별도 경로라 MCP 설정이 자동 상속되지 않으므로 직접 주입해야 한다.
+1. **프로젝트 루트의 `.mcp.json` (권장, project-scoped)**: 존재하면 워크트리 루트에 그대로 복사한다.
+2. **`~/.claude.json`의 `projects[<repo>].mcpServers` (user-scoped)**: 위 파일이 없을 때만 fallback으로 사용한다. 워크트리 경로에 동일한 `mcpServers`를 주입한다.
+
+둘 다 없으면 사용자에게 안내하고 스킵한다 (오류 아님).
 
 ```bash
-python - "<REPO_ROOT 절대경로>" "<워크트리 절대경로>" << 'PYEOF'
+REPO_ROOT_ABS="<REPO_ROOT 절대경로>"
+WORKTREE_ABS="<워크트리 절대경로>"
+
+if [ -f "$REPO_ROOT_ABS/.mcp.json" ]; then
+  cp "$REPO_ROOT_ABS/.mcp.json" "$WORKTREE_ABS/.mcp.json"
+  echo "Copied .mcp.json to $WORKTREE_ABS"
+else
+  python3 - "$REPO_ROOT_ABS" "$WORKTREE_ABS" << 'PYEOF'
 import json, os, re, sys
 
 repo_root_arg = sys.argv[1]
 worktree_path_arg = sys.argv[2]
 
 claude_json_path = os.path.expanduser("~/.claude.json")
+if not os.path.exists(claude_json_path):
+    print("No .mcp.json and no ~/.claude.json, skipping MCP propagation")
+    sys.exit(0)
+
 with open(claude_json_path, "r", encoding="utf-8") as f:
     data = json.load(f)
 
@@ -262,7 +268,7 @@ for k, v in projects.items():
         break
 
 if not mcp_servers:
-    print("No mcpServers in current project, skipping")
+    print("No mcpServers in .mcp.json or ~/.claude.json for this project, skipping")
     sys.exit(0)
 
 matched = False
@@ -279,11 +285,14 @@ if not matched:
 with open(claude_json_path, "w", encoding="utf-8") as f:
     json.dump(data, f, indent=2, ensure_ascii=False)
 
-print(f"MCP servers injected into {worktree_path}: {list(mcp_servers.keys())}")
+print(f"MCP servers injected into ~/.claude.json for {worktree_path}: {list(mcp_servers.keys())}")
 PYEOF
+fi
 ```
 
-- `mcpServers`가 비어있거나 없으면 주입을 건너뜀 (오류 아님)
+- 워크트리에서 `.mcp.json`을 처음 로드하면 신뢰 승인 프롬프트가 한 번 뜰 수 있다.
+- 메인 레포의 `.mcp.json`이 `.gitignore`되어 있을 수 있으므로, 복사된 워크트리 `.mcp.json`도 동일하게 git에 노출되지 않는지 확인.
+- `mcpServers`가 비어있거나 둘 다 없으면 스킵 (오류 아님)
 - 경로 정규화: 백슬래시/슬래시 혼용 처리, 후행 슬래시 제거
 
 ### Step 6: Generate README for Each Worktree
