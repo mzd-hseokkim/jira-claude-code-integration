@@ -18,6 +18,22 @@ const path = require('path');
 
 const MAX_UPWARD_LEVELS = 6;
 const SKILL_PATTERN = /^(?:jira-integration:)?jira-task-([a-z]+)$/;
+const BYPASS_ENV_VAR = 'JIRA_PHASE_GATE_BYPASS';
+
+function isEnvTruthy(value) {
+  if (typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  if (trimmed === '') return false;
+  const lower = trimmed.toLowerCase();
+  if (lower === '0' || lower === 'false') return false;
+  return true;
+}
+
+function isBypassed(env, context) {
+  if (env && isEnvTruthy(env[BYPASS_ENV_VAR])) return 'env';
+  if (context && context.bypassGate === true) return 'context';
+  return null;
+}
 
 function readStdinSync() {
   try {
@@ -126,7 +142,8 @@ function formatBlockMessage(phase, result) {
     for (const p of result.missingArtifacts) lines.push(`  - ${p}`);
     lines.push(`해당 단계를 먼저 실행해 산출물을 생성하세요.`);
   }
-  lines.push(`우회: 환경변수 JIRA_PHASE_GATE_BYPASS=1 (MAE-124에서 도입 예정)`);
+  lines.push(`우회 (1회성): JIRA_PHASE_GATE_BYPASS=1`);
+  lines.push(`우회 (영속): .jira-context.json에 "bypassGate": true 추가`);
   return lines.join('\n');
 }
 
@@ -200,6 +217,22 @@ function main() {
     return;
   }
 
+  const bypassChannel = isBypassed(process.env, context);
+  if (bypassChannel) {
+    const taskId = context.taskId || '<TASK-ID>';
+    const detail = bypassChannel === 'env'
+      ? `(${BYPASS_ENV_VAR} 환경변수)`
+      : `(.jira-context.json: bypassGate=true)`;
+    const msg = `⚠️ phase gate bypassed (${bypassChannel}): '${phase}' 단계가 선행 요건을 만족하지 않지만 우회되었습니다 ${detail} — ${taskId}`;
+    try {
+      process.stderr.write(msg + '\n');
+    } catch {
+      // ignore
+    }
+    process.exit(0);
+    return;
+  }
+
   emitDeny(formatBlockMessage(phase, result));
   process.exit(2);
 }
@@ -218,4 +251,6 @@ module.exports = {
   loadConfig,
   validate,
   formatBlockMessage,
+  isBypassed,
+  isEnvTruthy,
 };
