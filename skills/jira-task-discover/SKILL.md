@@ -135,9 +135,87 @@ $ARGUMENTS = <자연어 주제> [--lite] [--from <파일경로>]
 
 **`--lite` 모드 분량 규칙:** 각 섹션 최대 5줄. "Edge Cases"·"Out of Scope" 섹션은 생략. 한 페이지 분량 유지.
 
+**파일 쓰기 시점 — 중요:** Step 4의 합성 산출물은 **메모리상 객체로만 보관**한다. 실제 `docs/requirements/<slug>.requirements.md` 파일 쓰기는 **Step 4.5 confirm 통과 후**로 지연한다. 이렇게 해야 "취소" 분기에서 cleanup 비용 없이 종료할 수 있다(임시 파일 누출 방지). 재합성 시에는 Step 2(코드베이스 컨텍스트)와 Step 3(질문 답변)의 결과를 캐시 키 `(slug, mode, fromPath, step3 answers hash)` 단위로 **재사용**하고 Step 4의 합성 부분만 다시 실행한다.
+
+### Step 4.5: Synthesis Confirm
+
+**모두(冒頭) — 협력 인터페이스:** Conflict Detection 결과(MAE-170)가 존재하면 합성 결과 요약보다 **먼저** 표시한다. 본 태스크 범위에서는 인터페이스 슬롯만 예약하며, 실제 conflict 데이터 수집·표시는 MAE-170 머지 후 후속 PR로 처리한다.
+
+Step 4가 메모리상에 만든 합성 산출물(Functional Requirements / Edge Cases / Out of Scope / Open Questions)을 사용자에게 한 번 검증받는다. LLM hallucination·임의 분해 끊김·모순 입력으로 인한 품질 저하를 차단하기 위한 단일 confirm gate이다.
+
+#### 요약 표시 규칙
+
+- 각 confirm 대상 섹션은 **3줄 이내**로 요약 표시한다 (단순 입력에서 사용자 마찰 최소화).
+- 항목이 4개 이상이면 **상위 3개 + "외 N건"** 형태로 축약한다.
+- 표시 순서는 항상: Functional Requirements → Edge Cases → Out of Scope → Open Questions (해당 모드에서 생성된 섹션만).
+
+#### 모드별 confirm 대상 매핑
+
+| 모드 | confirm 대상 섹션 |
+|------|------------------|
+| default | Functional Requirements / Edge Cases / Out of Scope / Open Questions |
+| `--lite` | Functional Requirements / Open Questions (Edge Cases·Out of Scope는 lite에서 생성하지 않으므로 자동 제외) |
+| `--from` | default와 동일 — 단, "import 베이스 위에서 합성·보강된 부분"임을 안내 문구 1줄로 표기 (실제 마커 적용은 Trace Marker MAE-169로 위임) |
+
+`--lite` 모드에서도 Functional Requirements와 Open Questions는 confirm 대상으로 유지한다 — hallucination 위험이 가장 큰 두 섹션이므로 lite gate 무의미화를 방지한다.
+
+#### AskUserQuestion 호출 (의사코드)
+
+```
+AskUserQuestion(
+  question: "합성 결과를 검토해주세요. 어떻게 할까요?",
+  options: [
+    { id: "proceed", label: "그대로 진행", default: true },
+    { id: "revise",  label: "수정 요청" },
+    { id: "cancel",  label: "취소" }
+  ],
+  context: "<요약 표시 규칙에 따른 섹션별 3줄 이내 요약>"
+)
+```
+
+사용자에게 노출되는 라벨은 한국어("그대로 진행" / "수정 요청" / "취소")로 고정한다. 내부 식별자는 `proceed` / `revise` / `cancel`을 사용한다.
+
+#### 분기 처리 절차
+
+**proceed (그대로 진행)**
+1. Step 4 산출물을 `docs/requirements/<slug>.requirements.md`에 파일로 쓴다 (이때까지 파일 시스템에는 어떤 부분 결과도 쓰지 않은 상태).
+2. Step 5(Issue Breakdown Section) 진입.
+
+**revise (수정 요청)**
+1. 자유 입력 1줄을 수신한다: "어느 섹션의 어느 항목을 어떻게 수정할까요?"
+2. 입력이 빈 문자열 또는 공백뿐이면 직전 합성 결과 그대로 confirm 단계로 복귀한다(재합성 X — Edge Case 회피).
+3. 재합성 카운터(`resynthesisCount`)를 증가시킨다.
+4. Step 2(코드베이스 컨텍스트)·Step 3(질문 답변) 캐시는 재사용하고, Step 4의 합성 부분만 사용자 수정 요청을 반영해 재실행한다.
+5. 갱신된 합성 산출물로 Step 4.5를 다시 진입한다.
+6. 재합성 결과가 직전 결과와 **완전히 동일**하면 사용자에게 "변경 없음" 안내를 1줄 표시하고 카운터는 계속 증가시킨다(무한 루프 회피).
+
+**cancel (취소)**
+1. 메모리상의 합성 산출물을 폐기한다(Garbage Collection 대상으로 두기만 하면 충분).
+2. 파일 시스템에는 아직 쓰지 않은 상태이므로 별도 cleanup이 불필요하다.
+3. 한국어 종료 메시지 1줄을 출력한다: "요구사항 문서 생성을 취소했습니다."
+4. 비정상 종료 코드 없이 정상 종료한다.
+
+#### 무한 루프 방지 가드
+
+- 재합성 최대 횟수 `RESYNTHESIS_LIMIT = 3` (사용자 마찰 vs 정확도 균형값).
+- `resynthesisCount`가 `RESYNTHESIS_LIMIT`에 도달하면, 다음 confirm에서는 `revise` 옵션을 **제거**하고 `proceed` / `cancel` 2분기로 축약한다.
+- 사용자에게 "재합성 한도(3회)에 도달했습니다. 그대로 진행하거나 취소를 권장합니다." 안내를 1줄 출력한다.
+
+#### 비대화형 환경 안전장치
+
+본 스킬은 `user-invocable: false`로 항상 사용자 세션 내에서 호출되지만, 안전장치로 `AskUserQuestion` 응답이 부재한 경우 default `proceed`를 적용한다.
+
+#### Functional Requirements 0건 경고
+
+합성된 Functional Requirements가 0건이면(예: 모든 답변이 "Other → 빈" 극단 케이스), 요약 표시 위에 다음 경고 1줄을 추가한다:
+
+> "⚠️ 합성된 항목이 없습니다. 그대로 진행하면 빈 문서가 생성됩니다."
+
+이 경고는 `proceed`의 default를 변경하지 않는다(사용자 결정에 위임).
+
 ### Step 5: Issue Breakdown Section
 
-Step 4에서 생성한 문서의 **마지막 섹션**으로 다음 트리를 추가한다. **Jira 이슈를 만들지 않는다 — 문서에만 기록한다.**
+**진입 조건:** Step 4.5 confirm을 통과(`proceed`)한 합성 결과를 입력으로 받아 본 단계를 실행한다. Step 4에서 생성한 문서의 **마지막 섹션**으로 다음 트리를 추가한다. **Jira 이슈를 만들지 않는다 — 문서에만 기록한다.**
 
 ```markdown
 ## Proposed Issue Breakdown
@@ -263,6 +341,8 @@ Step 4에서 생성한 문서의 **마지막 섹션**으로 다음 트리를 추
 | 템플릿 파일 부재 (`templates/requirements.template.md`) | Inline Fallback Template 사용. 경고 출력 안 함 (정상 흐름) |
 | `--lite`와 `--from` 동시 사용 | 두 효과 모두 적용 (질문 3건 또는 그 이하 + import 베이스) |
 | 슬러그에 위험 문자 (`/`, `..`, 공백, 한글) | kebab-case 강제. 영문/숫자/하이픈만 허용. 변환 실패 시 사용자 직접 입력 요청 |
+| Step 4.5에서 재합성 한도(`RESYNTHESIS_LIMIT=3`) 초과 | `revise` 옵션 제거 후 `proceed`/`cancel` 2분기로 강제 confirm. 사용자에게 "재합성 한도(3회)에 도달했습니다. 그대로 진행하거나 취소를 권장합니다." 안내 |
+| Step 4.5 `cancel` 선택 | 메모리상 합성 산출물 폐기. 파일 시스템에는 아직 쓰지 않은 상태이므로 cleanup 불필요. 한국어 종료 메시지 1줄("요구사항 문서 생성을 취소했습니다.") 출력 후 정상 종료 |
 
 ## Non-goals
 
