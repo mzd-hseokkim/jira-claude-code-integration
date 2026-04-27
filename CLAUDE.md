@@ -79,6 +79,7 @@ This project is a Claude Code plugin that integrates Jira with the software deve
 
 `/jira-task` 워크플로에서 생성하는 문서:
 
+- Requirements: `docs/requirements/<slug>.requirements.md` (discover 단계 산출물)
 - Plan: `docs/plan/<TASK-ID>.plan.md`
 - Design: `docs/design/<TASK-ID>.design.md`
 - Test Report: `docs/test/<TASK-ID>.test-report.md`
@@ -130,6 +131,8 @@ The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스
 
 - `/jira` - Help and connection status
 - `/jira setup` - Interactive setup wizard for Jira MCP server registration
+- `/jira-task discover [주제 | --lite | --from <파일>]` - Discover requirements from a free-form topic and write a structured requirements document
+- `/jira-task create [자연어 힌트 | --from-requirements <파일>]` - Interactively create a new Jira issue (and optional sub-tasks)
 - `/jira-task init [N | ISSUE-KEY | 설명]` - Fetch tasks and create worktrees (count, sub-task analysis, or natural language)
 - `/jira-task auto <ID>` - Auto-execute full workflow (start → plan → design → impl → test → review)
 - `/jira-task start <ID>` - Start working on a task (fetch, branch, transition)
