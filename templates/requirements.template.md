@@ -11,7 +11,11 @@
 
 ## Goals & Success Criteria
 
-<Step 3 답변 2번. 측정 가능한 완료 기준>
+<Step 3 답변 2번. 측정 가능한 완료 기준. 각 줄을 다음 형식으로:
+`<지표명> · <현재값> → <목표값> · <측정방법>`>
+
+- 응답 시간 · 800ms → 200ms · p95 latency 모니터링
+- 합성 정확도 · 70% → 90% · 샘플 50건 manual review
 
 ## Constraints
 
@@ -27,30 +31,35 @@
 
 ## Functional Requirements
 
-<답변과 컨텍스트로부터 합성한 기능 요구사항. 번호 매김>
+<답변과 컨텍스트로부터 합성한 기능 요구사항. 번호 매김. 각 항목 끝에 trace marker 부착>
 
-1. <Req-1>
-2. <Req-2>
+1. <Req-1> *(source: Q2, code: src/notify.ts:45-60)*
+2. <Req-2> *(source: Q1)*
+3. <Req-3> *(code: src/foo.ts:12-30)*
+4. <Req-4> *(synthesized)*
 
 ## Edge Cases
 
-<-- --lite 모드면 이 섹션 통째로 생략 -->
+<-- --lite 모드면 이 섹션 통째로 생략. 각 항목 끝에 trace marker 부착 -->
 
-- <Edge case 1>
-- <Edge case 2>
+- <Edge case 1> *(synthesized)*
+- <Edge case 2> *(code: src/notify.ts:80-95)*
 
 ## Out of Scope
 
-<-- --lite 모드면 이 섹션 통째로 생략 -->
+<-- --lite 모드면 이 섹션 통째로 생략. 각 항목 끝에 trace marker 부착 -->
 
-- <Item 1>
-- <Item 2>
+- <Item 1> *(source: Q3)*
+- <Item 2> *(synthesized)*
 
 ## Open Questions
 
-<TBD로 답변된 항목 또는 답변 부족으로 결정 보류된 항목>
+<TBD로 답변된 항목 또는 답변 부족으로 결정 보류된 항목. 각 항목 앞에 우선순위 마커 부착 (P1: 다음 단계 차단 / P2: 확인 필요 / P3: 참고). 어느 답변이 부족했는지 source: Q<N>로 표기. --from 모드에서 import 본문과 답변이 모순된 경우 [CONFLICT] prefix로 격상 (Step 3.5 참조). [CONFLICT] 항목은 우선순위 마커와 trace marker 모두 부착하지 않음.>
 
-- <Q1>
+- [P1] <Q1> *(source: Q4)*
+- [P2] <Q2> *(synthesized)*
+- [P3] <Q3> *(source: Q2)*
+- [CONFLICT] Stakeholders: import="운영자" vs answer="일반 사용자" — 어느 쪽이 정확한지 결정 필요
 
 ## Proposed Issue Breakdown
 
