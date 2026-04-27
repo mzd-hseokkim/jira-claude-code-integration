@@ -42,6 +42,7 @@ git branch --list "feature/<TASK-ID>"
 ### Step 2: Fetch Current Issue Status
 
 Use `mcp__atlassian__jira_get_issue` to confirm the issue exists and check its current status.
+- **Context optimization**: `fields="summary,status,issuetype,assignee"`, `comment_limit=0`
 
 ### Step 3: Summarize Changes
 

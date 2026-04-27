@@ -32,6 +32,7 @@ Jira 코멘트: 섹션 제목(##, ###)은 영어로, 내용(설명·요약·노�
 
 1. Read `.jira-context.json` for active task info
 2. Use `mcp__atlassian__jira_get_issue` to fetch latest issue details
+   - **Context optimization**: `fields="summary,status,description,issuetype"`, `comment_limit=0` (구현은 design 문서가 1차 소스이므로 이슈 본문은 최소만)
 3. Read `docs/design/<TASK-ID>.design.md` if it exists
 4. Read `docs/plan/<TASK-ID>.plan.md` if it exists
 

@@ -27,8 +27,12 @@ Jira 코멘트: 섹션 제목(##, ###)은 영어로, 내용(설명·요약·노�
 
 ### Step 1: Gather Context from Jira
 
-1. Use `mcp__atlassian__jira_get_issue` to fetch the issue details
-2. If the issue has a parent epic, fetch the epic details too
+**Context optimization 공통 원칙:**
+- `jira_get_issue`: `fields="summary,status,description,labels,issuetype,parent,priority,assignee,components"`, `comment_limit=0`
+- `jira_search`: `fields="summary,status,issuetype,priority"`, `limit=20` (description 제외, 결과는 요약 카드 용도)
+
+1. Use `mcp__atlassian__jira_get_issue` to fetch the issue details (위 fields/comment_limit 사용)
+2. If the issue has a parent epic, fetch the epic details too (동일 fields 사용; epic 본문은 description만 추가로 필요하면 별도 호출)
 3. Use `mcp__atlassian__jira_search` with JQL to find related issues.
    **JIRA_DEFAULT_PROJECT가 설정되어 있으면 모든 JQL에 `project = <JIRA_DEFAULT_PROJECT>` 조건을 반드시 포함:**
    - Same epic: `project = <JIRA_DEFAULT_PROJECT> AND "Epic Link" = <epic-key>`

@@ -28,6 +28,12 @@ Jira 코멘트: 섹션 제목(##, ###)은 영어로, 내용(설명·요약·노�
 
 ## Workflow
 
+### Context Optimization
+
+이 스킬에서 `mcp__atlassian__jira_get_issue`를 호출하는 경우 다음 파라미터를 사용한다 (테스트 실행/리포트가 주이므로 이슈 메타만 필요):
+- `fields="summary,status,issuetype"`
+- `comment_limit=0`
+
 ### Step 1: Detect Test Environment
 
 Scan the project to determine the test setup:

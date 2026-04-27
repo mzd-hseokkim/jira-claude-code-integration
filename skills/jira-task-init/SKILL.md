@@ -55,6 +55,8 @@ JQL 쿼리로 나에게 할당된 고우선순위 태스크 조회.
 ```
 Use mcp__atlassian__jira_search with JQL:
   project = <JIRA_DEFAULT_PROJECT> AND assignee = currentUser() AND status NOT IN (Done, Closed) ORDER BY priority DESC, created ASC
+  fields="summary,status,priority,issuetype,assignee"
+  limit=20
 ```
 
 또는 활성 스프린트가 있으면 스프린트 기반으로 조회:
@@ -72,6 +74,8 @@ Step 0에서 추출한 이슈 키로 해당 이슈와 하위작업을 조회한�
 
 ```
 Use mcp__atlassian__jira_get_issue with issue_key: <ISSUE-KEY>
+  fields="summary,status,issuetype,priority"
+  comment_limit=0
 ```
 
 이슈 타입과 요약을 확인하여 사용자에게 표시.
@@ -81,6 +85,8 @@ Use mcp__atlassian__jira_get_issue with issue_key: <ISSUE-KEY>
 ```
 Use mcp__atlassian__jira_search with JQL:
   parent = <ISSUE-KEY> AND status NOT IN (Done, Closed) ORDER BY priority DESC, created ASC
+  fields="summary,status,priority,issuetype,assignee"
+  limit=50
 ```
 
 **JIRA_DEFAULT_PROJECT가 설정되어 있으면 `project = <JIRA_DEFAULT_PROJECT> AND parent = <ISSUE-KEY> AND ...` 형태로 프로젝트 조건을 포함한다.**
@@ -92,6 +98,7 @@ Use mcp__atlassian__jira_search with JQL:
 각 하위작업에 대해 issue links를 분석한다:
 
 - `mcp__atlassian__jira_get_issue`로 각 하위작업의 상세 정보(issuelinks 포함) 조회
+  - **Context optimization**: `fields="summary,status,priority,issuetype,issuelinks"`, `comment_limit=0` (이 호출은 issuelinks가 핵심이므로 반드시 fields에 포함)
 - `is blocked by` (inward) 관계의 링크된 이슈가 **미완료**(status가 Done/Closed가 아닌) 상태이면 해당 작업은 **blocked**로 분류
 - 블로커가 없거나 모든 블로커가 완료된 작업만 **착수 가능**으로 선별
 

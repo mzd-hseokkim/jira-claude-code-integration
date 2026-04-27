@@ -277,6 +277,8 @@ import 모드에서는 본 단계가 자동 분해 판단(Step 3/4)을 대체한
 1. `mcp__atlassian__jira_search`로 에픽 조회:
    ```
    JQL: project = <PROJECT_KEY> AND issuetype = Epic AND status != Done ORDER BY created DESC
+   fields="summary,status,issuetype"
+   limit=10
    ```
    (`JIRA_DEFAULT_PROJECT` 있으면 반드시 포함)
 2. 상위 10개를 테이블로 표시 (`Key`, `Summary`, `Status`)
@@ -526,7 +528,7 @@ for story in import_payload.stories:
 > **import 모드에서는 본 단계를 skip한다.** Epic을 본 스킬이 직접 만들었으므로 별도 연결 검증이 불필요하다.
 
 상위 이슈가 에픽에 연결되어야 하고 `additional_fields`에 `parent`로 넣었다면, 생성 결과에서 epic link가 설정됐는지 확인:
-- `mcp__atlassian__jira_get_issue`로 새 이슈 재조회
+- `mcp__atlassian__jira_get_issue`로 새 이슈 재조회 (`fields="summary,parent,issuetype"`, `comment_limit=0`)
 - Epic Link custom field 또는 parent field에 에픽 키가 있는지 확인
 - **없으면 fallback**: `mcp__atlassian__jira_link_to_epic(issue_key=PROJ-NEW, epic_key=EPIC-KEY)` 호출
 - 이것도 실패하면 사용자에게 경고 (이슈는 만들어졌지만 에픽 연결 실패) 후 계속 진행.
@@ -600,6 +602,7 @@ blocks_type_name = <matched .name>
 **6-5. 결과 검증**
 
 상위 이슈와 모든 서브태스크를 `mcp__atlassian__jira_get_issue`로 한 번씩 재조회하여:
+- **Context optimization**: `fields="summary,issuetype,priority,parent,labels,issuelinks,status"`, `comment_limit=0` (검증에 필요한 최소 필드만; `(blocks: ...)` 링크 검증을 위해 issuelinks 포함)
 - `issuetype`, `priority`, `parent`, 필요한 `labels`가 설정되었는지 확인
 - 불일치가 있으면 사용자에게 경고 (알려지지 않은 additional_fields 키가 silent skip되는 것을 방지)
 

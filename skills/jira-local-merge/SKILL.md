@@ -31,6 +31,12 @@ Jira 상태 전환 및 worktree 정리까지 일괄 처리한다.
 
 ## Workflow
 
+### Context Optimization
+
+이 스킬에서 `mcp__atlassian__jira_get_issue`를 호출하는 경우 다음 파라미터를 사용한다 (병합/전환에 필요한 메타만):
+- `fields="summary,status,issuetype"`
+- `comment_limit=0`
+
 ### Step 1: Load Context
 
 `.jira-context.json`을 읽어 태스크 컨텍스트 로드:

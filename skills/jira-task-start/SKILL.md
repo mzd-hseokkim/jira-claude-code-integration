@@ -34,6 +34,10 @@ Jira 코멘트: 섹션 제목(##, ###)은 영어로, 내용(설명·요약·노�
 
 Use `mcp__atlassian__jira_get_issue` with the provided TASK-ID.
 
+**Context optimization**: 호출 시 다음 파라미터로 응답을 슬림화한다.
+- `fields="summary,status,priority,assignee,issuetype,description,subtasks,issuelinks"`
+- `comment_limit=0` (start 단계에서는 코멘트 이력 불필요)
+
 Display to the user:
 - **Key**: Issue key
 - **Summary**: Issue title

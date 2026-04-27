@@ -35,6 +35,7 @@ Jira 코멘트: 섹션 제목(##, ###)은 영어로, 내용(설명·요약·노�
 
 1. `.jira-context.json`에서 활성 태스크 정보 읽기
 2. `mcp__atlassian__jira_get_issue`로 이슈 상세 조회
+   - **Context optimization**: `fields="summary,status,description,issuetype,labels"`, `comment_limit=0` (PR 본문 생성에 필요한 항목만)
 3. **Jira 호스트 URL 추출**: `get-issue` 응답의 `self` 필드(예: `https://company.atlassian.net/rest/api/...`)에서 호스트 부분을 추출하여 Jira 이슈 링크 생성에 사용. 예: `https://company.atlassian.net/browse/<TASK-ID>`
 4. Base branch 확인:
    ```bash

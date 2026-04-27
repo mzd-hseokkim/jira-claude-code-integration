@@ -29,6 +29,7 @@ Jira 코멘트: 섹션 제목(##, ###)은 영어로, 내용(설명·요약·노�
    - If yes, read it for context
    - If no, suggest running `/jira-task plan <TASK-ID>` first (but proceed if user wants)
 2. Use `mcp__atlassian__jira_get_issue` to fetch current issue details
+   - **Context optimization**: `fields="summary,status,description,labels,issuetype,parent"`, `comment_limit=0`
 
 ### Step 2: Analyze Codebase
 
