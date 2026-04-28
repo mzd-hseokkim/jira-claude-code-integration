@@ -194,14 +194,43 @@ def clean_task(repo_root, task_id, dry_run=False):
     else:
         print(f"  Would remove MCP config for {worktree_path}")
 
-    # 4. Clean .jira-context.json
+    # 4. Clean .jira-context.json (repo root)
+    #
+    # 두 가지 형태가 있다:
+    #  - 워크트리 컨텍스트: {"taskId": ..., "branch": ..., ...}  단일 태스크용
+    #  - 메인 레포 통합 컨텍스트: {"tasks": [...], "worktreeBase": ..., ...}  태스크 이력 누적
+    # 메인 레포에서 실행되는 clean이 메인 컨텍스트를 통째로 삭제하면 누적 이력이 전부 날아간다.
+    # 따라서 메인 컨텍스트(`tasks` 배열 보유)는 절대 삭제하지 않고, 해당 태스크 항목만 제거한다.
+    # 워크트리 컨텍스트가 우연히 repo root에 있는 경우(taskId 일치)에만 파일 자체를 삭제.
     ctx_path = os.path.join(repo_root, ".jira-context.json")
     if os.path.exists(ctx_path):
         with open(ctx_path, "r", encoding="utf-8") as f:
             ctx = json.load(f)
 
-        if ctx.get("taskId") == task_id:
-            print(f"  Clearing .jira-context.json (active task: {task_id})")
+        is_aggregate = isinstance(ctx.get("tasks"), list)
+
+        if is_aggregate:
+            before = len(ctx["tasks"])
+            ctx["tasks"] = [t for t in ctx["tasks"] if t.get("taskId") != task_id]
+            removed = before - len(ctx["tasks"])
+            # 메인 컨텍스트 최상위에 워크트리 필드가 섞여 들어간 경우(과거 스킬의 사이드 이펙트) 정리
+            wt_field_keys = ("taskId", "branch", "worktreePath", "summary",
+                             "priority", "status", "completedSteps",
+                             "startedAt", "mergedAt", "completedAt", "cachedIssue")
+            stale_keys = [k for k in wt_field_keys
+                          if k in ctx and (k != "taskId" or ctx.get(k) == task_id)]
+            for k in stale_keys:
+                ctx.pop(k, None)
+            if not dry_run and (removed or stale_keys):
+                save_context(repo_root, ctx)
+            if removed:
+                print(f"  Removed {task_id} entry from aggregate .jira-context.json ({before} → {len(ctx['tasks'])})")
+            else:
+                print(f"  No {task_id} entry in aggregate .jira-context.json")
+            if stale_keys:
+                print(f"  Cleaned stale top-level keys: {stale_keys}")
+        elif ctx.get("taskId") == task_id:
+            print(f"  Clearing worktree-style .jira-context.json (taskId: {task_id})")
             if not dry_run:
                 os.remove(ctx_path)
                 print(f"  Context file removed.")
