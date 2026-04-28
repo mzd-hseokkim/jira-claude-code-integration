@@ -37,6 +37,7 @@ Use Glob and Grep to understand the existing codebase:
 ### Step 3: Generate Design Document
 
 Plan 문서 + 코드베이스 분석 결과를 기반으로 `docs/design/<TASK-ID>.design.md` 생성.
+`templates/design.template.md`의 구조를 따른다.
 
 문서에 포함할 내용:
 - **Architecture**: 관련 컴포넌트/모듈 구조

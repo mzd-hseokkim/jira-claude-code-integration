@@ -138,6 +138,8 @@ fi
 
 ### Step 4: Compile Review Report
 
+`templates/review.template.md`의 구조를 따른다.
+
 분석 결과를 통합하여 구조화된 리뷰 생성:
 - **Summary**: Overall assessment (Approve / Request Changes / Needs Discussion)
 - **Gap Analysis**: 설계-구현 매칭률 및 주요 차이

@@ -57,6 +57,8 @@ git push -u origin feature/<TASK-ID>
 
 ### Step 3: Generate PR Content
 
+`templates/pr-description.template.md`의 구조를 따른다.
+
 **PR Title**: `<TASK-ID>: <Jira 이슈 summary>`
 
 **PR Body** (Jira 이슈 정보 기반으로 생성):

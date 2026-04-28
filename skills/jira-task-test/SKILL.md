@@ -129,7 +129,8 @@ For failed tests, capture:
 
 ### Step 4: Generate Test Report
 
-Create a test report at `docs/test/<TASK-ID>.test-report.md`:
+Create a test report at `docs/test/<TASK-ID>.test-report.md`.
+`templates/test-report.template.md`의 구조를 따른다.
 
 ```markdown
 # Test Report: <TASK-ID>
