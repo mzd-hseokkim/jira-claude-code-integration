@@ -57,39 +57,11 @@ git push -u origin feature/<TASK-ID>
 
 ### Step 3: Generate PR Content
 
-`templates/pr-description.template.md`의 구조를 따른다.
+산출물 작성 전 반드시 Read tool로 `templates/pr-description.template.md`를 읽고 contract(필수/옵셔널 분류, 옵셔널 마커 규약)를 따른다.
 
 **PR Title**: `<TASK-ID>: <Jira 이슈 summary>`
 
-**PR Body** (Jira 이슈 정보 기반으로 생성):
-
-```markdown
-## Summary
-<Jira 이슈 description 요약>
-
-## Jira Issue
-- **Key**: [<TASK-ID>](<Jira host URL extracted from Step 1>/browse/<TASK-ID>)
-- **Type**: <issue type>
-- **Priority**: <priority>
-
-## Changes
-<git diff --stat 기반 변경 파일 요약>
-
-### Key Changes
-- <주요 변경사항 1>
-- <주요 변경사항 2>
-
-## Acceptance Criteria
-- [ ] <Jira 이슈의 acceptance criteria 1>
-- [ ] <Jira 이슈의 acceptance criteria 2>
-
-## Test Plan
-<테스트 리포트가 있으면 docs/test/<TASK-ID>.test-report.md 요약>
-<없으면 수동 테스트 체크리스트>
-
-## Screenshots
-<해당하는 경우>
-```
+**PR Body**: template의 섹션 구조를 따라 Jira 이슈 정보(description, type, priority, acceptance criteria), `git diff --stat`, 테스트 리포트 요약을 채워 넣는다.
 
 ### Step 4: Create PR
 

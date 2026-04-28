@@ -130,40 +130,8 @@ For failed tests, capture:
 ### Step 4: Generate Test Report
 
 Create a test report at `docs/test/<TASK-ID>.test-report.md`.
-`templates/test-report.template.md`의 구조를 따른다.
 
-```markdown
-# Test Report: <TASK-ID>
-
-**Date**: <date>
-**Branch**: feature/<TASK-ID>
-
-## Summary
-
-| Metric | Value |
-|--------|-------|
-| Total Tests | <count> |
-| Passed | <count> |
-| Failed | <count> |
-| Skipped | <count> |
-| Duration | <time> |
-| Result | PASS / FAIL |
-
-## Unit Tests
-<results>
-
-## E2E Tests (Playwright)
-<results>
-
-## Failed Tests Detail
-### <test name>
-- **Error**: <error message>
-- **File**: <test file:line>
-- **Stack**: <truncated stack trace>
-
-## Screenshots
-<list of failure screenshots if Playwright>
-```
+산출물 작성 전 반드시 Read tool로 `templates/test-report.template.md`를 읽고 contract(필수/옵셔널 분류, 옵셔널 마커 규약)를 따른다.
 
 ### Step 5: Post Results to Jira
 

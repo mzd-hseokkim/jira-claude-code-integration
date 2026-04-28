@@ -138,14 +138,9 @@ fi
 
 ### Step 4: Compile Review Report
 
-`templates/review.template.md`의 구조를 따른다.
+산출물 작성 전 반드시 Read tool로 `templates/review.template.md`를 읽고 contract(필수/옵셔널 분류, 옵셔널 마커 규약)를 따른다.
 
-분석 결과를 통합하여 구조화된 리뷰 생성:
-- **Summary**: Overall assessment (Approve / Request Changes / Needs Discussion)
-- **Gap Analysis**: 설계-구현 매칭률 및 주요 차이
-- **Lint & Format**: 도구별 실행 결과 표 (Step 2.5 결과)
-- **Code Quality**: 이슈별 심각도 분류 (Critical / Warning / Info)
-- **Positive Notes**: 잘 된 점
+분석 결과를 통합하여 구조화된 리뷰 생성: Step 2.5(lint/format), Step 3(코드 품질), Gap Analysis(설계-구현 매칭) 결과를 template의 해당 섹션에 채워 넣는다.
 
 ### Step 4.5: Save Review Report
 

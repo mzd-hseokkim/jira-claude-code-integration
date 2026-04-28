@@ -83,15 +83,8 @@ Jira에서 수집한 정보를 정리:
 ### Step 3: Generate Plan Document
 
 Step 2에서 정리한 Jira 컨텍스트를 기반으로 `docs/plan/<TASK-ID>.plan.md` 생성.
-`templates/plan.template.md`의 구조를 따른다.
 
-문서에 포함할 내용:
-- **Background**: Jira 이슈 설명 기반
-- **Scope**: In/Out scope 정리
-- **Acceptance Criteria**: Jira에서 추출하거나, 없으면 Given-When-Then 형식으로 생성
-- **Task Breakdown**: 구현 단위로 분해
-- **Risks**: 의존성, 기술적 위험 식별
-- **Edge Cases**: 경계 조건 분석
+산출물 작성 전 반드시 Read tool로 `templates/plan.template.md`를 읽고 contract(필수/옵셔널 분류, 옵셔널 마커 규약)를 따른다.
 
 ### Step 4: Post Summary to Jira
 
