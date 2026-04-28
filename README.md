@@ -290,9 +290,49 @@ jira-claude-code-integration/
     └── report.template.md
 ```
 
-### Phase Gate Customization
+### Phase Gate (실험적 — 현재 비활성화)
 
-Edit `hooks/scripts/phase-gate.config.json` to customize phase dependencies (e.g., relax `requires`, change required `artifacts`, or set `enforced: false`) for your team's workflow.
+`/jira-task` 단계 호출 순서를 강제하는 PreToolUse hook이 코드베이스에 포함되어 있지만, **기본적으로 비활성화** 상태입니다. 활성화하려면 명시적으로 hook을 등록해야 합니다.
+
+**구현된 것** (Phase 1.2.1 ~ 1.2.4)
+
+- `hooks/scripts/phase-gate.config.json` — 12 phase 의존 그래프 + artifact 패턴
+- `hooks/scripts/phase-gate.js` — Node hook 스크립트 (의존성 미충족 시 차단, fail-open 설계)
+- `hooks/scripts/phase-gate.test.js`, `phase-gate.scenarios.test.js` — 단위 20 + 시나리오 5 테스트
+- bypass 메커니즘: `JIRA_PHASE_GATE_BYPASS=1` (1회성), `.jira-context.json`의 `bypassGate: true` (영속)
+
+**왜 비활성화 상태인가**
+
+이 플러그인은 본래 "원하는 단계만 골라 쓰는 도구함"으로 설계되었습니다 (작은 fix는 plan/design 생략, 문서 작업은 impl 생략 등). phase-gate를 켜면 모든 인접 단계가 강제 선행 조건이 되어 이 유연성을 깨뜨립니다. 따라서 강제 선형 워크플로를 원하는 팀만 명시적으로 켤 수 있도록 비활성화 상태로 둡니다.
+
+**활성화 방법**
+
+`hooks/hooks.json`의 `hooks` 객체에 다음 항목을 추가하세요:
+
+```json
+"PreToolUse": [
+  {
+    "matcher": "Skill",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/phase-gate.js",
+        "timeout": 5
+      }
+    ]
+  }
+]
+```
+
+**커스터마이즈**
+
+`phase-gate.config.json`을 편집해 의존성을 완화하거나(`requires` 비우기), 필수 artifact를 바꾸거나, 특정 단계를 `enforced: false`로 끌 수 있습니다.
+
+**테스트 실행**
+
+```bash
+npm test   # unit 20 + scenarios 5
+```
 
 ### Worktree Layout
 
