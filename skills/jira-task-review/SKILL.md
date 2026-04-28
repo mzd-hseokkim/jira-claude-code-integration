@@ -7,8 +7,7 @@ allowed-tools:
   - Read
   - Write
   - Bash
-  - Glob
-  - Grep
+  - Agent
   - mcp__atlassian__jira_get_issue
   - mcp__atlassian__jira_add_comment
 ---
@@ -17,139 +16,93 @@ allowed-tools:
 
 **Language Rule**: 프로젝트 CLAUDE.md의 Conventions 섹션 참고 (한국어 출력, Jira 코멘트 제목은 영어).
 
+## Reviewer Independence Rule (필수)
+
+코드 리뷰 본 작업(Gap Analysis + Lint & Format + Code Quality Review)은 **반드시 `jira-reviewer` subagent에게 위임한다**. main 세션은 절대 직접 리뷰를 수행하지 않는다.
+
+이유: 본 워크플로에서 main 세션이 plan/design/impl을 수행했을 가능성이 높다. 같은 세션이 자기 코드를 리뷰하면 self-praise / 사각지대 누락이 발생한다. 독립된 subagent + 별도 모델로 분리해 리뷰 신뢰도를 확보한다.
+
+**모델 강제**: subagent 호출 시 `model: "opus"`를 명시한다. main 세션이 어느 모델이든 review는 항상 Opus로 수행 (높은 추론 품질 + 일관성).
+
 ## Workflow
 
 ### Context Optimization
 
-이 스킬에서 `mcp__atlassian__jira_get_issue`를 호출해야 하면 먼저 `.jira-context.json`의 `cachedIssue`를 확인한다 (CLAUDE.md "Issue Cache" 참고). hit이면 호출 생략. miss이면 다음 파라미터로 호출 후 cache 갱신 (디자인 문서 기반 리뷰가 주이므로 이슈 본문 외 메타는 불필요):
+이 스킬에서 `mcp__atlassian__jira_get_issue`를 호출해야 하면 먼저 `.jira-context.json`의 `cachedIssue`를 확인한다 (CLAUDE.md "Issue Cache" 참고). hit이면 호출 생략. miss이면 다음 파라미터로 호출 후 cache 갱신:
 - `fields="summary,status,description,issuetype"`
 - `comment_limit=0`
 
-### Step 1: Identify Changes
+### Step 1: Prepare Context (main 세션)
 
-Determine the feature branch and base branch:
+리뷰 컨텍스트를 준비한다 — main 세션이 한다.
+
 ```bash
 git log --oneline <base-branch>..feature/<TASK-ID>
 git diff --name-only <base-branch>..feature/<TASK-ID>
 ```
 
-### Step 2: Gap Analysis
+설계 문서 존재 여부 확인:
+- `docs/design/<TASK-ID>.design.md` 존재? (Gap Analysis 가능 여부)
+- `docs/plan/<TASK-ID>.plan.md` 존재? (Acceptance Criteria 참조)
 
-설계 문서가 있으면(`docs/design/<TASK-ID>.design.md`), 설계와 구현을 직접 비교:
+### Step 2: Delegate Review to jira-reviewer Subagent (필수)
 
-1. Design 문서의 Implementation Plan에 나열된 항목을 체크리스트로 변환
-2. 각 항목에 대해 실제 구현 코드가 존재하는지 Glob/Grep으로 확인
-3. 결과를 표로 정리:
+**반드시 `Agent` 도구로 `subagent_type: "jira-reviewer"`, `model: "opus"`를 명시하여 호출**한다. main 세션이 직접 Step 2.5 / 3을 수행하는 것을 금지한다.
 
-| Design 항목 | 구현 여부 | 파일 위치 | 비고 |
-|------------|----------|----------|------|
-| <item> | O / X | <path> | <note> |
+호출 prompt에 다음 컨텍스트를 명시적으로 전달:
 
-매칭률 = 구현된 항목 / 전체 항목 x 100
+```
+TASK-ID: <TASK-ID>
+Base branch: <base-branch>
+Feature branch: feature/<TASK-ID>
+Repo root: <REPO_ROOT 절대경로>
 
-설계 문서가 없으면 이 단계를 스킵하고 코드 품질 리뷰만 수행.
+## 작업
+다음 4가지를 순서대로 수행하고 결과를 구조화된 형태로 반환:
 
-### Step 2.5: Lint & Format Check
+1. **Gap Analysis**: docs/design/<TASK-ID>.design.md가 있으면 Implementation Plan 항목별로 실제 구현 여부를 Glob/Grep으로 확인하고 매칭률 산출. 없으면 스킵.
 
-변경된 파일에 대해 프로젝트 타입을 감지하고 lint/format 체크를 실행한다.
-**대상 파일**: Step 1에서 `git diff --name-only`로 추출한 변경 파일 목록 중 해당 언어 파일만.
+2. **Lint & Format Check**: 변경 파일 중 다음 확장자에 대해 lint/format 실행:
+   - Node.js (package.json 있을 때): .js/.ts/.jsx/.tsx/.mjs/.cjs → npx eslint, npx prettier --check
+   - Python (pyproject.toml/setup.py/requirements.txt 있을 때): .py → ruff check / ruff format --check, 또는 flake8
+   - Java/Kotlin (pom.xml/build.gradle 있을 때): .java/.kt/.kts → checkstyle
+   변경 파일만 대상, 도구 없으면 스킵, 기존 프로젝트 설정 우선. lint 실패가 있어도 리뷰를 중단하지 않고 정보로 포함.
 
-#### 프로젝트 타입 감지
+3. **Code Quality Review**: 변경 파일을 Read해서 보안 취약점(injection/XSS/하드코딩 credentials), 에러 핸들링 누락, 네이밍 일관성, 불필요한 복잡도를 검토.
 
-프로젝트 루트의 설정 파일로 타입을 판별한다 (복수 해당 시 모두 실행):
+4. **Compile Findings**: Critical / Warning / Info 3단계로 분류. 파일:라인 참조 포함.
 
-| 감지 파일 | 프로젝트 타입 | 대상 확장자 |
-|-----------|-------------|------------|
-| `package.json` | Node.js | `.js`, `.ts`, `.jsx`, `.tsx`, `.mjs`, `.cjs` |
-| `pyproject.toml`, `setup.py`, `requirements.txt` | Python | `.py` |
-| `pom.xml`, `build.gradle`, `build.gradle.kts` | Java/Kotlin | `.java`, `.kt`, `.kts` |
+## 출력 형식 (반드시 따를 것)
+- 결과: Approve / Request Changes / Needs Discussion 중 하나
+- 검토 파일 수, 커밋 수
+- Gap Analysis: 매칭률 + 미구현 항목
+- Lint & Format: 도구별 표 (대상 파일 수 / 결과 / 주요 이슈)
+- Code Quality Findings: Critical / Warnings / Info 분류
+- Positive Notes: 잘 된 점
 
-#### 실행 규칙
-
-1. **변경 파일 필터링**: 해당 확장자를 가진 변경 파일이 없으면 해당 타입 스킵
-2. **도구 존재 확인**: `command -v` 또는 프로젝트 내 실행 스크립트 존재 여부로 판별. 도구가 없으면 경고 메시지 출력 후 스킵
-3. **기존 설정 우선**: 프로젝트에 `.eslintrc*`, `.prettierrc*`, `ruff.toml`, `pyproject.toml [tool.ruff]`, `checkstyle.xml` 등 설정 파일이 있으면 해당 설정을 사용
-4. **변경 파일만 대상**: 전체 프로젝트가 아닌 변경된 파일만 검사
-
-#### Node.js
-
-```bash
-# ESLint (lint 체크)
-CHANGED_JS=$(git diff --name-only <base-branch>..feature/<TASK-ID> -- '*.js' '*.ts' '*.jsx' '*.tsx' '*.mjs' '*.cjs')
-if [ -n "$CHANGED_JS" ]; then
-  npx eslint --no-error-on-unmatched-pattern $CHANGED_JS 2>&1 || true
-fi
-
-# Prettier (format 체크)
-if [ -n "$CHANGED_JS" ]; then
-  npx prettier --check $CHANGED_JS 2>&1 || true
-fi
+산출물 작성 시 templates/review.template.md를 Read해서 contract(필수/옵셔널 분류, 옵셔널 마커 규약)를 따른다.
 ```
 
-#### Python
+**금지 사항**:
+- `Agent` 호출 없이 main 세션이 Bash로 lint를 직접 실행하는 것 금지
+- `Agent` 호출 없이 main 세션이 변경 파일을 Read해서 코드 품질 평가하는 것 금지
+- subagent에 `model` 파라미터 생략 금지 (반드시 `"opus"`)
 
-```bash
-CHANGED_PY=$(git diff --name-only <base-branch>..feature/<TASK-ID> -- '*.py')
-if [ -n "$CHANGED_PY" ]; then
-  # ruff 우선, 없으면 flake8 시도
-  if command -v ruff &>/dev/null; then
-    ruff check $CHANGED_PY 2>&1 || true
-    ruff format --check $CHANGED_PY 2>&1 || true
-  elif command -v flake8 &>/dev/null; then
-    flake8 $CHANGED_PY 2>&1 || true
-  fi
-fi
-```
+### Step 3: Receive Subagent Result
 
-#### Java/Kotlin
+`Agent` 도구의 반환값을 받는다. 이 결과가 리뷰의 단일 진실이다 (main 세션이 임의로 추가/수정 금지).
 
-```bash
-# Maven 프로젝트
-if [ -f "pom.xml" ]; then
-  ./mvnw checkstyle:check 2>&1 || true
-fi
+만약 subagent 호출이 실패하거나(타임아웃, 권한 거부 등) 결과가 명확히 부족하면, **재시도 또는 사용자에게 보고**. main 세션이 fallback으로 직접 리뷰하지 않는다.
 
-# Gradle 프로젝트
-if [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
-  ./gradlew checkstyleMain 2>&1 || true
-fi
-```
+### Step 4: Save Review Report (main 세션)
 
-#### 결과 정리
+subagent 반환값을 `docs/review/<TASK-ID>.review.md`에 저장. template contract를 따라 정형화한다.
 
-실행 결과를 다음 형식으로 정리하여 Step 4 리포트에 포함:
+`templates/review.template.md`를 Read해서 contract(필수: Summary, Gap Analysis, Lint & Format, Code Quality Findings, Positive Notes)를 따른다.
 
-| 도구 | 대상 파일 수 | 결과 | 주요 이슈 |
-|------|------------|------|----------|
-| ESLint | <N>개 | Pass / <N> errors, <N> warnings | <요약> |
-| Prettier | <N>개 | Pass / <N> files unformatted | <파일 목록> |
-| ruff | <N>개 | Pass / <N> issues | <요약> |
+### Step 4.5: Attach Review Report to Jira
 
-- lint/format 이슈가 있어도 리뷰를 중단하지 않는다 (정보로 포함)
-- Critical 수준의 lint 오류(미사용 import 수준이 아닌 실제 버그 가능성)는 Code Quality Findings의 Warning으로도 반영
-
-### Step 3: Code Quality Review
-
-변경된 파일을 직접 읽고 다음을 검토:
-- 보안 취약점 (injection, XSS, 하드코딩된 credentials)
-- 에러 핸들링 누락
-- 네이밍 컨벤션 일관성
-- 불필요한 복잡도
-
-### Step 4: Compile Review Report
-
-산출물 작성 전 반드시 Read tool로 `templates/review.template.md`를 읽고 contract(필수/옵셔널 분류, 옵셔널 마커 규약)를 따른다.
-
-분석 결과를 통합하여 구조화된 리뷰 생성: Step 2.5(lint/format), Step 3(코드 품질), Gap Analysis(설계-구현 매칭) 결과를 template의 해당 섹션에 채워 넣는다.
-
-### Step 4.5: Save Review Report
-
-리뷰 리포트를 `docs/review/<TASK-ID>.review.md`에 저장.
-다른 PDCA 문서들(plan, design, test)과 동일한 패턴으로 로컬 파일로 보존.
-
-### Step 4.7: Attach Review Report to Jira
-
-저장한 `docs/review/<TASK-ID>.review.md`를 공용 스크립트로 첨부 업로드 (스크립트 위치는 프로젝트 CLAUDE.md의 "Jira Attach Script" 섹션 참고):
+저장한 `docs/review/<TASK-ID>.review.md`를 공용 스크립트로 첨부 업로드 (스크립트 위치는 프로젝트 CLAUDE.md "Jira Attach Script" 섹션 참고):
 
 ```bash
 bash "$JIRA_ATTACH_SH" <TASK-ID> docs/review/<TASK-ID>.review.md
@@ -159,46 +112,18 @@ bash "$JIRA_ATTACH_SH" <TASK-ID> docs/review/<TASK-ID>.review.md
 
 ### Step 5: Post Review to Jira
 
-Use `mcp__atlassian__jira_add_comment` to post the review:
+`mcp__atlassian__jira_add_comment`로 리뷰 요약 게시. 본문 끝에 reviewer 정보를 명시:
 
 ```
-## Code Review: <TASK-ID>
-
-**결과**: <Approve | Request Changes | Needs Discussion>
-**검토 파일 수**: <count>개
-**커밋 수**: <count>개
-
-### Gap Analysis
-**설계-구현 일치율**: <percentage>%
-- <차이점 또는 불일치 사항>
-
-### Lint & Format
-| 도구 | 대상 파일 수 | 결과 |
-|------|------------|------|
-| <tool> | <N>개 | Pass / <issues> |
-
-### Code Quality Findings
-
-#### Critical
-- <파일:라인 참조와 함께 발견 사항>
-
-#### Warnings
-- <파일:라인 참조와 함께 발견 사항>
-
-#### Info
-- <제안 또는 참고 사항>
-
-### Positive Notes
-- <잘 된 점>
-
 ---
-Reviewed by Claude Code
+Reviewed by jira-reviewer subagent (model: opus)
 ```
+
+이 서명은 향후 review-log 분석(Phase 1.4)에서 reviewer 식별에 사용된다.
 
 ### Step 6: Completion Summary
 
 Approve 시 `.jira-context.json`의 `completedSteps`에 `"review"` 추가 (Request Changes 시 추가하지 않음).
-리뷰 결과에 따라 분기하여 완료 요약 출력:
 
 **Approve 시:**
 ```
@@ -206,6 +131,7 @@ Approve 시 `.jira-context.json`의 `completedSteps`에 `"review"` 추가 (Reque
 ✅ **Review Complete** — <TASK-ID>
 
 - 결과: Approve
+- Reviewer: jira-reviewer subagent (opus)
 - 설계-구현 매칭률: <N>%
 - 리뷰 파일: <N>개
 - Jira 코멘트 게시됨
@@ -223,6 +149,7 @@ Approve 시 `.jira-context.json`의 `completedSteps`에 `"review"` 추가 (Reque
 ⚠️ **Review: Changes Requested** — <TASK-ID>
 
 - 결과: Request Changes
+- Reviewer: jira-reviewer subagent (opus)
 - 주요 이슈:
   - <Critical/Warning findings>
 - Jira 코멘트 게시됨
