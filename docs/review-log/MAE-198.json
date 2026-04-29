@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MAE-198",
+  "entries": [
+    {
+      "taskId": "MAE-198",
+      "timestamp": "2026-04-29T14:54:13Z",
+      "reviewerVersion": "f2733937a00e",
+      "outcome": "pass",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "info",
+          "file": "tasks/skill-refactor-regression-checklist.md",
+          "line": 13,
+          "category": "doc",
+          "message": "예시 경로 tasks/regression-MAE-193.md 하드코딩. 예시 명시되어 있어 그대로 둬도 무방."
+        },
+        {
+          "id": "F-002",
+          "severity": "info",
+          "file": ".jira-context.json",
+          "line": 0,
+          "category": "process",
+          "message": "산출물이 아직 커밋되지 않음(untracked). merge/PR 단계 전에 커밋 필요."
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 2
+      },
+      "falsePositive": null,
+      "userOverride": null
+    }
+  ]
+}
