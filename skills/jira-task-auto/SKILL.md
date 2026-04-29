@@ -6,7 +6,7 @@ argument-hint: "<TASK-ID>"
 allowed-tools:
   - Read
   - Edit
-  - Skill
+  - Agent
 ---
 
 # jira-task-auto: Auto-Execute Full Workflow
@@ -17,13 +17,14 @@ allowed-tools:
 
 `start → plan → design → impl → test → review` 단계를 자동으로 순차 실행하는 **경량 오케스트레이터**.
 
-- 각 단계는 **부모 컨텍스트에서 직접 `Skill` 도구로 호출** (sub-agent 위임 없음 — 베이스 컨텍스트 이중 청구 방지)
+- 각 단계는 **독립된 sub-agent(`Agent` 도구)**로 실행 → 컨텍스트 격리 + 페르소나 격리
+- 단계별로 적합한 모델 배정 (모델 차등)
 - `merge`, `pr`, `done`은 포함하지 않음 (worktree 경계 + 외부 공개 행위)
 - 이미 완료된 단계는 건너뜀 (`.jira-context.json`의 `completedSteps` 기반)
-- review에서 문제 발견 시 → 직접 수정 → test → review 재시도 (최대 2회)
+- review에서 문제 발견 시 → 수정 sub-agent → test → review 재시도 (최대 2회)
 - 그 외 단계 실패 시 즉시 중단
 
-**핵심 원칙: 오케스트레이터는 가볍게 유지한다.** `.jira-context.json` 확인, Skill 호출, 결과 판정만 수행. 단계별 작업 자체는 각 스킬의 지시를 그대로 따른다.
+**핵심 원칙: 오케스트레이터는 가볍게 유지한다.** `.jira-context.json` 확인, Agent 호출, 결과 판정만 수행. 단계별 작업은 모두 sub-agent에 위임. 부모 컨텍스트로 산출물 본문이 들어오지 않는다 (path만 추적).
 
 ## Step 1: Load Context and Plan Execution
 
@@ -42,40 +43,74 @@ allowed-tools:
 완료된 단계: <completedSteps 목록 또는 "없음">
 건너뛸 단계: <이미 완료된 단계 목록 또는 "없음">
 
-부모 컨텍스트에서 각 단계를 순차 실행합니다.
+각 단계를 독립 sub-agent로 순차 실행합니다 (모델 차등 적용).
 ```
 
 ## Step 2: Sequential Execution
 
-아래 순서로 각 단계를 실행. **각 단계는 `Skill` 도구로 부모 컨텍스트에서 직접 호출한다.** sub-agent를 사용하지 않는다.
+아래 순서로 각 단계를 실행. **각 단계는 `Agent` 도구로 독립 sub-agent를 생성하여 위임한다.** Skill 도구로 부모 컨텍스트에서 직접 호출하지 않는다.
 
 **중요 규칙:**
 - 각 단계 호출 전, `.jira-context.json`을 `Read`로 다시 읽어 이미 완료되었으면 건너뜀
-- Skill은 동기 실행. 호출이 끝나면 다음 단계로 진행
-- Skill 완료 후, `.jira-context.json`을 `Read`로 다시 읽어 `completedSteps`에 추가되었는지 확인
-- 추가되지 않았으면 해당 단계 실패로 판단 → 중단
+- 각 Agent는 foreground 실행 (결과를 받아야 다음 단계 진행 가능)
+- Agent 완료 후, `.jira-context.json`을 `Read`로 다시 읽어 `completedSteps`에 추가되었는지 확인
+- 추가되지 않았으면 해당 단계 실패로 판단 → 중단 (review만 예외, Step 3 참조)
 
-### Skill 호출 패턴
+### Sub-agent 호출 표준 계약
 
-각 단계가 `completedSteps`에 없으면, 아래 패턴으로 Skill을 호출:
+각 단계가 `completedSteps`에 없으면, 아래 패턴으로 `Agent`를 호출:
 
 ```
-Skill({
-  skill: "jira-integration:jira-task-<스킬명>",
-  args: "<TASK-ID>"
+Agent({
+  description: "Jira-task <step> for <TASK-ID>",
+  subagent_type: <단계별 subagent_type>,
+  model: <단계별 모델>,
+  prompt: <단계별 prompt — 아래 표준 prompt 형식 참조>
 })
 ```
 
-**단계별 매핑:**
+### 단계별 subagent_type 및 모델
 
-| 순서 | 단계명 | 스킬 |
-|------|--------|------|
-| 1 | start | `jira-integration:jira-task-start` |
-| 2 | plan | `jira-integration:jira-task-plan` |
-| 3 | design | `jira-integration:jira-task-design` |
-| 4 | impl | `jira-integration:jira-task-impl` |
-| 5 | test | `jira-integration:jira-task-test` |
-| 6 | review | `jira-integration:jira-task-review` |
+| 순서 | 단계 | subagent_type | 모델 | 사고 유형 |
+|------|------|---------------|------|----------|
+| 1 | start | `general-purpose` | haiku | 상태 전이 + 브랜치 셋업, 판단 거의 없음 |
+| 2 | plan | `general-purpose` | sonnet | 문서 합성 + 스코프 결정 |
+| 3 | design | `general-purpose` | opus | 결정·아키텍처, 가장 사고 집약적 |
+| 4 | impl | `general-purpose` | sonnet | 코드 생성, 토큰 다량 소비 |
+| 5 | test | `general-purpose` | sonnet | 실행 + 결과 정리 |
+| 6 | review | `jira-integration:jira-reviewer` | opus | self-praise bias 차단 + 사고 집약적 |
+
+review만 specialized subagent를 사용한다 (v0.17.19 정착). 나머지는 `general-purpose`가 단계별 SKILL을 내부에서 호출.
+
+### 표준 Prompt 형식
+
+review 외 단계 (start/plan/design/impl/test):
+
+```
+Jira task <TASK-ID>의 <단계명> 단계를 수행하라.
+
+다음 절차를 따른다:
+1. `jira-integration:jira-task-<단계명>` Skill을 호출 (인자: "<TASK-ID>").
+2. Skill이 정의한 모든 단계를 그대로 수행.
+3. 완료 후, 부모 컨텍스트로 다음 형식의 *최소 요약*만 반환하라:
+
+---
+- step: <단계명>
+- result: success | failed
+- artifactPath: <docs/.../<TASK-ID>.<type>.md 등 또는 null>
+- jiraCommentPosted: yes | no
+- nextStepHint: <옵션, 한 줄. 부모가 다음 단계에 전달할 만한 권고가 있을 때만>
+- failureReason: <result=failed일 때만, 한 줄>
+---
+
+산출물 본문(plan/design/test/review 문서 내용 등)을 부모에 그대로 출력하지 마라 — 부모 컨텍스트 오염 방지.
+```
+
+review 단계 (jira-reviewer subagent 호출):
+
+```
+Jira task <TASK-ID>의 review 단계를 수행하라. `jira-integration:jira-task-review` Skill을 호출하고, 동일한 *최소 요약* 형식으로 결과만 반환하라. 산출물 본문 미반환.
+```
 
 ### 단계 간 진행 메시지
 
@@ -87,7 +122,7 @@ Skill({
 
 ## Step 3: Review Quality Gate
 
-review 단계 완료 후 `.jira-context.json`을 읽어 `completedSteps`에 `"review"`가 있는지 확인.
+review sub-agent 완료 후 `.jira-context.json`을 `Read`로 읽어 `completedSteps`에 `"review"`가 있는지 확인.
 
 ### 통과 (Approve)
 
@@ -101,21 +136,42 @@ review 단계 완료 후 `.jira-context.json`을 읽어 `completedSteps`에 `"re
 - 설계-구현 매칭률 100%
 - Code Quality에서 Critical / Warning 이슈 없음
 
-**루프 절차 (회차별):**
+**루프 절차 (회차별, 모두 sub-agent로 위임):**
 
-1. **리뷰 이슈 직접 수정 (sub-agent 없이 부모 컨텍스트에서 수행)**:
-   - `docs/review/<TASK-ID>.review.md`를 `Read`로 읽어 Critical/Warning 항목과 Gap Analysis 미충족 항목을 파악
-   - 지적된 이슈를 `Edit` 도구로 직접 수정. 수정 범위는 리뷰 지적 사항에 한정
-   - `.jira-context.json`을 읽고 `Edit`로 `completedSteps` 배열에서 `"test"`와 `"review"`를 제거 (재실행 가능하게)
+1. **수정 sub-agent** (`general-purpose`, sonnet):
 
-2. **test 재실행**: test Skill 호출 (Step 2와 동일 패턴)
-3. **review 재실행**: review Skill 호출 (Step 2와 동일 패턴)
-4. **품질 게이트 재확인**: `.jira-context.json`을 읽어 `completedSteps`에 `"review"` 존재 여부 확인
+   ```
+   Agent({
+     description: "Apply review fixes for <TASK-ID>",
+     subagent_type: "general-purpose",
+     model: "sonnet",
+     prompt: <아래 prompt>
+   })
+   ```
+
+   prompt:
+   ```
+   Jira task <TASK-ID>의 리뷰 지적사항을 직접 수정하라.
+
+   1. `docs/review/<TASK-ID>.review.md`를 Read로 읽는다.
+   2. Critical / Warning 항목과 Gap Analysis 미충족 항목을 식별한다.
+   3. 지적된 이슈를 Edit으로 코드에 직접 반영한다. 수정 범위는 리뷰 지적 사항에 한정 — 무관한 리팩토링 금지.
+   4. `.jira-context.json`을 Read로 읽고, completedSteps에서 "test"와 "review"를 제거한 뒤 Edit으로 다시 쓴다 (재실행 가능하게).
+   5. 부모에 다음 최소 요약만 반환:
+      - step: review-fix
+      - result: success | failed
+      - filesEdited: <수정한 파일 수>
+      - failureReason: <실패 시 한 줄>
+   ```
+
+2. **test 재실행**: Step 2의 표준 호출로 test sub-agent 재호출.
+3. **review 재실행**: Step 2의 표준 호출로 review sub-agent (`jira-integration:jira-reviewer`) 재호출.
+4. **품질 게이트 재확인**: `.jira-context.json`을 읽어 `completedSteps`에 `"review"` 존재 여부 확인.
 
 수정 루프 진행 시 출력:
 
 ```
-🔄 Review 품질 게이트 미통과 (시도 <N>/2) — 리뷰 지적 사항을 직접 수정 후 재검증합니다.
+🔄 Review 품질 게이트 미통과 (시도 <N>/2) — 수정 sub-agent에 위임 후 재검증합니다.
 ```
 
 ### 2회 실패 시 중단
@@ -126,7 +182,7 @@ review 단계 완료 후 `.jira-context.json`을 읽어 `completedSteps`에 `"re
 ❌ Auto 모드 중단: review 품질 게이트를 2회 시도 후에도 통과하지 못했습니다.
 
 미해결 이슈:
-- <남은 Critical/Warning 항목>
+- <남은 Critical/Warning 항목 — sub-agent 반환 요약에서 추출>
 
 현재 진행 상황: <completedSteps>
 
@@ -140,7 +196,7 @@ review를 제외한 단계 실패 시 즉시 중단하고 안내:
 ```
 ❌ Auto 모드 중단: <단계명> 단계에서 실패했습니다.
 
-원인: <Agent가 반환한 실패 사유>
+원인: <sub-agent 반환 요약의 failureReason>
 현재 진행 상황: <completedSteps>
 
 수동으로 문제를 해결한 후 재실행하거나,
@@ -163,3 +219,26 @@ review를 제외한 단계 실패 시 즉시 중단하고 안내:
 - done:  `/jira-task done <TASK-ID>`  — 작업 완료 처리
 ─────────────────────────────────────────
 ```
+
+## Design Rationale: Sub-agent Delegation
+
+본 SKILL은 v0.9.0에 sub-agent 위임을 도입했다가 v0.17.1에 토큰 진단으로 부모-직접 호출로 변경됐고, v0.17.19에서 review만 부분 복원, v0.21.0에서 전 단계 복원된 이력이 있다. 동일 회귀를 막기 위한 설계 근거를 명시한다.
+
+### 왜 sub-agent로 위임하는가
+
+1. **컨텍스트 격리** — 6단계의 raw 산출물(MCP 응답, 코드 본문, 탐색 결과)이 부모에 누적되면 instruction drift 발생. 부모-직접 호출 방식의 가장 큰 비용은 토큰이 아니라 *지시 망각으로 인한 품질 저하*다.
+2. **페르소나 격리** — plan을 짠 인스턴스가 그대로 impl을 하면 합리화 편향이 코드 결정으로 흘러간다. reviewer는 self-praise bias. 같은 종류의 편향이 plan→impl, design→impl, impl→test 모든 인접 단계 사이에 존재.
+3. **모델 차등** — sub-agent의 `model` override를 통해 단계별로 적합한 모델 배정 가능 (haiku/sonnet/opus). 부모-직접 호출 방식에선 단일 모델 강제.
+
+### 토큰 비용 측정 시 주의 (회귀 방지 가이드)
+
+sub-agent 베이스 컨텍스트(시스템 프롬프트, 도구 정의)는 **prompt cache의 1차 대상**이다. 두 번째 호출부터는 cache read price(약 1/10)로 청구된다. raw token만 보고 평가하면 "sub-agent가 더 비싸 보이는" 착시가 발생한다.
+
+회귀 평가 시 다음을 지켜야 한다:
+
+- **raw token이 아닌 청구 token** 기준으로 측정.
+- **단일 단계가 아닌 6단계 풀 사이클** 기준으로 측정 (베이스 컨텍스트는 첫 호출에서만 cache miss).
+- **부모-직접 호출 모드의 컨텍스트 누적 비용**(매 단계 직전까지 누적된 부모 컨텍스트가 다음 단계에서 추가 청구됨)을 함께 측정.
+- **품질 비용**(instruction drift, 페르소나 편향)은 토큰으로 환산되지 않는다. 토큰 수치만으로 격리 가치를 부정하지 말 것.
+
+이 지침은 v0.17.1의 토큰 진단 오류(컨텍스트 누적 + 캐시 효과 누락)를 다시 반복하지 않기 위함이다.
