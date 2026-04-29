@@ -201,13 +201,14 @@ conflict가 1건 이상 감지되면 Step 4.5 Confirm Gate의 합성 결과 요�
 - Topic, Slug, Mode (default/lite/from), Generated At
 - Stakeholders (Step 3 답변 1번)
 - Goals & Success Criteria (Step 3 답변 2번)
-- Constraints (Step 3 답변 3번)
-- Non-functional Requirements (Step 3 답변 4번, `--lite` 시 "N/A — lite mode")
+- Constraints (Step 3 답변 3번을 **Technical / Schedule / Cost / Regulatory 4 sub-section**으로 분류. 답변에 명시되지 않은 카테고리는 `N/A — 해당 없음` 한 줄로 명시 — 누락 금지.)
+- Non-functional Requirements (Step 3 답변 4번을 **6 카테고리 표**로 정리: 성능 / 가용성 / 보안 / 확장성 / 관측성 / 호환성. 각 항목은 값 또는 `N/A — <사유>`. `TBD`는 사용 금지 — 모르면 Open Questions로 격상. `--lite` 시 본 섹션 전체를 `N/A — lite mode` 한 줄로 대체.)
 - Codebase Context (Step 2 결과: 파일 경로 + 발췌 요약)
 - Functional Requirements (Step 3 답변과 codebase 컨텍스트로부터 LLM이 합성)
+- **Goals ↔ FR 매핑** (Functional Requirements 합성 직후 도출. 표 형식 `| Goal | 만족하는 FR | 비고 |`. 모든 Goal에 최소 1개 FR 매핑이 원칙. 매핑되지 않는 Goal은 `[P1]`로 Open Questions에 격상. 매핑되지 않는 FR은 Out of Scope 후보 또는 Goal 누락 신호.)
 - Edge Cases (`--lite` 시 생략)
 - Out of Scope (`--lite` 시 생략)
-- Open Questions (TBD로 표시된 항목 모음 + Step 3.5에서 격상된 `[CONFLICT]` 항목 자동 포함. 순서: TBD 항목 먼저 → conflict 항목 다음)
+- Open Questions (TBD로 표시된 항목 모음 + Step 3.5에서 격상된 `[CONFLICT]` 항목 + Goals↔FR 매핑 누락 항목 자동 포함. 순서: TBD 항목 먼저 → 매핑 누락 → conflict 항목)
 
 `--from <path>`가 지정된 경우: `<path>` 본문을 베이스로 위 섹션을 보강·재구성한다 (덮어쓰기 X, 보강 O).
 
@@ -289,6 +290,15 @@ Step 4가 메모리상에 만든 합성 산출물(Functional Requirements / Edge
 | `--from` | default와 동일 — 단, "import 베이스 위에서 합성·보강된 부분"임을 안내 문구 1줄로 표기 (실제 마커 적용은 Trace Marker MAE-169로 위임) |
 
 `--lite` 모드에서도 Functional Requirements와 Open Questions는 confirm 대상으로 유지한다 — hallucination 위험이 가장 큰 두 섹션이므로 lite gate 무의미화를 방지한다.
+
+#### Goals ↔ FR 매핑 검증 (필수)
+
+confirm 표시 *전*에 합성 산출물의 Goals ↔ FR 매핑을 자동 검증한다:
+
+- **매핑되지 않은 Goal**: 모든 Goal이 최소 1개 FR에 매핑되는가? 매핑 없는 Goal은 `[P1]` 우선순위로 Open Questions에 자동 격상한다 (sort 순서: TBD → 매핑 누락 → CONFLICT).
+- **고아 FR**: 어떤 Goal에도 기여하지 않는 FR이 있는가? 있으면 confirm 표시 위에 경고 1줄: "⚠️ FR-N은 어떤 Goal에도 매핑되지 않습니다. Out of Scope 후보 또는 Goal 누락일 수 있습니다."
+
+이 검증은 hallucinated FR을 잡는 추가 게이트이기도 하다 (Goal과 무관한 FR을 LLM이 만들어내는 경우 식별 가능).
 
 #### AskUserQuestion 호출 (의사코드)
 
@@ -412,11 +422,33 @@ AskUserQuestion(
 
 ## Constraints
 
-<Step 3 답변 3번. 기술/시간/비용/규제 제약>
+<!-- Step 3 답변 3번을 4 카테고리로 분리. 빈 카테고리는 "N/A — 해당 없음" 한 줄. -->
+
+### Technical
+- <기술 스택, 의존, 호환성>
+
+### Schedule
+- <일정/마감>
+
+### Cost
+- <예산/리소스>
+
+### Regulatory
+- <법적/컴플라이언스/보안 정책>
 
 ## Non-functional Requirements
 
-<Step 3 답변 4번. --lite 모드면 "N/A — lite mode">
+<!-- 6 카테고리 표. 각 항목은 값 또는 "N/A — <사유>"로 명시. "TBD" 사용 금지 (Open Questions로 격상).
+     --lite 모드는 본 섹션 전체를 "N/A — lite mode" 한 줄로 대체. -->
+
+| 항목 | 값 | 비고 |
+|---|---|---|
+| 성능 (응답시간/처리량) | <값 또는 N/A — 사유> | |
+| 가용성 / SLA | <값 또는 N/A — 사유> | |
+| 보안 (인증/암호화) | <값 또는 N/A — 사유> | |
+| 확장성 (사용자/데이터 규모) | <값 또는 N/A — 사유> | |
+| 관측성 (로깅/메트릭) | <값 또는 N/A — 사유> | |
+| 호환성 (브라우저/OS/API) | <값 또는 N/A — 사유> | |
 
 ## Codebase Context
 
@@ -430,6 +462,17 @@ AskUserQuestion(
 2. <Req-2> *(source: Q1)*
 3. <Req-3> *(code: src/foo.ts:12-30)*
 4. <Req-4> *(synthesized)*
+
+## Goals ↔ FR 매핑
+
+<!-- 모든 Goal에 최소 1개 FR 매핑. 매핑 없는 Goal은 [P1]로 Open Questions에 격상.
+     매핑 없는 FR은 Out of Scope 후보 또는 Goal 누락 신호.
+     plan의 Goal Coverage 표와 호환. -->
+
+| Goal | 만족하는 FR | 비고 |
+|---|---|---|
+| <Goal 1> | FR-1, FR-3 | |
+| <Goal 2> | FR-2 | |
 
 ## Edge Cases
 

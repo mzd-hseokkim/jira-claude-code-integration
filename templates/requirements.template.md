@@ -19,11 +19,34 @@
 
 ## Constraints
 
-<Step 3 답변 3번. 기술/시간/비용/규제 제약>
+<!-- Step 3 답변 3번을 4 카테고리로 분리. 빈 카테고리는 "N/A — 해당 없음" 한 줄.
+     plan이 스코프 컷 결정 시 어느 제약이 살아있는지 보기 위함. -->
+
+### Technical
+- <기술 스택, 의존, 호환성>
+
+### Schedule
+- <일정/마감>
+
+### Cost
+- <예산/리소스>
+
+### Regulatory
+- <법적/컴플라이언스/보안 정책>
 
 ## Non-functional Requirements
 
-<Step 3 답변 4번. --lite 모드면 "N/A — lite mode">
+<!-- 각 항목은 값 또는 "N/A — <사유>"로 명시. "TBD" placeholder는 Open Questions로 격상 권장.
+     --lite 모드에서는 본 섹션 전체를 "N/A — lite mode" 한 줄로 대체. -->
+
+| 항목 | 값 | 비고 |
+|---|---|---|
+| 성능 (응답시간/처리량) | <값 또는 N/A — 사유> | |
+| 가용성 / SLA | <값 또는 N/A — 사유> | |
+| 보안 (인증/암호화) | <값 또는 N/A — 사유> | |
+| 확장성 (사용자/데이터 규모) | <값 또는 N/A — 사유> | |
+| 관측성 (로깅/메트릭) | <값 또는 N/A — 사유> | |
+| 호환성 (브라우저/OS/API) | <값 또는 N/A — 사유> | |
 
 ## Codebase Context
 
@@ -37,6 +60,19 @@
 2. <Req-2> *(source: Q1)*
 3. <Req-3> *(code: src/foo.ts:12-30)*
 4. <Req-4> *(synthesized)*
+
+## Goals ↔ FR 매핑
+
+<!-- Goals & Success Criteria의 각 Goal이 어떤 FR로 만족되는지.
+     - 한 Goal이 여러 FR에 걸쳐도 됨 (콤마 구분).
+     - 어떤 FR도 매핑되지 않은 Goal이 있으면 Open Questions로 격상 권장 ([P1]).
+     - 어떤 Goal에도 매핑되지 않은 FR이 있으면 Out of Scope 후보로 표시하거나 추가 Goal 도출.
+     - plan의 Goal Coverage 표(plan.template.md)와 호환 — plan이 이 매핑을 입력으로 받아 스코프 결정. -->
+
+| Goal | 만족하는 FR | 비고 |
+|---|---|---|
+| <Goal 1 — 측정 기준 포함> | FR-1, FR-3 | |
+| <Goal 2> | FR-2 | |
 
 ## Edge Cases
 
