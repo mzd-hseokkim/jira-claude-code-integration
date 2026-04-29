@@ -4,6 +4,8 @@
 
 **schemaVersion**: 1
 
+> 이 저장소에 함께 커밋된 `MAE-180.json`, `MAE-190.json`은 `scripts/analyze-review-log.py`의 입력 형식 예시(샘플)다. 실제 운영 시 사용자 프로젝트에서 새로 누적된다.
+
 ---
 
 ## 디렉터리 구조

@@ -310,10 +310,12 @@ jira-claude-code-integration/
 │   ├── pr-description.template.md
 │   └── report.template.md
 │
-├── docs/                        # PDCA artifacts + reference docs
-│   ├── requirements/  plan/  design/  test/  review/  review-log/
-│   ├── mcp-atlassian-tools.md
-│   └── mcp-jira-cloud-tools.md
+├── docs/                        # Plugin reference docs
+│   ├── mcp-atlassian-tools.md   # Tool reference for the Atlassian MCP server
+│   └── review-log/              # Review log schema + sample entries
+│                                # (PDCA outputs plan/design/test/review/
+│                                #  requirements are gitignored as
+│                                #  per-task artifacts)
 │
 └── tests/                       # Python tests for analyze-review-log
     ├── test_analyze_review_log.py
