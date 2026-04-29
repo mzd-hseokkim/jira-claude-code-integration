@@ -2,7 +2,7 @@
 
 **[English]** | [한국어](#korean)
 
-[![Version](https://img.shields.io/badge/version-0.12.0-blue)](#)
+[![Version](https://img.shields.io/badge/version-0.17.20-blue)](#)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-orange)](https://docs.anthropic.com/en/docs/claude-code)
 [![MCP](https://img.shields.io/badge/MCP-mcp--atlassian-purple)](https://github.com/sooperset/mcp-atlassian)
@@ -220,6 +220,7 @@ claude
 |---|---|---|
 | `/jira` | anywhere | Connection status + help |
 | `/jira setup` | anywhere | **Interactive setup wizard** (prerequisites → credentials → MCP registration → validation) |
+| `/jira-task discover [topic]` | anywhere | **Turn a free-form topic into a requirements doc** (`docs/requirements/<slug>.requirements.md`) for `/jira-task create --from-requirements` |
 | `/jira-task create [hint]` | anywhere | **Interactively create a new Jira issue** with optional sub-tasks, dependency links, and epic linking |
 | `/jira-task init [N\|KEY\|desc]` | main repo | Fetch tasks + create worktrees (count, issue key, or natural language) |
 | `/jira-task auto <ID>` | worktree | **Auto-run full pipeline** with sub-agent isolation + iterative review |
@@ -232,6 +233,7 @@ claude
 | `/jira-task merge [ID]` | worktree | Merge locally (strategy: ff/squash/rebase) |
 | `/jira-task pr [ID]` | main repo | Push branch + create GitHub PR |
 | `/jira-task done [ID]` | main repo | Transition Done + post summary |
+| `/jira-task clean <ID...>\|--all\|--list` | main repo | Remove worktree, delete branch, clean MCP config + context |
 | `/jira-task report` | anywhere | My assigned issues status report |
 | `/jira-task status` | anywhere | Current active task status |
 
@@ -259,24 +261,25 @@ jira-claude-code-integration/
 │   └── jira-task.md             # /jira-task (router)
 │
 ├── skills/                      # One SKILL.md per workflow step
-│   ├── jira-task-auto/          # ← new: auto-run full pipeline
-│   ├── jira-setup/              # ← new: interactive setup wizard
+│   ├── jira-setup/              # interactive setup wizard
+│   ├── jira-task-discover/      # topic → requirements doc
+│   ├── jira-task-create/        # interactive issue creation
 │   ├── jira-task-init/
+│   ├── jira-task-auto/          # auto-run full pipeline
 │   ├── jira-task-start/
 │   ├── jira-task-plan/
 │   ├── jira-task-design/
 │   ├── jira-task-impl/
 │   ├── jira-task-test/
 │   ├── jira-task-review/
+│   ├── jira-local-merge/
 │   ├── jira-task-pr/
 │   ├── jira-task-done/
-│   ├── jira-task-report/
-│   └── jira-local-merge/
+│   ├── jira-task-clean/
+│   └── jira-task-report/
 │
 ├── agents/                      # Subagent definitions
-│   ├── jira-planner.md          # Jira context + doc generation
-│   ├── jira-reviewer.md         # Gap analysis + code quality
-│   └── jira-reporter.md         # Issue status report
+│   └── jira-reviewer.md         # Gap analysis + code quality (forced delegation, opus)
 │
 ├── hooks/                       # Session event hooks
 │   ├── hooks.json
