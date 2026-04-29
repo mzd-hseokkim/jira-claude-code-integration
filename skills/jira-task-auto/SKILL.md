@@ -74,7 +74,7 @@ Agent({
 | 순서 | 단계 | subagent_type | 모델 | 사고 유형 |
 |------|------|---------------|------|----------|
 | 1 | start | `general-purpose` | haiku | 상태 전이 + 브랜치 셋업, 판단 거의 없음 |
-| 2 | plan | `general-purpose` | sonnet | 문서 합성 + 스코프 결정 |
+| 2 | plan | `general-purpose` | opus | 스코프 결정 — 사고 집약적 |
 | 3 | design | `general-purpose` | opus | 결정·아키텍처, 가장 사고 집약적 |
 | 4 | impl | `general-purpose` | sonnet | 코드 생성, 토큰 다량 소비 |
 | 5 | test | `general-purpose` | sonnet | 실행 + 결과 정리 |
