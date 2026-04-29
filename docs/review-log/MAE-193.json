@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MAE-193",
+  "entries": [
+    {
+      "taskId": "MAE-193",
+      "timestamp": "2026-04-29T22:19:28Z",
+      "reviewerVersion": "1a96d60c458c",
+      "outcome": "pass",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "high",
+          "file": "skills/jira-task-review/SKILL.md",
+          "line": 123,
+          "category": "best-practice",
+          "message": "TMPFILE mktemp 후 trap EXIT 미설정 — 스크립트 중단 시 임시파일 잔류 가능"
+        },
+        {
+          "id": "F-002",
+          "severity": "info",
+          "file": "scripts/append-review-log.py",
+          "line": 153,
+          "category": "style",
+          "message": "성공 메시지가 stdout 출력 — 경고는 stderr, 성공만 stdout으로 일관성 불일치"
+        },
+        {
+          "id": "F-003",
+          "severity": "info",
+          "file": "scripts/append-review-log.py",
+          "line": 31,
+          "category": "style",
+          "message": "usage 메시지가 stdout 출력 — 관행상 stderr로 출력 권장"
+        },
+        {
+          "id": "F-004",
+          "severity": "info",
+          "file": "scripts/append-review-log.py",
+          "line": 40,
+          "category": "style",
+          "message": "주석 내 일본어 混入 (を → 를)"
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 1,
+        "medium": 0,
+        "low": 0,
+        "info": 3
+      },
+      "falsePositive": null,
+      "userOverride": null
+    }
+  ]
+}
