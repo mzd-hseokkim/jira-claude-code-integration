@@ -30,6 +30,7 @@ Thumbs.db
 .jira-context.json
 TASK-README.md
 .claude/
+scripts/bulk-register-roadmap.py
 
 # MCP server (if cloned locally)
 mcp-jira-cloud/
