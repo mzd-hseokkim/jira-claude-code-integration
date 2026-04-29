@@ -133,6 +133,7 @@ docs/review-log/
 - **저장 전 redact 필수**: `findings[*].message`를 포함한 모든 텍스트 필드는 `scripts/review_log/redact.redact()` 함수를 거쳐 저장.
 - **redact 대상**: AWS Access/Secret Key, JWT, Bearer 토큰, GitHub PAT, 일반 API key/secret/password/token 패턴.
 - **검증**: `tests/review_log/test_redact.py`의 `TestRedactZeroLeak` 단위 테스트가 민감정보 0건 저장을 보장.
+- **over-redact 정책**: `aws_secret_key` 등 식별 가능한 키 라인의 *전체 매치 redact*는 의도된 보호적 동작이다 (F-004).
 
 ---
 
@@ -142,3 +143,4 @@ docs/review-log/
 |---|---|---|
 | 1 | 2026-04-29 | 초기 스키마 정의 (Story 1, MAE-179) |
 | 1 | 2026-04-29 | per-task JSON 컨테이너 형태(`entries[]`) 명세 추가, outcome/severity 매핑 테이블 추가 (Story 2, MAE-180) |
+| 1 | 2026-04-29 | 민감정보 보안 정책에 over-redact 정책 명시 추가 (F-004, MAE-190) |

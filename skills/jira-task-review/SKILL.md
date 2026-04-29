@@ -113,17 +113,20 @@ set +e
 
 TASK_ID="<TASK-ID>"
 # reviewerVersion: 이 SKILL.md 자신의 sha256 prefix 12자
-# 스킬 base dir = 이 SKILL.md가 위치한 디렉터리
-SKILL_MD_PATH="$(dirname "${BASH_SOURCE[0]:-$0}")/SKILL.md"
-# BASH_SOURCE가 비어있는 환경(Claude 실행 컨텍스트)에서는 현재 스킬 로컬 경로를 직접 지정
-# → review 실행 시 cwd는 레포 루트이므로 아래 경로로 폴백
-[ ! -f "$SKILL_MD_PATH" ] && SKILL_MD_PATH="skills/jira-task-review/SKILL.md"
+# git rev-parse --show-toplevel로 repo root 절대 경로를 얻어 SKILL.md 경로 조합
+_GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+if [ -n "$_GIT_ROOT" ]; then
+    SKILL_MD_PATH="$_GIT_ROOT/skills/jira-task-review/SKILL.md"
+else
+    echo "⚠️ review-log: git rev-parse 실패, fallback chain 사용"
+    SKILL_MD_PATH="$(dirname "${BASH_SOURCE[0]:-$0}")/SKILL.md"
+    [ ! -f "$SKILL_MD_PATH" ] && SKILL_MD_PATH="skills/jira-task-review/SKILL.md"
+fi
 REVIEWER_VERSION=$(shasum -a 256 "$SKILL_MD_PATH" 2>/dev/null | cut -c1-12)
 [ -z "$REVIEWER_VERSION" ] && REVIEWER_VERSION="unknown" && echo "⚠️ review-log: reviewerVersion 산출 실패, 'unknown'으로 기록"
 
 # subagent 결과를 임시 파일로 dump (multi-line / 따옴표 안전 처리)
 TMPFILE=$(mktemp /tmp/review_subagent_XXXXXX.json)
-trap 'rm -f "$TMPFILE"' EXIT
 
 # SUBAGENT_RESULT_JSON은 Step 3에서 main 세션이 보관한 JSON 문자열
 printf '%s' "$SUBAGENT_RESULT_JSON" > "$TMPFILE"
@@ -143,8 +146,10 @@ scripts_dir = os.path.join(os.getcwd(), "scripts")
 sys.path.insert(0, scripts_dir)
 try:
     from review_log.redact import redact
+    redact_import_ok = True
 except ImportError:
     def redact(t): return t
+    redact_import_ok = False
     print("⚠️ review-log append: redact 모듈 unavailable, redact 미적용")
 
 # subagent 결과 로드
@@ -192,7 +197,7 @@ for i, f in enumerate(raw_findings, start=1):
     if mapped_sev in sev_counts:
         sev_counts[mapped_sev] += 1
 
-timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 entry = {
     "taskId": task_id,
@@ -204,6 +209,8 @@ entry = {
     "falsePositive": None,
     "userOverride": None,
 }
+if not redact_import_ok:
+    entry["redactStatus"] = "import-failed"
 
 os.makedirs(log_dir, exist_ok=True)
 per_task_path = os.path.join(log_dir, f"{task_id}.json")
@@ -251,6 +258,7 @@ print(f"review-log append 완료: {per_task_path} (entries={len(container['entri
 PYEOF
 
 APPEND_EXIT=$?
+rm -f "$TMPFILE" 2>/dev/null
 if [ $APPEND_EXIT -ne 0 ]; then
     echo "⚠️ review-log append failed: Python 종료코드 $APPEND_EXIT"
 fi
