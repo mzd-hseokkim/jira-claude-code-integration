@@ -15,7 +15,7 @@ docs/review-log/
 └── <TASK-ID>.json     # per-task 리뷰 로그 (예: MAE-179.json)
 ```
 
-- `<TASK-ID>.json`: 이슈 키 1건 당 1파일. 동일 이슈를 재리뷰 시 덮어씀.
+- `<TASK-ID>.json`: 이슈 키 1건 당 1파일. 동일 이슈를 재리뷰 시 `entries[]`에 push (truncate 금지).
 - `_index.jsonl`: 각 줄이 per-task 요약 레코드 (Story 2에서 append 로직 구현).
 
 ---
@@ -24,13 +24,25 @@ docs/review-log/
 
 파일명: `docs/review-log/<TASK-ID>.json`
 
-### 필수 필드
+파일 전체 구조 (컨테이너 형태):
+
+```json
+{
+  "schemaVersion": 1,
+  "taskId": "<TASK-ID>",
+  "entries": [ <Entry>, <Entry>, ... ]
+}
+```
+
+동일 task 재리뷰 시 `entries[]`에 append (truncate 금지). 시간순 정렬.
+
+### Entry 필수 필드
 
 | 필드 | 타입 | 제약 | 설명 |
 |---|---|---|---|
 | `taskId` | string | `^[A-Z][A-Z0-9_]+-\d+$` | Jira 이슈 키 (예: `MAE-179`) |
 | `timestamp` | string | ISO8601 UTC, suffix `Z` 필수 | 리뷰 생성 시각 (예: `2026-04-29T08:30:00Z`) |
-| `reviewerVersion` | string | Story 2.3(MAE-186)에서 해시로 산출 | 리뷰어 버전 식별자 |
+| `reviewerVersion` | string | `skills/jira-task-review/SKILL.md` sha256 prefix 12자 | 리뷰어 버전 식별자 |
 | `outcome` | string | enum: `pass` \| `fail` \| `warn` | 리뷰 종합 결과 |
 | `findings` | array | `Finding[]` — 아래 항목 스키마 참조 | 리뷰 지적 사항 목록 |
 | `severityCounts` | object | `{ critical, high, medium, low, info }` — 모두 정수 | 심각도별 finding 집계 |
@@ -48,39 +60,62 @@ docs/review-log/
 | `category` | string | 자유 (예: `security`, `style`, `bug`) | 지적 분류 |
 | `message` | string | redact 적용 후 본문 | 지적 내용. 민감정보 redact 후 저장 |
 
+### outcome 매핑 (subagent 결과 → schema)
+
+| subagent 반환값 | schema outcome |
+|---|---|
+| `Approve` | `pass` |
+| `Request Changes` | `fail` |
+| `Needs Discussion` | `warn` |
+
+### severity 매핑 (subagent finding → schema)
+
+| subagent severity | schema severity |
+|---|---|
+| `Critical` | `critical` |
+| `Warning` | `high` |
+| `Info` | `info` |
+| (미사용) | `medium`, `low` — 0으로 채움 |
+
 ### 예시
 
 ```json
 {
+  "schemaVersion": 1,
   "taskId": "MAE-179",
-  "timestamp": "2026-04-29T08:30:00Z",
-  "reviewerVersion": "abc123def456",
-  "outcome": "warn",
-  "findings": [
+  "entries": [
     {
-      "id": "F-001",
-      "severity": "medium",
-      "file": "scripts/review_log/redact.py",
-      "line": 42,
-      "category": "style",
-      "message": "함수 docstring 누락"
+      "taskId": "MAE-179",
+      "timestamp": "2026-04-29T08:30:00Z",
+      "reviewerVersion": "abc123def456",
+      "outcome": "warn",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "high",
+          "file": "scripts/review_log/redact.py",
+          "line": 42,
+          "category": "style",
+          "message": "함수 docstring 누락"
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 1,
+        "medium": 0,
+        "low": 0,
+        "info": 0
+      },
+      "falsePositive": null,
+      "userOverride": null
     }
-  ],
-  "severityCounts": {
-    "critical": 0,
-    "high": 0,
-    "medium": 1,
-    "low": 0,
-    "info": 0
-  },
-  "falsePositive": null,
-  "userOverride": null
+  ]
 }
 ```
 
 ---
 
-## `_index.jsonl` 라인 스키마 (참조용 — 작성은 Story 2)
+## `_index.jsonl` 라인 스키마
 
 `_index.jsonl`의 각 줄은 아래 필드를 포함하는 JSON 객체다:
 
@@ -106,3 +141,4 @@ docs/review-log/
 | 버전 | 날짜 | 변경 내용 |
 |---|---|---|
 | 1 | 2026-04-29 | 초기 스키마 정의 (Story 1, MAE-179) |
+| 1 | 2026-04-29 | per-task JSON 컨테이너 형태(`entries[]`) 명세 추가, outcome/severity 매핑 테이블 추가 (Story 2, MAE-180) |

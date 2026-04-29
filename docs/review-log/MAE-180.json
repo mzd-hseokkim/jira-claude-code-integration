@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MAE-180",
+  "entries": [
+    {
+      "taskId": "MAE-180",
+      "timestamp": "2026-04-29T11:00:21Z",
+      "reviewerVersion": "f2733937a00e",
+      "outcome": "pass",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "high",
+          "file": "skills/jira-task-review/SKILL.md",
+          "line": 117,
+          "category": "robustness",
+          "message": "BASH_SOURCE/$0 fallback에서 항상 cwd 상대경로에 의존; 워크트리 하위 디렉터리 실행 시 reviewerVersion=unknown"
+        },
+        {
+          "id": "F-002",
+          "severity": "high",
+          "file": "skills/jira-task-review/SKILL.md",
+          "line": 142,
+          "category": "robustness",
+          "message": "scripts_dir이 os.getcwd() 가정; redact 모듈 import 실패 시 silent degrade로 redact 미적용 사실이 entry에 표식 없이 저장"
+        },
+        {
+          "id": "F-003",
+          "severity": "high",
+          "file": "skills/jira-task-review/SKILL.md",
+          "line": 126,
+          "category": "hygiene",
+          "message": "trap EXIT가 후속 Bash 블록과 충돌 가능; 명시적 rm 권고"
+        },
+        {
+          "id": "F-004",
+          "severity": "high",
+          "file": "scripts/review_log/redact.py",
+          "line": 24,
+          "category": "redact",
+          "message": "aws_secret_key 캡처 그룹이 있지만 sub는 전체 매치를 라벨로 치환; 안전 방향이나 인지 권고"
+        },
+        {
+          "id": "F-005",
+          "severity": "info",
+          "file": "skills/jira-task-review/SKILL.md",
+          "line": 107,
+          "category": "contract",
+          "message": "Step 4.7 선행조건 SUBAGENT_RESULT_JSON 변수 보관 단계가 Step 3에 명시 안 됨; silent fallback 위험"
+        },
+        {
+          "id": "F-006",
+          "severity": "info",
+          "file": "skills/jira-task-review/SKILL.md",
+          "line": 171,
+          "category": "forward-compat",
+          "message": "SEV_MAP 3종만 매핑; 미래 severity raw 보존 필드 검토"
+        },
+        {
+          "id": "F-007",
+          "severity": "info",
+          "file": "docs/review-log/README.md",
+          "line": 20,
+          "category": "doc",
+          "message": "컨테이너 형태 도입했으나 schemaVersion 1 유지; bump 검토"
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 4,
+        "medium": 0,
+        "low": 0,
+        "info": 3
+      },
+      "falsePositive": null,
+      "userOverride": null
+    }
+  ]
+}
