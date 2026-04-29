@@ -36,6 +36,25 @@ allowed-tools:
    - Same component: `project = <JIRA_DEFAULT_PROJECT> AND component = <component>`
    - Recently resolved similar: `project = <JIRA_DEFAULT_PROJECT> AND status = Done AND resolved >= -30d`
 
+### Step 1.7: Load Requirements Document (discover 산출물)
+
+discover 단계가 선행되었으면 그 산출물을 plan의 입력으로 명시적으로 소비한다.
+
+1. `docs/requirements/` 디렉토리를 Glob으로 확인 (`docs/requirements/*.requirements.md`)
+2. 후보 파일이 있으면:
+   - 단일 파일: 자동 채택
+   - 복수 파일: Jira 이슈 summary/description에 가장 가까운 slug를 우선. 모호하면 `AskUserQuestion`으로 사용자에게 선택받는다.
+   - 없음: discover 미수행으로 간주
+3. 채택한 파일을 Read하여 다음 항목을 추출:
+   - **Goals & Success Criteria** (측정 가능한 목표 목록)
+   - **Functional Requirements** (FR-N과 trace marker)
+   - **Open Questions** (P1/P2/P3 우선순위, [CONFLICT] 항목 포함)
+   - **Out of Scope** 후보
+4. P1 Open Questions가 남아 있으면 plan에서 답을 정해야 한다 — Step 1.5에서 사용자에게 묻는다.
+5. [CONFLICT] 항목이 있으면 plan에서 어느 쪽을 선택할지 결정해야 한다 — Step 1.5에서 사용자에게 묻는다.
+
+discover를 거치지 않은 경우 (requirements 파일 없음): Source Requirements 섹션은 `N/A — discover 생략`으로 표기하고, 옵셔널 `Inline Requirements`를 사용자 답변으로 채운다.
+
 ### Step 1.5: Validate Information Sufficiency
 
 Step 1에서 수집한 Jira 정보의 충분성을 평가한다. 다음 항목이 부족하면 사용자에게 질문:
@@ -44,6 +63,9 @@ Step 1에서 수집한 Jira 정보의 충분성을 평가한다. 다음 항목�
 - [ ] 이슈 설명(Description)이 구체적인가? (한 줄 요약만 있거나 비어 있으면 부족)
 - [ ] 무엇을 구현해야 하는지 명확한가?
 - [ ] Acceptance Criteria가 있거나 유추할 수 있는가?
+- [ ] (requirements 문서가 있는 경우) P1 Open Questions가 모두 답이 있는가? — 없으면 사용자에게 묻는다. 답을 못 받은 P1은 Open Items로 이월하고 design에서 다시 시도.
+- [ ] (requirements 문서가 있는 경우) [CONFLICT] 항목이 모두 결정되었는가? — 없으면 사용자에게 묻는다. 결정 보류는 Open Items로.
+- [ ] discover의 Goals 각각이 이번 plan의 AC로 커버되는지 확인 가능한가? (Partial이면 무엇이 빠졌는지 명시)
 
 **부족한 경우**: `AskUserQuestion`으로 사용자에게 보충 질문을 한다.
 
@@ -82,9 +104,20 @@ Jira에서 수집한 정보를 정리:
 
 ### Step 3: Generate Plan Document
 
-Step 2에서 정리한 Jira 컨텍스트를 기반으로 `docs/plan/<TASK-ID>.plan.md` 생성.
+Step 1.7의 requirements 산출물 + Step 2의 Jira 컨텍스트를 기반으로 `docs/plan/<TASK-ID>.plan.md` 생성.
 
-산출물 작성 전 반드시 Read tool로 `templates/plan.template.md`를 읽고 contract(필수/옵셔널 분류, 옵셔널 마커 규약)를 따른다.
+산출물 작성 전 반드시 Read tool로 `templates/plan.template.md`를 읽고 contract(필수/옵셔널 분류, 옵셔널 마커 규약, plan vs design 결정 경계)를 따른다.
+
+**필수 섹션 작성 가이드 (요점만):**
+
+- **Source Requirements**: requirements doc 경로 + Resolved Open Questions 표 + Resolved [CONFLICT]s 표 + Goal Coverage 표. discover 미수행이면 `N/A — discover 생략` + 옵셔널 `Inline Requirements`로 대체.
+- **Scope > In Scope**: 가능한 한 `*(source: FR-N)*` trace marker 부착. requirements가 있는 경우 강력 권장.
+- **Scope > Out of Scope**: 표 형식 (항목/사유/복귀 예정). bullet list 금지.
+- **Acceptance Criteria > AC ↔ Goal/Scope 매핑**: 모든 AC가 Discover Goal과 In Scope item에 매핑되는지 표로 검증. 매핑 누락이 있으면 Open Items로 이월.
+- **Scope Decisions**: plan이 내린 결정의 근거. 0건일 수 없음 — 변경 없음을 결정한 경우에도 그것 자체를 한 줄 기록. *어떻게 만들지*에 대한 결정은 design으로 미루고 여기 적지 않는다.
+- **Task Breakdown**: 의존/규모(S/M/L)/우선순위(must/nice) 컬럼 채움. 시간 압박 시 어디부터 자를지 보이게.
+- **Risks**: 식별된 위험 없으면 `N/A — 식별된 위험 없음 (검토 완료)` 한 줄. 섹션 누락 금지.
+- **Open Items**: 풀지 못한 결정(P1 Open Questions, [CONFLICT], AC 매핑 누락 등)을 명시적으로 design으로 이월. 없으면 `N/A — 모두 해결`.
 
 ### Step 4: Post Summary to Jira
 
