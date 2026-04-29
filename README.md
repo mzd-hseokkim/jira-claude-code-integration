@@ -2,7 +2,7 @@
 
 **[English]** | [한국어](#korean)
 
-[![Version](https://img.shields.io/badge/version-0.17.20-blue)](#)
+[![Version](https://img.shields.io/badge/version-0.22.1-blue)](#)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-orange)](https://docs.anthropic.com/en/docs/claude-code)
 [![MCP](https://img.shields.io/badge/MCP-mcp--atlassian-purple)](https://github.com/sooperset/mcp-atlassian)
@@ -83,7 +83,10 @@ Each step automatically posts a comment and/or attachment to the Jira issue and 
 `/jira-task init` supports three argument modes: count (`init 5` — bulk setup), issue key (`init PROJ-123` — sub-task analysis), or natural language (`init "auth 관련 작업"` — filtered search). Creates isolated git worktrees for each task.
 
 **Document Auto-generation**
-Generates `plan.md`, `design.md`, test reports, and review results — then immediately posts them as Jira attachments and comments. No copy-paste required.
+Generates requirements / plan / design / test report / review / PR description documents from dedicated templates under `templates/`, then immediately posts them as Jira attachments and comments via `scripts/jira-attach.sh`. No copy-paste required.
+
+**Reviewer Calibration Log** *(v0.22.x)*
+Each `/jira-task review` run appends a structured entry to `docs/review-log/` (redacted per the project's policy). `scripts/analyze-review-log.py` aggregates pass/fail rates and recurring findings over time so reviewer behavior doesn't silently drift toward self-praise.
 
 **Status Transition Automation**
 `start` → In Progress, `merge` → In Review, `done` → Done. Jira stays up to date without opening a browser.
@@ -286,11 +289,35 @@ jira-claude-code-integration/
 │   └── scripts/
 │       ├── session-start.js     # Show active task on startup
 │       ├── stop-sync.js         # Remind to sync Jira on exit
-│       └── phase-gate.config.json  # Phase dependency graph (customizable)
+│       ├── phase-gate.js        # Phase dependency hook (disabled by default)
+│       ├── phase-gate.config.json
+│       ├── phase-gate.test.js
+│       └── phase-gate.scenarios.test.js
 │
-└── templates/
-    ├── plan.template.md
-    └── report.template.md
+├── scripts/                     # Helper scripts invoked by skills
+│   ├── jira-attach.sh           # Upload attachments via Jira REST API
+│   ├── clean-worktree.py        # Worktree/branch cleanup helper
+│   ├── bulk-register-roadmap.py # One-off Epic/Story/Sub-task bulk-register
+│   ├── analyze-review-log.py    # Reviewer calibration log analyzer
+│   └── review_log/              # Stored reviewer calibration entries
+│
+├── templates/                   # Document templates per workflow step
+│   ├── requirements.template.md
+│   ├── plan.template.md
+│   ├── design.template.md
+│   ├── test-report.template.md
+│   ├── review.template.md
+│   ├── pr-description.template.md
+│   └── report.template.md
+│
+├── docs/                        # PDCA artifacts + reference docs
+│   ├── requirements/  plan/  design/  test/  review/  review-log/
+│   ├── mcp-atlassian-tools.md
+│   └── mcp-jira-cloud-tools.md
+│
+└── tests/                       # Python tests for analyze-review-log
+    ├── test_analyze_review_log.py
+    └── fixtures/
 ```
 
 ### Phase Gate (실험적 — 현재 비활성화)
@@ -423,6 +450,9 @@ git worktree prune               # Clean stale worktree refs
 - [x] Init argument expansion: count, issue key, natural language *(v0.7.0)*
 - [x] Iterative review: auto-fix + test + review retry loop *(v0.8.0)*
 - [x] Sub-agent isolation: each auto step in independent context *(v0.9.0)*
+- [x] Interactive issue creation: `/jira-task create` *(v0.12.0)*
+- [x] Requirements discovery: `/jira-task discover` → `docs/requirements/<slug>.requirements.md` *(v1.1.x)*
+- [x] Reviewer calibration log: review history analyzer (`scripts/analyze-review-log.py`) *(v0.22.x)*
 - [ ] Bitbucket Cloud + GitLab MR support for `/jira-task pr`
 - [ ] Jira Server / Data Center (Personal Access Token)
 - [ ] Sub-task auto-creation from design doc task breakdown
@@ -455,6 +485,7 @@ MIT
 - 기획 → 설계 → 구현 → 테스트 → 리뷰 → PR → 완료까지 **전 단계 커맨드화**
 - 각 단계 완료 시 **Jira 코멘트·첨부파일·상태 전이 자동 처리**
 - 설계 문서와 실제 구현 코드 간 **Gap 자동 분석**
+- **Reviewer Calibration Log** — 매 review 결과를 `docs/review-log/`에 누적하고 `scripts/analyze-review-log.py`로 통과율·반복 지적 패턴을 분석해 리뷰어 self-praise drift 방지 *(v0.22.x)*
 - `.jira-context.json`으로 **세션 간 진행 상황 자동 복원**
 
 ### 설치
