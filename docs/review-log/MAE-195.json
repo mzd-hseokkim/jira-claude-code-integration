@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MAE-195",
+  "entries": [
+    {
+      "taskId": "MAE-195",
+      "timestamp": "2026-04-30T09:08:56Z",
+      "reviewerVersion": "f2733937a00e",
+      "outcome": "pass",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "high",
+          "file": ".claude-plugin/plugin.json,skills/jira-task-discover/SKILL.md,skills/jira-task-discover/refs/",
+          "line": 0,
+          "category": "workflow",
+          "message": "변경이 working tree에 미커밋 상태. 머지 전 commit 필요."
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 1,
+        "medium": 0,
+        "low": 0,
+        "info": 0
+      },
+      "falsePositive": null,
+      "userOverride": null
+    }
+  ]
+}
