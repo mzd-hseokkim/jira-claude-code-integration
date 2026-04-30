@@ -64,56 +64,15 @@ Use mcp__atlassian__jira_search with JQL:
 
 ### Step 1-B: Fetch Sub-tasks by Issue Key (Issue Key 모드)
 
-Step 0에서 추출한 이슈 키로 해당 이슈와 하위작업을 조회한다.
+Step 0에서 추출한 이슈 키로 해당 이슈와 하위작업을 조회하고 의존성을 분석한다.
 
-#### 1-B-1. 부모 이슈 조회
+상세 절차: `Read skills/jira-task-init/refs/issue-key-mode.md`
 
-```
-Use mcp__atlassian__jira_get_issue with issue_key: <ISSUE-KEY>
-  fields="summary,status,issuetype,priority"
-  comment_limit=0
-```
-
-이슈 타입과 요약을 확인하여 사용자에게 표시.
-
-#### 1-B-2. 하위작업 조회
-
-```
-Use mcp__atlassian__jira_search with JQL:
-  parent = <ISSUE-KEY> AND status NOT IN (Done, Closed) ORDER BY priority DESC, created ASC
-  fields="summary,status,priority,issuetype,assignee"
-  limit=50
-```
-
-**JIRA_DEFAULT_PROJECT가 설정되어 있으면 `project = <JIRA_DEFAULT_PROJECT> AND parent = <ISSUE-KEY> AND ...` 형태로 프로젝트 조건을 포함한다.**
-
-하위작업이 없으면 사용자에게 알리고 종료.
-
-#### 1-B-3. 의존성 분석 및 착수 가능 작업 선별
-
-각 하위작업에 대해 issue links를 분석한다:
-
-- `mcp__atlassian__jira_get_issue`로 각 하위작업의 상세 정보(issuelinks 포함) 조회
-  - **Context optimization**: `fields="summary,status,priority,issuetype,issuelinks"`, `comment_limit=0` (이 호출은 issuelinks가 핵심이므로 반드시 fields에 포함)
-- `is blocked by` (inward) 관계의 링크된 이슈가 **미완료**(status가 Done/Closed가 아닌) 상태이면 해당 작업은 **blocked**로 분류
-- 블로커가 없거나 모든 블로커가 완료된 작업만 **착수 가능**으로 선별
-
-결과를 사용자에게 표시:
-
-```
-📋 <ISSUE-KEY>: <부모 이슈 요약>
-
-하위작업 <전체 N>건 중 착수 가능 <M>건:
-
-| # | Key | Summary | Priority | Status | Blocked By |
-|---|-----|---------|----------|--------|------------|
-| 1 | PROJ-201 | 로그인 API 구현 | High | To Do | - |
-| 2 | PROJ-202 | UI 컴포넌트 작성 | High | To Do | - |
-| - | PROJ-203 | 통합 테스트 | Medium | To Do | PROJ-201, PROJ-202 (미완료) |
-```
-
-착수 가능한 작업이 없으면 사용자에게 알리고 종료.
-착수 가능한 작업 목록을 Step 2로 전달. → Step 2로 진행.
+요약:
+1. 부모 이슈 조회 (`fields="summary,status,issuetype,priority"`, `comment_limit=0`)
+2. JQL로 미완료 하위작업 조회 (`parent = <ISSUE-KEY> AND status NOT IN (Done, Closed)`)
+3. 각 하위작업의 issuelinks 분석 → `is blocked by` 미완료 블로커 있으면 blocked 처리
+4. 착수 가능 작업만 선별하여 의존성 표 출력 → Step 2로 전달
 
 ### Step 2: Display Task List
 
@@ -164,197 +123,52 @@ fi
 
 ### Step 5: Create Worktrees
 
-선택된 각 태스크에 대해:
+선택된 각 태스크에 대해 브랜치/worktree 존재 여부를 확인한 뒤 생성하고, `.gitignore`를 동기화한다.
 
-```bash
-# Worktree 디렉토리 생성
-mkdir -p "$WORKTREE_BASE"
-```
+상세 절차: `Read skills/jira-task-init/refs/worktree-creation.md`
 
-**각 태스크별로 먼저 기존 존재 여부 확인 후 생성:**
-
-```bash
-# 1. 이미 브랜치가 있는지 확인
-git branch --list "feature/<TASK-ID>"
-
-# 2. 이미 worktree가 있는지 확인
-git worktree list | grep "<TASK-ID>"
-```
-
-- **브랜치와 worktree 모두 이미 존재**: "Already exists — skipped" 표시 후 다음 태스크로
-- **브랜치만 존재 (worktree 없음)**: 기존 브랜치로 worktree 생성 (`-b` 플래그 없이)
-  ```bash
-  git worktree add "$WORKTREE_BASE/<TASK-ID>" "feature/<TASK-ID>"
-  ```
-- **둘 다 없음**: 새로 생성
-  ```bash
-  git worktree add -b "feature/<TASK-ID>" "$WORKTREE_BASE/<TASK-ID>" <base-branch>
-  ```
-
-**Worktree 생성 직후 — `.gitignore` 확인:**
-
-worktree의 `.gitignore`에 아래 항목이 없으면 추가 (feature 브랜치는 base branch 시점의 `.gitignore`를 체크아웃하므로 메인 레포 변경이 반영되지 않을 수 있음):
-
-```bash
-WORKTREE_GITIGNORE="$WORKTREE_BASE/<TASK-ID>/.gitignore"
-if ! grep -qF ".jira-context.json" "$WORKTREE_GITIGNORE" 2>/dev/null; then
-  printf '\n# Jira integration (local dev context)\n.jira-context.json\nTASK-README.md\n' >> "$WORKTREE_GITIGNORE"
-fi
-```
-
-이미 존재하면 스킵.
-
-**중요: Worktree 경로 규칙**
-- 반드시 원본 레포의 **상위 디렉토리**에 생성
-- 절대로 원본 레포 안에 생성하지 않음
-- 구조:
-  ```
-  workspace/
-  ├── my-project/                    # 원본 레포 (main 브랜치)
-  └── my-project_worktree/           # 원본 레포 밖
-      ├── PROJ-101/                  # feature/PROJ-101 브랜치
-      ├── PROJ-102/                  # feature/PROJ-102 브랜치
-      └── ...
-  ```
+요약:
+- 브랜치+worktree 모두 있으면 → "Already exists — skipped"
+- 브랜치만 있으면 → `git worktree add "$WORKTREE_BASE/<TASK-ID>" "feature/<TASK-ID>"`
+- 둘 다 없으면 → `git worktree add -b "feature/<TASK-ID>" "$WORKTREE_BASE/<TASK-ID>" <base-branch>`
+- 생성 후 worktree `.gitignore`에 `.jira-context.json` / `TASK-README.md` 항목 추가 (없으면)
+- **중요**: worktree는 반드시 원본 레포 **상위 디렉토리** 안에 생성 (`<parent>/<project>_worktree/<TASK-ID>`)
 
 ### Step 5.5: Propagate MCP Config to Worktree
 
-워크트리는 별도의 프로젝트 루트로 인식되어 MCP 설정이 자동 상속되지 않는다. 이 플러그인은 `mcp-atlassian` 서버에 의존하므로, **메인 레포에서 atlassian 서버가 어디에 등록되어 있든 찾아내서** 워크트리로 전파해야 한다.
-
-Claude Code MCP 서버는 다음 4곳 중 하나에 등록될 수 있다 (우선순위 = 탐색 순서):
-
-1. **프로젝트 루트 `<repo>/.mcp.json`** (project-scoped, 팀 공유용)
-2. **`~/.claude.json` → `projects[<repo>].mcpServers`** (`claude mcp add --scope project` 또는 IDE 등록 시)
-3. **`~/.claude.json` → top-level `mcpServers`** (`claude mcp add --scope user`, 모든 프로젝트 공통)
-4. 위 어디에도 없음 → 사용자에게 안내하고 스킵 (오류 아님)
-
-전파 방식:
-- 출처가 ①이면: 워크트리 루트에 `.mcp.json`을 그대로 복사
-- 출처가 ②/③이면: `~/.claude.json`의 워크트리 경로 항목에 `mcpServers`를 주입
-
-특히 **`atlassian` 서버**가 출처에 들어있는지 검증하고, 없으면 경고를 출력한다 (이 플러그인은 atlassian 없이는 동작하지 않음).
+워크트리는 별도의 프로젝트 루트로 인식되어 MCP 설정이 자동 상속되지 않는다.
+`scripts/propagate-mcp-config.sh`를 호출하여 메인 레포의 atlassian 서버 설정을 워크트리로 전파한다.
 
 ```bash
 REPO_ROOT_ABS="<REPO_ROOT 절대경로>"
 WORKTREE_ABS="<워크트리 절대경로>"
 
-python3 - "$REPO_ROOT_ABS" "$WORKTREE_ABS" << 'PYEOF'
-import json, os, re, shutil, sys
+# 스크립트 위치 탐색 (cwd → repoRoot → 플러그인 설치 경로)
+PROPAGATE_SH=""
+for _c in "scripts/propagate-mcp-config.sh" \
+          "$(node -e "try{console.log(require('./.jira-context.json').repoRoot)}catch{}" 2>/dev/null)/scripts/propagate-mcp-config.sh" \
+          $(find "$HOME/.claude" -name propagate-mcp-config.sh -type f 2>/dev/null | head -1); do
+  [ -n "$_c" ] && [ -f "$_c" ] && PROPAGATE_SH="$_c" && break
+done
 
-repo_root_arg = sys.argv[1]
-worktree_path_arg = sys.argv[2]
-
-def norm(p):
-    p = p.replace("\\", "/").rstrip("/")
-    m = re.match(r'^/([a-zA-Z])(/.*)', p)
-    if m:
-        p = m.group(1).upper() + ':' + m.group(2)
-    return p
-
-repo_root = norm(repo_root_arg)
-worktree_path = norm(worktree_path_arg)
-
-# Source candidates (priority order)
-src_mcp_json = os.path.join(repo_root_arg, ".mcp.json")
-claude_json_path = os.path.expanduser("~/.claude.json")
-claude_data = None
-if os.path.exists(claude_json_path):
-    with open(claude_json_path, "r", encoding="utf-8") as f:
-        claude_data = json.load(f)
-
-mcp_servers = None
-source = None
-
-# 1) project-scoped .mcp.json
-if os.path.exists(src_mcp_json):
-    with open(src_mcp_json, "r", encoding="utf-8") as f:
-        mcp_servers = json.load(f).get("mcpServers", {}) or None
-    if mcp_servers:
-        source = "project_mcp_json"
-
-# 2) ~/.claude.json projects[repo].mcpServers
-if not mcp_servers and claude_data:
-    for k, v in claude_data.get("projects", {}).items():
-        if isinstance(v, dict) and norm(k) == repo_root:
-            cand = v.get("mcpServers") or None
-            if cand:
-                mcp_servers = cand
-                source = "claude_json_project"
-            break
-
-# 3) ~/.claude.json top-level mcpServers (user scope)
-if not mcp_servers and claude_data:
-    cand = claude_data.get("mcpServers") or None
-    if cand:
-        mcp_servers = cand
-        source = "claude_json_user"
-
-if not mcp_servers:
-    print("No MCP servers found in .mcp.json or ~/.claude.json — skipping propagation")
-    print("WARNING: this plugin requires the 'atlassian' MCP server. Run /jira setup if needed.")
-    sys.exit(0)
-
-if "atlassian" not in mcp_servers:
-    print(f"WARNING: 'atlassian' server not found in {source}; this plugin will not work in the worktree.")
-    print(f"Found servers: {list(mcp_servers.keys())}")
-
-# Propagate
-if source == "project_mcp_json":
-    shutil.copyfile(src_mcp_json, os.path.join(worktree_path_arg, ".mcp.json"))
-    print(f"Copied .mcp.json to worktree (servers: {list(mcp_servers.keys())})")
-else:
-    # Inject into ~/.claude.json projects[worktree]
-    projects = claude_data.setdefault("projects", {})
-    matched = False
-    for k in list(projects.keys()):
-        if norm(k) == worktree_path:
-            if isinstance(projects[k], dict):
-                projects[k]["mcpServers"] = mcp_servers
-            matched = True
-            break
-    if not matched:
-        projects[worktree_path] = {"mcpServers": mcp_servers}
-    with open(claude_json_path, "w", encoding="utf-8") as f:
-        json.dump(claude_data, f, indent=2, ensure_ascii=False)
-    print(f"Injected mcpServers into ~/.claude.json for worktree (source: {source}, servers: {list(mcp_servers.keys())})")
-PYEOF
+if [ -n "$PROPAGATE_SH" ]; then
+  bash "$PROPAGATE_SH" "$REPO_ROOT_ABS" "$WORKTREE_ABS"
+else
+  echo "propagate-mcp-config.sh not found — skipping MCP propagation. Run /jira setup in the worktree if needed." >&2
+fi
 ```
 
 - 출처 우선순위: project `.mcp.json` > `~/.claude.json` projects > `~/.claude.json` top-level
-- `atlassian` 서버가 빠져 있으면 경고만 출력하고 진행 (사용자가 다른 서버로 등록했을 수 있음)
+- `atlassian` 서버가 빠져 있으면 경고만 출력하고 진행
 - 워크트리에서 `.mcp.json`을 처음 로드하면 신뢰 승인 프롬프트가 한 번 뜰 수 있다
-- 경로 정규화: 백슬래시/슬래시 혼용 처리, 후행 슬래시 제거
 
 ### Step 6: Generate README for Each Worktree
 
-각 worktree 디렉토리에 `TASK-README.md` 생성:
-
-```markdown
-# <TASK-ID>: <Summary>
-
-## Issue Details
-- **Key**: <TASK-ID>
-- **Summary**: <summary>
-- **Type**: <issue type>
-- **Priority**: <priority>
-- **Status**: <status>
-- **Branch**: feature/<TASK-ID>
-- **Worktree**: <worktree path>
-- **Initialized**: <date/time>
-
-## Description
-<issue description from Jira>
-
-## Acceptance Criteria
-<extracted from description if available>
-
-## Workflow
-1. `cd <worktree-path>` 로 이동
-2. 구현 작업 수행
-3. `/jira-task test <TASK-ID>` 로 테스트
-4. `/jira-task review <TASK-ID>` 로 코드 리뷰
-5. `/jira-task done <TASK-ID>` 로 완료 처리
-```
+각 worktree 디렉토리에 `TASK-README.md` 생성. 포함 항목:
+- Issue Details (Key, Summary, Type, Priority, Status, Branch, Worktree, Initialized)
+- Description (Jira 이슈 설명)
+- Acceptance Criteria (설명에서 추출)
+- Workflow (`start` → `test` → `review` → `done` 명령 안내)
 
 ### Step 7: Post Comments to Jira
 
