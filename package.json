@@ -4,6 +4,12 @@
   "scripts": {
     "test:unit": "node --test hooks/scripts/phase-gate.test.js",
     "test:scenarios": "node hooks/scripts/phase-gate.scenarios.test.js",
-    "test": "npm run test:unit && npm run test:scenarios"
+    "test": "npm run test:unit && npm run test:scenarios",
+    "dashboard": "node scripts/dashboard/server.js",
+    "test:dashboard": "node --test scripts/dashboard/__tests__/*.test.js"
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0",
+    "express": "^4.21.2"
   }
 }
