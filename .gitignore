@@ -15,6 +15,11 @@ __pycache__/
 
 # Build
 dist/
+scripts/dashboard/public/
+
+# Dashboard runtime
+logs/
+scripts/dashboard/logs/
 
 # OS
 .DS_Store

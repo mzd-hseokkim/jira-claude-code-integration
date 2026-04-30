@@ -67,6 +67,7 @@ async function startServer(opts = {}) {
     app.get('/events', handleSSE);
     app.get('/health', (_req, res) => res.json({ ok: true }));
     app.use('/ingest', createIngestRouter(store, logger));
+    app.use(express.static(path.join(__dirname, 'public')));
   } catch {
     // express not available — use raw http (minimal, for environments without npm install)
     app = null;
