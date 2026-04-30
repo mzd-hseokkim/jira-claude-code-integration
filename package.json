@@ -6,6 +6,8 @@
     "test:scenarios": "node hooks/scripts/phase-gate.scenarios.test.js",
     "test": "npm run test:unit && npm run test:scenarios",
     "dashboard": "node scripts/dashboard/server.js",
+    "dashboard:no-open": "DASHBOARD_NO_OPEN=1 node scripts/dashboard/server.js",
+    "dashboard:build": "npm --prefix scripts/dashboard/web install && npm --prefix scripts/dashboard/web run build",
     "test:dashboard": "node --test scripts/dashboard/__tests__/*.test.js"
   },
   "dependencies": {

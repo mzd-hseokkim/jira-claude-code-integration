@@ -9,18 +9,20 @@ const { loadCredentials } = require('./credentials');
 const { startWorktreeCollector } = require('./collectors/worktree');
 const { startJiraCollector } = require('./collectors/jira');
 const { createIngestRouter } = require('./routes/ingest');
+const { openBrowser } = require('./openBrowser');
 
 const DEFAULT_PORT = 4173;
 
 /**
  * Start the dashboard backend server.
  *
- * @param {{ port?: number, workspaceRoot?: string }} [opts]
+ * @param {{ port?: number, workspaceRoot?: string, openBrowser?: boolean }} [opts]
  * @returns {Promise<{ stop(): Promise<void> }>}
  */
 async function startServer(opts = {}) {
   const port = opts.port ?? DEFAULT_PORT;
   const workspaceRoot = opts.workspaceRoot ?? process.cwd();
+  const shouldOpenBrowser = opts.openBrowser ?? true;
   const logFile = path.join(workspaceRoot, 'logs', 'dashboard-server.log');
 
   const logger = createLogger(logFile);
@@ -119,6 +121,10 @@ async function startServer(opts = {}) {
     httpServer.listen(port, '127.0.0.1', () => {
       logger.info('server.started', { port, workspaceRoot });
       console.log(`[dashboard] server listening on http://127.0.0.1:${port}`);
+      console.log(`[dashboard] log file: ${logFile}`);
+      if (shouldOpenBrowser) {
+        openBrowser(`http://127.0.0.1:${port}`, { logger });
+      }
       resolve();
     });
     httpServer.once('error', reject);

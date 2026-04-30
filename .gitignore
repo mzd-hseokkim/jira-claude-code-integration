@@ -15,7 +15,6 @@ __pycache__/
 
 # Build
 dist/
-scripts/dashboard/public/
 
 # Dashboard runtime
 logs/

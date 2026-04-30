@@ -455,6 +455,58 @@ git worktree prune               # Clean stale worktree refs
 
 ---
 
+## Dashboard
+
+A real-time activity monitor for your Claude Code worktrees. The dashboard collects hook events (tool calls, sub-agent lifecycle, Jira transitions) from every worktree and streams them to a browser UI via SSE.
+
+### Quick Start
+
+```bash
+npm run dashboard
+# or: node scripts/dashboard/server.js
+```
+
+The server binds to `http://127.0.0.1:4173` and opens your default browser automatically. To suppress auto-open (CI / headless environments):
+
+```bash
+DASHBOARD_NO_OPEN=1 npm run dashboard
+```
+
+The default port is **4173** (fixed in this release; configurable in a future update).
+
+### Hooks
+
+Five hook events are wired in `hooks/hooks.json` → `hooks/dashboard-ingest.sh` → `POST /ingest` → SSE broadcast:
+
+| Hook | Trigger |
+|------|---------|
+| `UserPromptSubmit` | New user message sent to Claude |
+| `PreToolUse` | Before any tool is invoked |
+| `PostToolUse` | After a tool returns |
+| `SubagentStop` | Sub-agent session ends |
+| `Notification` | System notification emitted |
+
+Each event is labelled with the originating worktree path and Jira task ID (from `.jira-context.json`).
+
+### Logs
+
+Log file: `<workspaceRoot>/logs/dashboard-server.log`
+
+- Append-only JSON Lines format; no rotation in this release (Phase 2).
+- Sensitive fields (`apiToken`, `Authorization`) are automatically redacted to `[REDACTED]` before writing.
+- The server prints the absolute log path to stdout on startup.
+
+### Out of Scope (Phase 2)
+
+- Port configurability (`DASHBOARD_PORT` env var)
+- Log rotation / size capping
+- Authentication / remote access (currently localhost-only by design)
+- Browser env var (`BROWSER`) support on Linux
+- Windows PowerShell fallback (current: `cmd /c start`)
+- Fallback stdout URL prompt on browser-open failure
+
+---
+
 ## Roadmap
 
 - [x] Interactive setup wizard: `/jira setup` *(v0.6.0)*
@@ -487,6 +539,10 @@ MIT
 ## 한국어 요약
 
 이 플러그인은 **Jira + Claude Code를 연결하는 개발 워크플로우 자동화 도구**입니다.
+
+### 대시보드
+
+`npm run dashboard` 한 줄로 실시간 모니터링 대시보드를 기동할 수 있습니다. 서버는 `http://127.0.0.1:4173`에 바인딩되며 기본 브라우저가 자동으로 열립니다. CI/헤드리스 환경에서는 `DASHBOARD_NO_OPEN=1`로 자동 오픈을 비활성화하세요. hook 이벤트는 `hooks/hooks.json` → `dashboard-ingest.sh` → `/ingest` → SSE 순서로 UI에 실시간 전달되며, 서버 로그는 `<workspaceRoot>/logs/dashboard-server.log`에 JSON Lines 형식으로 기록됩니다(민감 필드 자동 redact).
 
 ### 핵심 특징
 

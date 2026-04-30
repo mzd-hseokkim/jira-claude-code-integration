@@ -58,7 +58,7 @@ test('server.js static serving — index.html 200', async (t) => {
   process.env.JIRA_USERNAME = process.env.JIRA_USERNAME ?? 'test@example.com';
   process.env.JIRA_API_TOKEN = process.env.JIRA_API_TOKEN ?? 'test-token';
 
-  const server = await startServer({ port: TEST_PORT });
+  const server = await startServer({ port: TEST_PORT, openBrowser: false });
 
   try {
     const res = await get('/');

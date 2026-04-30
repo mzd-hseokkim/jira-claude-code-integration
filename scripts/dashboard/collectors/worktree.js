@@ -94,6 +94,9 @@ function collectWorktrees(store, workspaceRoot, logger) {
   const seenPaths = new Set();
 
   for (const wt of worktrees) {
+    // Skip the base repo worktree (main/master) — dashboard cards represent
+    // feature work, and the base worktree is not a unit of work.
+    if (wt.branch === 'main' || wt.branch === 'master') continue;
     seenPaths.add(wt.path);
     const ctx = readJiraContext(wt.path, logger);
     const state = {
@@ -211,4 +214,4 @@ function startWorktreeCollector(store, opts) {
   };
 }
 
-module.exports = { startWorktreeCollector, parseGitWorktreeList, readJiraContext };
+module.exports = { startWorktreeCollector, parseGitWorktreeList, readJiraContext, collectWorktrees };
