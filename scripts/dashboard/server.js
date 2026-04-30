@@ -8,6 +8,7 @@ const { createLogger } = require('./logger');
 const { loadCredentials } = require('./credentials');
 const { startWorktreeCollector } = require('./collectors/worktree');
 const { startJiraCollector } = require('./collectors/jira');
+const { createIngestRouter } = require('./routes/ingest');
 
 const DEFAULT_PORT = 4173;
 
@@ -65,6 +66,7 @@ async function startServer(opts = {}) {
     app = express();
     app.get('/events', handleSSE);
     app.get('/health', (_req, res) => res.json({ ok: true }));
+    app.use('/ingest', createIngestRouter(store, logger));
   } catch {
     // express not available — use raw http (minimal, for environments without npm install)
     app = null;
