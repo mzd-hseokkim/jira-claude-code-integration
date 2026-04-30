@@ -2,7 +2,7 @@
 
 **[English]** | [한국어](#korean)
 
-[![Version](https://img.shields.io/badge/version-0.22.1-blue)](#)
+[![Version](https://img.shields.io/badge/version-0.24.0-blue)](#)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-orange)](https://docs.anthropic.com/en/docs/claude-code)
 [![MCP](https://img.shields.io/badge/MCP-mcp--atlassian-purple)](https://github.com/sooperset/mcp-atlassian)
@@ -264,17 +264,25 @@ jira-claude-code-integration/
 │   └── jira-task.md             # /jira-task (router)
 │
 ├── skills/                      # One SKILL.md per workflow step
+│   │                            # Heavy SKILLs use refs/ for split details:
+│   │                            #   skills/<name>/refs/<topic>.md is loaded
+│   │                            #   on demand by Read, not into the system
+│   │                            #   prompt. See SKILL bodies for explicit
+│   │                            #   `Read skills/<name>/refs/...` calls.
 │   ├── jira-setup/              # interactive setup wizard
 │   ├── jira-task-discover/      # topic → requirements doc
+│   │   └── refs/                # conflict-detection / synthesis-confirm / trace-markers
 │   ├── jira-task-create/        # interactive issue creation
+│   │   └── refs/                # mcp-schema / from-requirements-mode
 │   ├── jira-task-init/
+│   │   └── refs/                # issue-key-mode / worktree-creation
 │   ├── jira-task-auto/          # auto-run full pipeline
 │   ├── jira-task-start/
 │   ├── jira-task-plan/
 │   ├── jira-task-design/
 │   ├── jira-task-impl/
 │   ├── jira-task-test/
-│   ├── jira-task-review/
+│   ├── jira-task-review/        # heavy logic extracted to scripts/append-review-log.py
 │   ├── jira-local-merge/
 │   ├── jira-task-pr/
 │   ├── jira-task-done/
@@ -299,6 +307,8 @@ jira-claude-code-integration/
 │   ├── clean-worktree.py        # Worktree/branch cleanup helper
 │   ├── bulk-register-roadmap.py # One-off Epic/Story/Sub-task bulk-register
 │   ├── analyze-review-log.py    # Reviewer calibration log analyzer
+│   ├── append-review-log.py     # /jira-task review: append entry to review-log
+│   ├── propagate-mcp-config.sh  # /jira-task init: propagate MCP config to worktree
 │   └── review_log/              # Stored reviewer calibration entries
 │
 ├── templates/                   # Document templates per workflow step
@@ -455,6 +465,7 @@ git worktree prune               # Clean stale worktree refs
 - [x] Interactive issue creation: `/jira-task create` *(v0.12.0)*
 - [x] Requirements discovery: `/jira-task discover` → `docs/requirements/<slug>.requirements.md` *(v1.1.x)*
 - [x] Reviewer calibration log: review history analyzer (`scripts/analyze-review-log.py`) *(v0.22.x)*
+- [x] SKILL bloat refactor: 4 heavy SKILLs (create/discover/init/review) compressed from 1,989 → 921 lines (-54%) via `skills/<name>/refs/` split + script extraction *(v0.24.0)*
 - [ ] Bitbucket Cloud + GitLab MR support for `/jira-task pr`
 - [ ] Jira Server / Data Center (Personal Access Token)
 - [ ] Sub-task auto-creation from design doc task breakdown
