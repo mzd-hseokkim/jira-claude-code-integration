@@ -14,6 +14,16 @@ function fmt(val) {
 }
 
 /**
+ * path의 마지막 segment만 반환. trailing slash 방어 처리.
+ * @param {string|null|undefined} path
+ * @returns {string}
+ */
+function lastPathSegment(path) {
+  if (!path) return EMPTY;
+  return path.replace(/\/$/, '').split('/').pop() || path;
+}
+
+/**
  * 한국어 Jira status 값을 CSS class slug로 변환.
  * 매핑 실패 또는 null/undefined → 'neutral'
  * @param {string|null|undefined} value
@@ -77,8 +87,10 @@ export default function WorktreeCard({ worktree }) {
         {issueType && <span className="wt-card__issue-type">{issueType}</span>}
       </div>
 
-      <div className="wt-card__summary" title={summary ?? EMPTY}>
-        {fmt(summary)}
+      <div className="wt-card__summary">
+        {summary != null
+          ? <span title={summary}>{summary}</span>
+          : <span className="wt-card__summary--empty" title="no Jira summary cached">(no summary)</span>}
       </div>
 
       <Stepper completedSteps={completedSteps} />
@@ -90,7 +102,7 @@ export default function WorktreeCard({ worktree }) {
         </div>
         <div className="wt-card__field">
           <dt>Path</dt>
-          <dd className="wt-card__path" title={path}>{path}</dd>
+          <dd className="wt-card__path" title={path}>{lastPathSegment(path)}</dd>
         </div>
         <div className="wt-card__field">
           <dt>Status</dt>

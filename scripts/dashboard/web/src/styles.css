@@ -137,6 +137,11 @@ body {
   font-size: 11px;
 }
 
+.wt-card__summary--empty {
+  font-style: italic;
+  color: #888;
+}
+
 /* ===== Color Tokens ===== */
 :root {
   /* Status colors */
@@ -283,19 +288,29 @@ body {
 }
 
 .activity-panel__row dt {
-  color: #888;
+  color: #999;
   min-width: 80px;
   flex-shrink: 0;
+  font-size: 11px;
 }
 
 .activity-panel__row dd {
-  color: #222;
+  color: #333;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.4;
 }
 
 .activity-panel__prompt {
   font-style: italic;
-  color: #555;
+  color: #444;
+}
+
+.activity-panel__value--blocked {
+  color: var(--color-status-blocked-text);
+  background: var(--color-status-blocked-bg);
+  padding: 0 4px;
+  border-radius: 3px;
+  font-weight: 500;
 }

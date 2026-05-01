@@ -43,7 +43,9 @@ export default function ActivityPanel({ activity = [] }) {
         </div>
         <div className="activity-panel__row">
           <dt>Blocked</dt>
-          <dd>{isBlocked ? '⚠ blocked' : EMPTY}</dd>
+          <dd className={isBlocked ? 'activity-panel__value--blocked' : undefined}>
+            {isBlocked ? '⚠ blocked' : EMPTY}
+          </dd>
         </div>
       </dl>
     </div>

@@ -30,9 +30,15 @@ describe('WorktreeCard — 풀 데이터', () => {
     expect(screen.getByText('feature/MAE-211')).toBeInTheDocument();
   });
 
-  it('path 표시', () => {
+  it('path — 마지막 segment만 표시', () => {
     render(<WorktreeCard worktree={fullWorktree} />);
-    expect(screen.getByText('/workspace/project')).toBeInTheDocument();
+    expect(screen.getByText('project')).toBeInTheDocument();
+  });
+
+  it('path — full path가 title 속성에 있음', () => {
+    render(<WorktreeCard worktree={fullWorktree} />);
+    const dd = screen.getByTitle('/workspace/project');
+    expect(dd).toBeInTheDocument();
   });
 
   it('summary 표시', () => {
@@ -75,6 +81,61 @@ describe('WorktreeCard — stepper 통합', () => {
     render(<WorktreeCard worktree={worktree} />);
     const initStep = document.querySelector('[title="init"]');
     expect(initStep?.className).toContain('wt-stepper__step--active');
+  });
+});
+
+// U14
+describe('WorktreeCard — path last-segment', () => {
+  it('trailing slash path에서 마지막 segment 반환', () => {
+    const worktree = { ...fullWorktree, path: '/foo/bar/' };
+    render(<WorktreeCard worktree={worktree} />);
+    expect(screen.getByText('bar')).toBeInTheDocument();
+  });
+
+  it('긴 절대경로에서 TASK-ID segment 반환', () => {
+    const worktree = {
+      ...fullWorktree,
+      path: '/Users/foo/WORK/workspace/jira-claude-code-integration_worktree/MAE-238',
+    };
+    render(<WorktreeCard worktree={worktree} />);
+    expect(screen.getByText('MAE-238')).toBeInTheDocument();
+  });
+
+  it('긴 절대경로에서 title이 full path', () => {
+    const fullPath = '/Users/foo/WORK/workspace/jira-claude-code-integration_worktree/MAE-238';
+    const worktree = { ...fullWorktree, path: fullPath };
+    render(<WorktreeCard worktree={worktree} />);
+    expect(screen.getByTitle(fullPath)).toBeInTheDocument();
+  });
+});
+
+// U15
+describe('WorktreeCard — summary null placeholder', () => {
+  const noSummaryWorktree = {
+    path: '/workspace/project',
+    branch: 'feature/MAE-238',
+    taskId: 'MAE-238',
+    noContext: false,
+    cachedIssue: null,
+    summary: null,
+    activity: [],
+  };
+
+  it('(no summary) 텍스트 표시', () => {
+    render(<WorktreeCard worktree={noSummaryWorktree} />);
+    expect(screen.getByText('(no summary)')).toBeInTheDocument();
+  });
+
+  it('(no summary) 요소에 wt-card__summary--empty 클래스', () => {
+    render(<WorktreeCard worktree={noSummaryWorktree} />);
+    const el = screen.getByText('(no summary)');
+    expect(el).toHaveClass('wt-card__summary--empty');
+  });
+
+  it('(no summary) 요소의 title이 "no Jira summary cached"', () => {
+    render(<WorktreeCard worktree={noSummaryWorktree} />);
+    const el = screen.getByText('(no summary)');
+    expect(el).toHaveAttribute('title', 'no Jira summary cached');
   });
 });
 
