@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   pickLatestPrompt,
+  pickLatestResponse,
   pickCurrentTool,
   pickActiveSubagent,
   pickBlockedFlag,
@@ -16,12 +17,14 @@ const EMPTY = '—';
  */
 export default function ActivityPanel({ activity = [] }) {
   const latestPrompt = pickLatestPrompt(activity);
+  const latestResponse = pickLatestResponse(activity);
   const currentTool = pickCurrentTool(activity);
   const hasSubagent = pickActiveSubagent(activity);
   const isBlocked = pickBlockedFlag(activity);
 
   const toolName = currentTool?.name ?? EMPTY;
   const promptText = latestPrompt?.text ?? EMPTY;
+  const responseText = latestResponse?.text ?? EMPTY;
   const subagentValue = hasSubagent ? 'active' : EMPTY;
   const blockedValue = isBlocked ? '⚠ blocked' : EMPTY;
 
@@ -37,6 +40,16 @@ export default function ActivityPanel({ activity = [] }) {
             title={promptText}
           >
             {promptText}
+          </dd>
+        </div>
+        <div className="activity-panel__row">
+          <dt>Last response</dt>
+          <dd
+            key={responseText}
+            className="activity-panel__prompt"
+            title={latestResponse?.text ?? ''}
+          >
+            {responseText}
           </dd>
         </div>
         <div className="activity-panel__row">

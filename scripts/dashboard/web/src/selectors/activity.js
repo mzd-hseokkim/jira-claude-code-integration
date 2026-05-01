@@ -76,6 +76,27 @@ export function pickActiveSubagent(activity) {
 }
 
 /**
+ * Returns the most recent Stop event's lastAssistantText preview, truncated
+ * to 120 characters with ellipsis if needed.
+ *
+ * @param {Array<{ts:string,type:string,data:{payload?:Record<string,unknown>}}>} activity
+ * @returns {{ text: string, ts: string } | null}
+ */
+export function pickLatestResponse(activity) {
+  if (!Array.isArray(activity)) return null;
+  for (let i = activity.length - 1; i >= 0; i--) {
+    const ev = activity[i];
+    if (ev?.type !== 'Stop') continue;
+    const raw = ev.data?.payload?.lastAssistantText;
+    if (raw == null || typeof raw !== 'string' || !raw.trim()) continue;
+    const normalized = raw.replace(/\n/g, ' ').trim();
+    const text = normalized.length > 120 ? normalized.slice(0, 119) + '…' : normalized;
+    return { text, ts: ev.ts };
+  }
+  return null;
+}
+
+/**
  * Returns true if the most recent Notification event's message contains
  * 'permission' or 'blocked'.
  *
