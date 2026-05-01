@@ -2,26 +2,83 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body { min-height: 100vh; }
+html { height: 100%; }
+body {
+  /* KITT bar(3px) 자리만 위에서 padding으로 확보. 하단 footer는 fixed라
+     본문이 그 뒤까지 흘러도 OK — main에서 padding으로 마지막 카드만 가리지
+     않게 처리한다. */
+  padding-top: 3px;
+  display: flex;
+  flex-direction: column;
+}
+#root {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
   font-size: 14px;
   color: #1f2937;
-  /* 부드러운 라일락→스카이 그라데이션 + 미세 노이즈 느낌 */
+  /* 미래지향 톤: 짙은 슬레이트 ~ 미드나잇 블루 그라데이션. 카드(라이트 글래시)와 명확히 대비. */
   background:
-    radial-gradient(circle at 15% 10%, rgba(255, 200, 240, 0.55) 0%, transparent 45%),
-    radial-gradient(circle at 85% 90%, rgba(170, 220, 255, 0.5) 0%, transparent 45%),
-    radial-gradient(circle at 50% 50%, rgba(255, 240, 200, 0.35) 0%, transparent 60%),
-    linear-gradient(135deg, #f4f7fb 0%, #eef1f8 100%);
+    radial-gradient(circle at 18% 12%, rgba(56, 189, 248, 0.18) 0%, transparent 42%),
+    radial-gradient(circle at 82% 88%, rgba(124, 58, 237, 0.14) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.10) 0%, transparent 55%),
+    linear-gradient(135deg, #1e293b 0%, #0f172a 60%, #111827 100%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  position: relative;
+  min-height: 100vh;
 }
+
+/* 회로 그리드 패턴 — 배경 위에 SVG line grid 두 장(가로/세로). 매우 옅게. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(56, 189, 248, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.08) 1px, transparent 1px);
+  background-size: 48px 48px, 48px 48px;
+  mask-image: radial-gradient(ellipse at center, black 35%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 35%, transparent 80%);
+}
+
+/* 회로 노드 — 격자 교차점에 미세하게 깜빡이는 dot들. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(circle at 15% 25%, rgba(34, 211, 238, 0.45) 1.5px, transparent 2.5px),
+    radial-gradient(circle at 75% 35%, rgba(96, 165, 250, 0.4) 1.5px, transparent 2.5px),
+    radial-gradient(circle at 35% 70%, rgba(167, 139, 250, 0.35) 1.5px, transparent 2.5px),
+    radial-gradient(circle at 88% 78%, rgba(34, 211, 238, 0.4) 1.5px, transparent 2.5px),
+    radial-gradient(circle at 55% 50%, rgba(96, 165, 250, 0.3) 1.5px, transparent 2.5px);
+  background-repeat: no-repeat;
+  animation: circuit-flicker 6s ease-in-out infinite;
+}
+
+@keyframes circuit-flicker {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+/* 본문 컨텐츠를 패턴 위에 띄우기 */
+body > * { position: relative; z-index: 1; }
 
 /* ===== Connection Banner ===== */
 .conn-banner {
   position: sticky;
-  top: 0;
+  top: 3px; /* KITT bar(3px) 아래 */
   z-index: 100;
   background: #d32f2f;
   color: #fff;
@@ -32,35 +89,300 @@ body {
 
 /* ===== Dashboard Header ===== */
 .dashboard-header {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 22px 24px 10px;
+  position: sticky;
+  top: 3px; /* KITT bar(3px) 아래에 stick */
+  z-index: 80;
+  width: 100%;
+  margin: 0;
+  padding: 14px 24px 12px;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.92) 0%, rgba(15, 23, 42, 0.82) 100%);
+  border-bottom: 1px solid rgba(125, 211, 252, 0.22);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  box-shadow:
+    0 1px 0 rgba(125, 211, 252, 0.06) inset,
+    0 8px 24px -16px rgba(15, 23, 42, 0.7);
 }
 
-.dashboard-header h1 {
-  font-size: 20px;
+/* 헤더 하단 액센트 라인 (밝은 시안 글로우) */
+.dashboard-header::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 -1px 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(125, 211, 252, 0.45) 30%,
+    rgba(186, 230, 253, 0.7) 50%,
+    rgba(125, 211, 252, 0.45) 70%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+.dashboard-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+.dashboard-header__title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dashboard-header__title {
+  font-size: 19px;
   font-weight: 600;
-  letter-spacing: -0.01em;
-  color: #111827;
+  letter-spacing: 0.01em;
+  color: #e0f2fe;
+  text-shadow: 0 0 16px rgba(125, 211, 252, 0.35);
+  margin: 0;
+}
+
+.dashboard-header__subtitle {
+  font-size: 11.5px;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+.dashboard-header__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .dashboard-header__count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(125, 211, 252, 0.25);
+  color: #e0f2fe;
+}
+
+.dashboard-header__count-num {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.dashboard-header__count-label {
+  font-size: 10.5px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Connection chip */
+.conn-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-variant-caps: all-small-caps;
+}
+
+.conn-chip__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.conn-chip--live {
+  color: #bae6fd;
+  background: rgba(8, 47, 73, 0.7);
+  border: 1px solid rgba(125, 211, 252, 0.45);
+  box-shadow: 0 0 14px rgba(125, 211, 252, 0.25);
+}
+.conn-chip--live .conn-chip__dot {
+  background: #7dd3fc;
+  box-shadow: 0 0 10px #7dd3fc, 0 0 18px rgba(125, 211, 252, 0.6);
+  animation: conn-dot-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes conn-dot-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(0.9); }
+  50%      { opacity: 1;   transform: scale(1.15); }
+}
+
+.conn-chip--off {
+  color: #f1f5f9;
+  background: rgba(127, 29, 29, 0.55);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+}
+.conn-chip--off .conn-chip__dot {
+  background: #f87171;
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.6);
+}
+
+/* Header controls (정렬 칩 + 필터 input) */
+.dashboard-header__controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(125, 211, 252, 0.15);
+  flex-wrap: wrap;
+}
+
+.sort-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sort-chips__label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #64748b;
+  margin-right: 4px;
+}
+
+.sort-chip {
   font-size: 11px;
   font-weight: 500;
-  color: #6b7280;
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  padding: 3px 10px;
+  letter-spacing: 0.02em;
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(125, 211, 252, 0.2);
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  padding: 4px 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.sort-chip:hover {
+  color: #e0f2fe;
+  border-color: rgba(125, 211, 252, 0.4);
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.sort-chip--active {
+  color: #0c4a6e;
+  background: linear-gradient(135deg, #bae6fd 0%, #7dd3fc 100%);
+  border-color: rgba(186, 230, 253, 0.7);
+  box-shadow: 0 0 14px rgba(125, 211, 252, 0.45);
+  font-weight: 600;
+}
+
+.sort-chip__arrow {
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.filter-input {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 240px;
+  flex: 0 1 320px;
+}
+
+.filter-input__icon {
+  position: absolute;
+  left: 10px;
+  font-size: 11px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.filter-input__field {
+  width: 100%;
+  font: inherit;
+  font-size: 12px;
+  color: #e0f2fe;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  border-radius: 8px;
+  padding: 6px 28px 6px 28px;
+  outline: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.filter-input__field::placeholder {
+  color: #64748b;
+}
+
+.filter-input__field:focus {
+  border-color: rgba(125, 211, 252, 0.7);
+  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.18);
+}
+
+.filter-input__clear {
+  position: absolute;
+  right: 6px;
+  font-size: 14px;
+  line-height: 1;
+  color: #94a3b8;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  transition: color 0.16s ease, background 0.16s ease;
+}
+
+.filter-input__clear:hover {
+  color: #e0f2fe;
+  background: rgba(125, 211, 252, 0.18);
+}
+
+/* Dashboard Footer — viewport 하단 fixed */
+.dashboard-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 80;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 10.5px;
+  color: #64748b;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.55) 0%, rgba(15, 23, 42, 0.85) 100%);
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  border-top: 1px solid rgba(125, 211, 252, 0.18);
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+.dashboard-footer__brand { color: #94a3b8; }
+.dashboard-footer__sep   { color: #475569; }
+.dashboard-footer__bind  {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  color: #7dd3fc;
 }
 
 .dashboard-empty {
   grid-column: 1 / -1;
   text-align: center;
-  color: #888;
+  color: #94a3b8;
   padding: 40px;
 }
 
@@ -69,7 +391,13 @@ body {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
-  padding: 14px 20px 24px;
+  /* 하단 padding은 footer(40px) + 여유 분(28px). footer가 fixed로 위에 떠있으므로
+     main 배경이 그 너머까지 깔리고, 마지막 카드는 footer에 안 가려진다. */
+  padding: 18px 20px 72px;
+  /* 헤더/푸터(짙은 슬레이트)와 시각 구분되도록 컨테이너 배경을 한 톤 밝게. */
+  background: linear-gradient(180deg, rgba(71, 85, 105, 0.45) 0%, rgba(51, 65, 85, 0.35) 100%);
+  align-content: start;     /* 카드는 자기 높이만, 위에서부터 채움 */
+  flex: 1 1 auto;            /* 컨테이너 자체는 viewport 끝까지 늘어남 */
 }
 @media (max-width: 1100px) {
   .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -81,29 +409,30 @@ body {
 /* ===== Worktree Card (frosted glass) ===== */
 .wt-card {
   position: relative;
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 14px;
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  color: #1f2937;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.6) inset,
-    0 6px 20px -8px rgba(31, 41, 55, 0.12),
-    0 16px 48px -20px rgba(31, 41, 55, 0.08);
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 8px 24px -8px rgba(15, 23, 42, 0.45),
+    0 20px 56px -20px rgba(15, 23, 42, 0.4);
   transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
 }
 
 .wt-card:hover {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 1);
   transform: translateY(-1px);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.8) inset,
-    0 12px 32px -8px rgba(31, 41, 55, 0.18),
-    0 24px 64px -24px rgba(31, 41, 55, 0.14);
+    0 1px 0 rgba(255, 255, 255, 1) inset,
+    0 14px 36px -8px rgba(15, 23, 42, 0.55),
+    0 28px 72px -24px rgba(15, 23, 42, 0.5);
 }
 
 /* priority hint: 좌측 컬러바 대신 카드 우상단에 미세한 dot */
@@ -357,60 +686,56 @@ body {
   font-weight: 700;
 }
 
-/* connector chase: last-done → active 사이의 흐르는 화살표 (▶ ▶▶ ▶▶▶) */
-.wt-stepper__connector--chase {
-  display: inline-flex;
-  gap: 1px;
-  padding: 0 2px;
-  font-size: 9px;
-  line-height: 1;
-  color: #d97706;
-}
-
-.wt-stepper__chase-dot {
-  opacity: 0;
-  animation: chase-fade 1.2s ease-in-out infinite;
-}
-
-/* 1.2s 주기, 각 dot이 0.3s 간격으로 순차 fade-in */
-.wt-stepper__chase-dot--1 { animation-delay: 0s;    }
-.wt-stepper__chase-dot--2 { animation-delay: 0.3s;  }
-.wt-stepper__chase-dot--3 { animation-delay: 0.6s;  }
-
-@keyframes chase-fade {
-  0%   { opacity: 0; }
-  20%  { opacity: 1; }
-  75%  { opacity: 1; }
-  100% { opacity: 0; }
-}
-
 /* pending: 흐림 */
 .wt-stepper__step--pending {
   color: #cbd5e1;
   font-weight: 400;
 }
 
-/* 연결선: › 화살표를 단계 사이에 배치 */
+/* 연결선: 얇은 라인 + 작은 화살촉. 색상은 currentColor로 상태별 조정. */
 .wt-stepper__connector {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   padding: 0 2px;
-  font-size: 11px;
-  line-height: 1;
   user-select: none;
   flex-shrink: 0;
 }
-.wt-stepper__connector--done    { color: #86efac; }   /* 진한 초록 흐름 */
-.wt-stepper__connector--active  { color: #f5c94c; }   /* 노란 흐름 (active로 가는 길) */
-.wt-stepper__connector--pending { color: #e5e7eb; }   /* 흐린 회색 */
+/* 화살표는 기본 진한 검정, 진행 chase 시에만 amber로 강조 */
+.wt-stepper__connector--done    { color: #000; }
+.wt-stepper__connector--active  { color: #000; }
+.wt-stepper__connector--pending { color: #6b7280; }
+.wt-stepper__connector--chase   { color: #d97706; }
+
+.wt-stepper__arrow {
+  display: block;
+  overflow: visible;
+  transform: translateY(1px); /* chip 라벨 baseline 아래로 살짝 내려 정렬 보정 */
+}
+
+/* chase 상태: 라인이 좌→우로 흐르는 듯한 dash 애니메이션 + 화살촉 fade */
+.wt-stepper__connector--chase .wt-stepper__arrow-line {
+  stroke-dasharray: 4 3;
+  animation: arrow-flow 1s linear infinite;
+}
+.wt-stepper__connector--chase .wt-stepper__arrow-head {
+  animation: arrow-head-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes arrow-flow {
+  0%   { stroke-dashoffset: 7; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes arrow-head-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
 
 /* stepper-pulse keyframe은 chase 애니메이션으로 대체되어 더 이상 사용하지 않음.
    하위 다른 곳(이전 Story 7 motion override 등)에서 참조하면 무시됨. */
 
 @media (prefers-reduced-motion: reduce) {
-  .wt-stepper__chase-dot {
-    animation: none;
-    opacity: 1;
-  }
+  .wt-stepper__connector--chase .wt-stepper__arrow-line { animation: none; stroke-dasharray: none; }
+  .wt-stepper__connector--chase .wt-stepper__arrow-head { animation: none; opacity: 1; }
 }
 
 /* ===== Activity Panel ===== */
@@ -663,6 +988,55 @@ body {
   opacity: 0.85;
 }
 
+/* ===== KITT-style scanner bar (top of viewport) ===== */
+.kitt-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  height: 3px;
+  width: 100%;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.85);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+}
+
+.kitt-bar__track {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(186, 230, 253, 0.05) 50%,
+    transparent 100%
+  );
+}
+
+.kitt-bar__scanner {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 22%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(186, 230, 253, 0.7) 30%,
+    #e0f2fe 50%,
+    rgba(186, 230, 253, 0.7) 70%,
+    transparent 100%
+  );
+  box-shadow:
+    0 0 14px 2px rgba(186, 230, 253, 0.95),
+    0 0 32px 8px rgba(125, 211, 252, 0.6);
+  animation: kitt-scan 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite alternate;
+}
+
+@keyframes kitt-scan {
+  0%   { left: -22%; }
+  100% { left: 100%; }
+}
+
 /* ===== Header extras (last activity, tool count, awaiting/stale badge) ===== */
 .wt-card__last-activity {
   font-size: 10.5px;
@@ -704,7 +1078,7 @@ body {
 /* ===== Card state: busy (Claude가 응답 생성 중) =====
    배경 살짝 푸르게 + 두꺼운 청색 링 + 강한 glow. */
 .wt-card--busy {
-  background: rgba(219, 234, 254, 0.55);
+  background: rgba(224, 242, 254, 0.95);
   border-color: rgba(59, 130, 246, 0.85);
   box-shadow:
     0 0 0 2px rgba(59, 130, 246, 0.4),
@@ -733,7 +1107,7 @@ body {
 
 /* ===== Card state: awaiting (사용자 응답 대기) — 강한 amber glow ===== */
 .wt-card--awaiting {
-  background: rgba(254, 243, 199, 0.6);
+  background: rgba(254, 243, 199, 0.97);
   border-color: rgba(217, 119, 6, 0.95);
   box-shadow:
     0 0 0 2px rgba(217, 119, 6, 0.5),
@@ -762,10 +1136,10 @@ body {
 
 /* ===== Card state: stale (Jira Done인데 worktree 살아있음) ===== */
 .wt-card--stale {
-  opacity: 0.6;
+  opacity: 0.78;
   filter: saturate(0.85);
 }
-.wt-card--stale:hover { opacity: 0.85; }
+.wt-card--stale:hover { opacity: 1; }
 
 /* ===== ActivityPanel pulse dot (sub-agent active) ===== */
 .activity-panel__pulse-dot {
@@ -803,4 +1177,6 @@ body {
   .wt-card--busy                     { animation: none; }
   .wt-card--awaiting                 { animation: none; }
   .activity-panel__pulse-dot         { animation: none; }
+  .kitt-bar__scanner                 { animation: none; left: 50%; }
+  body::after                        { animation: none; }
 }

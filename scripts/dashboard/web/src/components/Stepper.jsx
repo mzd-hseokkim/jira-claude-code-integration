@@ -55,17 +55,40 @@ export default function Stepper({ completedSteps }) {
               {step.label}
             </li>
             {!isLast && (
-              // 현재 단계가 done이고 다음 단계가 active인 connector → chase 효과 (흐르는 화살표).
-              // 그 외는 정적 connector.
-              state === 'done' && nextState === 'active' ? (
-                <span className="wt-stepper__connector wt-stepper__connector--chase" aria-hidden="true">
-                  <span className="wt-stepper__chase-dot wt-stepper__chase-dot--1">▶</span>
-                  <span className="wt-stepper__chase-dot wt-stepper__chase-dot--2">▶</span>
-                  <span className="wt-stepper__chase-dot wt-stepper__chase-dot--3">▶</span>
-                </span>
-              ) : (
-                <span className={connectorClass} aria-hidden="true">›</span>
-              )
+              <span
+                className={
+                  state === 'done' && nextState === 'active'
+                    ? 'wt-stepper__connector wt-stepper__connector--chase'
+                    : connectorClass
+                }
+                aria-hidden="true"
+              >
+                {/* 얇은 라인 + 작은 화살촉. chase 상태에서는 라인이 좌→우로 흐름. */}
+                <svg
+                  className="wt-stepper__arrow"
+                  viewBox="0 0 24 8"
+                  preserveAspectRatio="none"
+                  width="22"
+                  height="8"
+                >
+                  <line
+                    className="wt-stepper__arrow-line"
+                    x1="0" y1="4" x2="20" y2="4"
+                    stroke="currentColor"
+                    strokeWidth="0.6"
+                    strokeLinecap="round"
+                  />
+                  <polyline
+                    className="wt-stepper__arrow-head"
+                    points="17.5,2 21,4 17.5,6"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="0.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
             )}
           </React.Fragment>
         );

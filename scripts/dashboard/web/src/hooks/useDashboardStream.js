@@ -4,25 +4,45 @@ import { useEffect, useRef } from 'react';
  * Subscribes to the backend SSE `/events` stream and dispatches actions
  * to the dashboard reducer.
  *
- * Distinguishes first-connection failure (never-connected) from mid-session
- * disconnects (disconnected).
+ * EventSource는 일부 환경(특히 macOS Safari/Chrome 절전, sleep 후 깨어남)에서
+ * 자동 재연결이 멈출 때가 있다. 명시적 close → 백오프 재연결로 보정한다.
  *
  * @param {React.Dispatch<any>} dispatch
  */
 export function useDashboardStream(dispatch) {
-  // Track whether we've successfully connected at least once this mount.
   const everConnected = useRef(false);
 
   useEffect(() => {
-    let es;
+    let es = null;
+    let retryTimer = null;
+    let visibilityHandler = null;
+    let backoffMs = 500;
+    const BACKOFF_MAX = 8000;
+    let unmounted = false;
+
+    function scheduleReconnect() {
+      if (unmounted) return;
+      if (retryTimer) clearTimeout(retryTimer);
+      retryTimer = setTimeout(() => {
+        retryTimer = null;
+        connect();
+      }, backoffMs);
+      backoffMs = Math.min(backoffMs * 2, BACKOFF_MAX);
+    }
 
     function connect() {
+      if (unmounted) return;
+      if (es) {
+        try { es.close(); } catch {}
+        es = null;
+      }
       es = new EventSource('/events');
 
       es.addEventListener('snapshot', (e) => {
         try {
           const data = JSON.parse(e.data);
           everConnected.current = true;
+          backoffMs = 500; // 성공 시 백오프 리셋
           dispatch({ type: 'SNAPSHOT', worktrees: data.worktrees ?? [] });
           dispatch({ type: 'LIVE_EVENT', at: Date.now() });
         } catch {
@@ -35,9 +55,7 @@ export function useDashboardStream(dispatch) {
           const data = JSON.parse(e.data);
           dispatch({ type: 'WORKTREE_ADDED', path: data.path, state: data.state });
           dispatch({ type: 'LIVE_EVENT', at: Date.now() });
-        } catch {
-          console.warn('[useDashboardStream] failed to parse worktree.added event');
-        }
+        } catch {}
       });
 
       es.addEventListener('worktree.changed', (e) => {
@@ -45,9 +63,7 @@ export function useDashboardStream(dispatch) {
           const data = JSON.parse(e.data);
           dispatch({ type: 'WORKTREE_CHANGED', path: data.path, state: data.state });
           dispatch({ type: 'LIVE_EVENT', at: Date.now() });
-        } catch {
-          console.warn('[useDashboardStream] failed to parse worktree.changed event');
-        }
+        } catch {}
       });
 
       es.addEventListener('worktree.removed', (e) => {
@@ -55,9 +71,7 @@ export function useDashboardStream(dispatch) {
           const data = JSON.parse(e.data);
           dispatch({ type: 'WORKTREE_REMOVED', path: data.path });
           dispatch({ type: 'LIVE_EVENT', at: Date.now() });
-        } catch {
-          console.warn('[useDashboardStream] failed to parse worktree.removed event');
-        }
+        } catch {}
       });
 
       es.onerror = () => {
@@ -66,15 +80,31 @@ export function useDashboardStream(dispatch) {
         } else {
           dispatch({ type: 'CONNECTION_FAILED_INITIAL' });
         }
-        // EventSource 기본 자동 재연결(~3s)에 위임. 재연결 성공 시 snapshot 이벤트가 도착하면
-        // SNAPSHOT action이 dispatch되어 connection='connected'로 복구됨.
+        // EventSource 기본 재연결을 신뢰하지 않고 명시적으로 닫고 재시도.
+        try { es?.close(); } catch {}
+        es = null;
+        scheduleReconnect();
       };
     }
+
+    // 탭이 다시 보이면 연결 상태 점검 후 즉시 재연결 시도.
+    visibilityHandler = () => {
+      if (document.visibilityState === 'visible' && (!es || es.readyState === 2)) {
+        backoffMs = 500;
+        connect();
+      }
+    };
+    document.addEventListener('visibilitychange', visibilityHandler);
 
     connect();
 
     return () => {
-      if (es) es.close();
+      unmounted = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      if (visibilityHandler) document.removeEventListener('visibilitychange', visibilityHandler);
+      if (es) {
+        try { es.close(); } catch {}
+      }
     };
   }, [dispatch]);
 }
