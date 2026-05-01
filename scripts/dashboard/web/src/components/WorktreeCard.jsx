@@ -13,6 +13,43 @@ function fmt(val) {
 }
 
 /**
+ * 한국어 Jira status 값을 CSS class slug로 변환.
+ * 매핑 실패 또는 null/undefined → 'neutral'
+ * @param {string|null|undefined} value
+ * @returns {'todo'|'in-progress'|'in-review'|'done'|'blocked'|'neutral'}
+ */
+function statusSlug(value) {
+  const v = String(value ?? '').trim();
+  switch (v) {
+    case '할 일':   return 'todo';
+    case '진행 중': return 'in-progress';
+    case '검토':    return 'in-review';
+    case '완료':    return 'done';
+    case '차단됨':  return 'blocked';
+    default:        return 'neutral';
+  }
+}
+
+/**
+ * 한국어 Jira priority 값을 CSS class slug로 변환.
+ * 매핑 실패 또는 null/undefined → 'neutral'
+ * @param {string|null|undefined} value
+ * @returns {'highest'|'high'|'major'|'medium'|'low'|'lowest'|'neutral'}
+ */
+function prioritySlug(value) {
+  const v = String(value ?? '').trim();
+  switch (v) {
+    case '매우 높음': return 'highest';
+    case '높음':      return 'high';
+    case '주요':      return 'major';
+    case '보통':      return 'medium';
+    case '낮음':      return 'low';
+    case '매우 낮음': return 'lowest';
+    default:          return 'neutral';
+  }
+}
+
+/**
  * 카드 한 장. WorktreeState를 prop으로 받아 7개 필드 + ActivityPanel을 표시.
  *
  * @param {{ worktree: import('../state/reducer.js').WorktreeState }} props
@@ -28,8 +65,11 @@ export default function WorktreeCard({ worktree }) {
   const assignee = cachedIssue?.assignee ?? null; // top-level에는 assignee 없음
   const issueType = cachedIssue?.issuetype ?? null;
 
+  const sSlug = noContext ? 'neutral' : statusSlug(status);
+  const pSlug = noContext ? 'neutral' : prioritySlug(priority);
+
   return (
-    <div className="wt-card">
+    <div className={`wt-card wt-card--prio-${pSlug}`}>
       <div className="wt-card__header">
         <span className="wt-card__task-id">{fmt(taskId)}</span>
         {noContext && <span className="wt-card__no-context-badge">no context</span>}
@@ -51,11 +91,19 @@ export default function WorktreeCard({ worktree }) {
         </div>
         <div className="wt-card__field">
           <dt>Status</dt>
-          <dd>{noContext ? EMPTY : fmt(status)}</dd>
+          <dd>
+            {noContext || status == null
+              ? EMPTY
+              : <span className={`wt-badge wt-badge--status-${sSlug}`}>{status}</span>}
+          </dd>
         </div>
         <div className="wt-card__field">
           <dt>Priority</dt>
-          <dd>{noContext ? EMPTY : fmt(priority)}</dd>
+          <dd>
+            {noContext || priority == null
+              ? EMPTY
+              : <span className={`wt-badge wt-badge--prio-${pSlug}`}>{priority}</span>}
+          </dd>
         </div>
         <div className="wt-card__field">
           <dt>Assignee</dt>
