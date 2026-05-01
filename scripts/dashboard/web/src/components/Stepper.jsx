@@ -35,14 +35,18 @@ export default function Stepper({ completedSteps }) {
         const extraProps = justCompleted.has(step.id)
           ? { 'data-just-completed': '' }
           : {};
+        const icon = state === 'done' ? '✓' : state === 'active' ? '⏵' : '·';
         return (
           <li
             key={step.id}
             className={`wt-stepper__step wt-stepper__step--${state}`}
-            title={step.label}
+            title={`${step.label}: ${state}`}
             aria-label={`${step.label}: ${state}`}
             {...extraProps}
-          />
+          >
+            <span className="wt-stepper__step-label">{step.label}</span>
+            <span className="wt-stepper__step-icon" aria-hidden="true">{icon}</span>
+          </li>
         );
       })}
     </ol>
