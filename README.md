@@ -457,7 +457,7 @@ git worktree prune               # Clean stale worktree refs
 
 ## Dashboard
 
-A real-time activity monitor for your Claude Code worktrees. The dashboard collects hook events (tool calls, sub-agent lifecycle, Jira transitions) from every worktree and streams them to a browser UI via SSE.
+A real-time activity monitor for every Claude Code worktree in your workspace. Hook events from each session (user prompts, tool calls, sub-agent lifecycle, final responses) stream into a browser UI via SSE so you can see at a glance which session is busy, which is waiting on you, and what each one just answered.
 
 ### Quick Start
 
@@ -478,44 +478,55 @@ npm run dashboard
 
 After the first build, daily use is just `npm run dashboard`. Re-run the build step whenever the React source changes.
 
-The server binds to `http://127.0.0.1:8765` and opens your default browser automatically. To suppress auto-open (CI / headless environments):
+The server binds to `http://127.0.0.1:8765` and opens your default browser automatically.
 
 ```bash
-DASHBOARD_NO_OPEN=1 npm run dashboard
+DASHBOARD_NO_OPEN=1 npm run dashboard   # suppress auto-open (CI / headless)
+PORT=9000 npm run dashboard              # override default port
 ```
 
-The default port is **8765** (override with `PORT=xxxx npm run dashboard`).
+### What you see on each card
+
+- **Header** — Jira task id, issue type, **outlined status badge with leading dot** (Jira workflow status, distinct from agent activity), `⚙ N` cumulative tool calls in this session, `X분 전` last activity, and an `⏵ 응답 대기` badge when Claude is waiting on you.
+- **SDLC stepper** — One chip per `/jira-task` step (init/start/plan/design/impl/test/review/merge/pr/done) coloured by `completedSteps` in `.jira-context.json`.
+- **Activity panel** — Last prompt, **Last response (final concluding line of Claude's reply)**, current tool-in-flight, sub-agent indicator, and a blocked flag.
+- **Card border state**:
+  - **Blue glow + pulse** = busy. Defined as "a `UserPromptSubmit` event without a matching `Stop` yet" — i.e. Claude is generating right now. Time-independent.
+  - **Amber glow + pulse + 응답 대기 badge** = busy *and* most recent `Notification` mentions permission/input/waiting.
+  - **Dim + `stale` badge** = Jira status is 완료 but the worktree still exists (cleanup candidate).
+- **Sort order**: most recent activity first, then taskId, then path.
 
 ### Hooks
 
-Five hook events are wired in `hooks/hooks.json` → `hooks/dashboard-ingest.sh` → `POST /ingest` → SSE broadcast:
+Hook events are wired in `hooks/hooks.json`, forwarded by two small scripts in `hooks/scripts/` to `POST /ingest`, then broadcast via SSE:
 
-| Hook | Trigger |
-|------|---------|
-| `UserPromptSubmit` | New user message sent to Claude |
-| `PreToolUse` | Before any tool is invoked |
-| `PostToolUse` | After a tool returns |
-| `SubagentStop` | Sub-agent session ends |
-| `Notification` | System notification emitted |
+| Hook | Forwarder | Used for |
+|------|-----------|----------|
+| `UserPromptSubmit` | `dashboard-ingest.sh` | Last prompt + busy detection |
+| `PreToolUse` | `dashboard-ingest.sh` | Current tool, tool-call counter |
+| `PostToolUse` | `dashboard-ingest.sh` | Closes a tool-in-flight marker |
+| `SubagentStop` | `dashboard-ingest.sh` | Sub-agent active indicator |
+| `Notification` | `dashboard-ingest.sh` | Awaiting / blocked detection |
+| `Stop` | `stop-ingest.sh` | Last response preview (reads `transcript_path`) |
 
-Each event is labelled with the originating worktree path and Jira task ID (from `.jira-context.json`).
+Each ingest is mapped to a worktree path and Jira task id via `.jira-context.json`. `SessionStart` and `Stop` also drive non-dashboard side-effects (Jira context injection, end-of-session reminder) — those forwarders are independent.
 
 ### Logs
 
 Log file: `<workspaceRoot>/logs/dashboard-server.log`
 
-- Append-only JSON Lines format; no rotation in this release (Phase 2).
+- Append-only JSON Lines format; no rotation in this release.
 - Sensitive fields (`apiToken`, `Authorization`) are automatically redacted to `[REDACTED]` before writing.
 - The server prints the absolute log path to stdout on startup.
 
-### Out of Scope (Phase 2)
+### Out of Scope
 
-- Port configurability (`DASHBOARD_PORT` env var)
 - Log rotation / size capping
 - Authentication / remote access (currently localhost-only by design)
 - Browser env var (`BROWSER`) support on Linux
 - Windows PowerShell fallback (current: `cmd /c start`)
 - Fallback stdout URL prompt on browser-open failure
+- Cross-card relationship visualization (blockers, subtasks) — planned
 
 ---
 
@@ -554,7 +565,20 @@ MIT
 
 ### 대시보드
 
-`npm run dashboard` 한 줄로 실시간 모니터링 대시보드를 기동할 수 있습니다. 서버는 `http://127.0.0.1:8765`에 바인딩되며 기본 브라우저가 자동으로 열립니다. CI/헤드리스 환경에서는 `DASHBOARD_NO_OPEN=1`로 자동 오픈을 비활성화하세요. hook 이벤트는 `hooks/hooks.json` → `dashboard-ingest.sh` → `/ingest` → SSE 순서로 UI에 실시간 전달되며, 서버 로그는 `<workspaceRoot>/logs/dashboard-server.log`에 JSON Lines 형식으로 기록됩니다(민감 필드 자동 redact).
+`npm run dashboard` 한 줄로 실시간 모니터링 대시보드를 기동할 수 있습니다. 서버는 `http://127.0.0.1:8765`에 바인딩되며 기본 브라우저가 자동으로 열립니다. 첫 사용 시에는 `npm install && npm --prefix scripts/dashboard/web install && npm --prefix scripts/dashboard/web run build`로 React UI를 한 번 빌드해야 합니다(빌드 산출물은 커밋되지 않음). CI/헤드리스 환경은 `DASHBOARD_NO_OPEN=1`, 포트 변경은 `PORT=9000`.
+
+각 worktree 카드는 다음을 보여줍니다:
+
+- **상단 배지**: Jira 워크플로 상태(outlined + 좌측 dot — agent 활성 상태와 시각적으로 분리), 누적 도구 호출 수(`⚙ N`), 마지막 활동 상대시간, 응답 대기 표시
+- **SDLC stepper**: `.jira-context.json`의 `completedSteps` 기반 단계 진행
+- **활동 패널**: 마지막 prompt, **마지막 응답의 결론 줄**, 진행 중 도구, sub-agent / blocked 상태
+- **카드 보더 상태**:
+  - **파란 펄스 = busy** — `UserPromptSubmit` 이후 `Stop`이 아직 안 옴(시간 임계값 없음, "지금 응답 생성 중")
+  - **앰버 펄스 + 응답 대기 배지** — busy + 최근 `Notification`이 permission/input/waiting을 포함
+  - **dim + stale 배지** — Jira 상태가 완료인데 worktree가 아직 살아있음(정리 대상)
+- **정렬**: 최근 활동 desc → taskId
+
+Hook 흐름: `hooks/hooks.json` → `hooks/scripts/dashboard-ingest.sh`(UserPromptSubmit·PreToolUse·PostToolUse·SubagentStop·Notification) / `hooks/scripts/stop-ingest.sh`(Stop, transcript에서 마지막 assistant 텍스트 추출) → `POST /ingest` → SSE. 서버 로그는 `<workspaceRoot>/logs/dashboard-server.log`(JSON Lines, 민감 필드 자동 redact).
 
 ### 핵심 특징
 
