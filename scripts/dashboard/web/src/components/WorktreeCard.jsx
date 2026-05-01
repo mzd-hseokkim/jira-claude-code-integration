@@ -80,51 +80,58 @@ export default function WorktreeCard({ worktree }) {
   const sSlug = noContext ? 'neutral' : statusSlug(status);
   const pSlug = noContext ? 'neutral' : prioritySlug(priority);
 
+  const showStatusBadge = !noContext && status != null;
+
   return (
     <div className={`wt-card wt-card--prio-${pSlug}`}>
-      <div className="wt-card__header">
+      {/* === 1단: 헤더 (taskId + type + status badge) === */}
+      <header className="wt-card__header">
         <span className="wt-card__task-id">{fmt(taskId)}</span>
-        {noContext && <span className="wt-card__no-context-badge">no context</span>}
         {issueType && <span className="wt-card__issue-type">{issueType}</span>}
-      </div>
+        {noContext && <span className="wt-card__no-context-badge">no context</span>}
+        <span className="wt-card__header-spacer" />
+        {showStatusBadge && (
+          <span
+            key={status}
+            className={`wt-badge wt-badge--status-${sSlug} wt-badge--status-flip`}
+          >
+            {status}
+          </span>
+        )}
+      </header>
 
+      {/* === 2단: summary === */}
       <div className="wt-card__summary">
         {summary != null
           ? <span title={summary}>{summary}</span>
           : <span className="wt-card__summary--empty" title="no Jira summary cached">(no summary)</span>}
       </div>
 
+      {/* === 3단: SDLC stepper (lifecycle flow) === */}
       <Stepper completedSteps={completedSteps} />
 
-      <dl className="wt-card__fields">
-        <div className="wt-card__field">
-          <dt>Branch</dt>
-          <dd>{fmt(branch)}</dd>
+      {/* === 4단: 메타 한 줄 (branch · path · priority · assignee) === */}
+      <dl className="wt-card__meta">
+        <div className="wt-card__meta-item">
+          <dt className="wt-card__meta-label">branch</dt>
+          <dd className="wt-card__meta-value wt-card__meta-value--mono" title={branch}>{fmt(branch)}</dd>
         </div>
-        <div className="wt-card__field">
-          <dt>Path</dt>
-          <dd className="wt-card__path" title={path}>{lastPathSegment(path)}</dd>
+        <div className="wt-card__meta-item">
+          <dt className="wt-card__meta-label">path</dt>
+          <dd className="wt-card__meta-value wt-card__meta-value--mono" title={path}>{lastPathSegment(path)}</dd>
         </div>
-        <div className="wt-card__field">
-          <dt>Status</dt>
-          <dd>
-            {noContext || status == null
-              ? EMPTY
-              : <span key={status} className={`wt-badge wt-badge--status-${sSlug} wt-badge--status-flip`}>{status}</span>}
-          </dd>
-        </div>
-        <div className="wt-card__field">
-          <dt>Priority</dt>
-          <dd>
-            {noContext || priority == null
-              ? EMPTY
-              : <span className={`wt-badge wt-badge--prio-${pSlug}`}>{priority}</span>}
-          </dd>
-        </div>
-        <div className="wt-card__field">
-          <dt>Assignee</dt>
-          <dd>{noContext ? EMPTY : fmt(assignee)}</dd>
-        </div>
+        {!noContext && priority != null && (
+          <div className="wt-card__meta-item">
+            <dt className="wt-card__meta-label">prio</dt>
+            <dd className={`wt-card__meta-value wt-card__meta-value--prio-${pSlug}`}>{priority}</dd>
+          </div>
+        )}
+        {!noContext && (
+          <div className="wt-card__meta-item">
+            <dt className="wt-card__meta-label">@</dt>
+            <dd className="wt-card__meta-value">{fmt(assignee)}</dd>
+          </div>
+        )}
       </dl>
 
       <ActivityPanel activity={activity} />
