@@ -632,6 +632,158 @@ body {
   transition: opacity var(--motion-dur-long) var(--motion-ease-in-out);
 }
 
+/* ===== Jira status badge (outlined + leading dot + caption) =====
+   "진행 중" 같은 한국어 라벨이 "agent가 동작 중"으로 오해되는 걸 방지.
+   배지 자체는 outlined 톤으로 약하게, 좌측 dot으로 데이터 출처를 시각화. */
+.wt-badge--jira-status {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid currentColor;
+  border-color: currentColor;
+  padding-left: 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.wt-badge--jira-status.wt-badge--status-todo        { color: var(--color-status-todo-text); }
+.wt-badge--jira-status.wt-badge--status-in-progress { color: var(--color-status-in-progress-text); }
+.wt-badge--jira-status.wt-badge--status-in-review   { color: var(--color-status-in-review-text); }
+.wt-badge--jira-status.wt-badge--status-done        { color: var(--color-status-done-text); }
+.wt-badge--jira-status.wt-badge--status-blocked     { color: var(--color-status-blocked-text); }
+.wt-badge--jira-status.wt-badge--status-neutral     { color: var(--color-status-neutral-text); }
+
+.wt-badge__jira-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.85;
+}
+
+/* ===== Header extras (last activity, tool count, awaiting/stale badge) ===== */
+.wt-card__last-activity {
+  font-size: 10.5px;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+}
+
+.wt-card__tool-count {
+  font-size: 10.5px;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.wt-card__awaiting-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
+.wt-card__stale-badge {
+  font-size: 10px;
+  color: #6b7280;
+  background: #e5e7eb;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+/* ===== Card state: busy (Claude가 응답 생성 중) =====
+   배경 살짝 푸르게 + 두꺼운 청색 링 + 강한 glow. */
+.wt-card--busy {
+  background: rgba(219, 234, 254, 0.55);
+  border-color: rgba(59, 130, 246, 0.85);
+  box-shadow:
+    0 0 0 2px rgba(59, 130, 246, 0.4),
+    0 0 24px 2px rgba(59, 130, 246, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 6px 20px -8px rgba(31, 41, 55, 0.12);
+  animation: wt-card-busy-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes wt-card-busy-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px rgba(59, 130, 246, 0.4),
+      0 0 18px 2px rgba(59, 130, 246, 0.4),
+      0 1px 0 rgba(255, 255, 255, 0.6) inset,
+      0 6px 20px -8px rgba(31, 41, 55, 0.12);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(59, 130, 246, 0.55),
+      0 0 32px 6px rgba(59, 130, 246, 0.7),
+      0 1px 0 rgba(255, 255, 255, 0.6) inset,
+      0 10px 28px -8px rgba(59, 130, 246, 0.5);
+  }
+}
+
+/* ===== Card state: awaiting (사용자 응답 대기) — 강한 amber glow ===== */
+.wt-card--awaiting {
+  background: rgba(254, 243, 199, 0.6);
+  border-color: rgba(217, 119, 6, 0.95);
+  box-shadow:
+    0 0 0 2px rgba(217, 119, 6, 0.5),
+    0 0 28px 4px rgba(245, 158, 11, 0.6),
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 6px 20px -8px rgba(31, 41, 55, 0.12);
+  animation: wt-card-awaiting-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes wt-card-awaiting-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px rgba(217, 119, 6, 0.5),
+      0 0 22px 3px rgba(245, 158, 11, 0.55),
+      0 1px 0 rgba(255, 255, 255, 0.6) inset,
+      0 6px 20px -8px rgba(31, 41, 55, 0.12);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px rgba(217, 119, 6, 0.75),
+      0 0 40px 8px rgba(245, 158, 11, 0.85),
+      0 1px 0 rgba(255, 255, 255, 0.6) inset,
+      0 12px 32px -8px rgba(245, 158, 11, 0.6);
+  }
+}
+
+/* ===== Card state: stale (Jira Done인데 worktree 살아있음) ===== */
+.wt-card--stale {
+  opacity: 0.6;
+  filter: saturate(0.85);
+}
+.wt-card--stale:hover { opacity: 0.85; }
+
+/* ===== ActivityPanel pulse dot (sub-agent active) ===== */
+.activity-panel__pulse-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  margin-right: 6px;
+  vertical-align: middle;
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.4; transform: scale(0.85); }
+  50%      { opacity: 1;   transform: scale(1.15); }
+}
+
 /* ===== prefers-reduced-motion ===== */
 @media (prefers-reduced-motion: reduce) {
   .wt-stepper__step--active          { animation: none; }
@@ -648,4 +800,7 @@ body {
   .dashboard-grid .wt-card           { transition: none; }
   .live-dot                          { transition: none; }
   .live-label                        { transition: none; }
+  .wt-card--busy                     { animation: none; }
+  .wt-card--awaiting                 { animation: none; }
+  .activity-panel__pulse-dot         { animation: none; }
 }

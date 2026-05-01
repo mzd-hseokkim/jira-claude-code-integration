@@ -7,12 +7,28 @@ import LiveIndicator from './components/LiveIndicator.jsx';
 import WorktreeCard from './components/WorktreeCard.jsx';
 
 /**
- * カード 정렬: taskId ASC (null/undefined는 마지막, path ASC로 tiebreak).
+ * 마지막 activity ts (없으면 null).
+ * @param {import('./state/reducer.js').WorktreeState} wt
+ */
+function lastActivityMs(wt) {
+  const a = wt.activity;
+  if (!Array.isArray(a) || a.length === 0) return 0;
+  const ts = a[a.length - 1]?.ts;
+  if (!ts) return 0;
+  const t = Date.parse(ts);
+  return Number.isNaN(t) ? 0 : t;
+}
+
+/**
+ * 카드 정렬: 최근 활동 DESC → taskId ASC → path ASC.
  *
  * @param {import('./state/reducer.js').WorktreeState} a
  * @param {import('./state/reducer.js').WorktreeState} b
  */
 function sortWorktrees(a, b) {
+  const ta = lastActivityMs(a);
+  const tb = lastActivityMs(b);
+  if (ta !== tb) return tb - ta;
   if (a.taskId && b.taskId) return a.taskId.localeCompare(b.taskId);
   if (a.taskId) return -1;
   if (b.taskId) return 1;

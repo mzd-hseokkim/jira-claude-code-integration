@@ -65,7 +65,12 @@ export default function ActivityPanel({ activity = [] }) {
           <dt>Sub-agent</dt>
           <dd key={subagentValue}>
             {hasSubagent
-              ? <span className="activity-panel__subagent--active">{subagentValue}</span>
+              ? (
+                <span className="activity-panel__subagent--active">
+                  <span className="activity-panel__pulse-dot" aria-hidden="true" />
+                  {subagentValue}
+                </span>
+              )
               : subagentValue}
           </dd>
         </div>
