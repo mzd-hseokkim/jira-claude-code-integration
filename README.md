@@ -459,9 +459,30 @@ git worktree prune               # Clean stale worktree refs
 
 A real-time activity monitor for every Claude Code worktree in your workspace. Hook events from each session (user prompts, tool calls, sub-agent lifecycle, final responses) stream into a browser UI via SSE so you can see at a glance which session is busy, which is waiting on you, and what each one just answered.
 
-### Quick Start
+### Quick Start (원클릭)
 
-The web UI is built from `scripts/dashboard/web/` (Vite + React) into `scripts/dashboard/public/`. The build output is **not committed** — generate it once before launching:
+Claude Code 안에서 슬래시 커맨드 한 줄로 Dashboard를 시작할 수 있습니다:
+
+```
+/jira dashboard
+```
+
+첫 실행 시 npm 의존성 설치와 UI 빌드를 자동으로 수행한 뒤 서버를 기동합니다.
+두 번째 이후 실행부터는 캐시 감지로 setup을 건너뛰고 바로 시작합니다.
+
+| 커맨드 | 동작 |
+|--------|------|
+| `/jira dashboard` | 상태 확인 → stopped이면 자동 setup+start |
+| `/jira dashboard start` | Dashboard 시작 |
+| `/jira dashboard stop` | Dashboard 중지 |
+| `/jira dashboard status` | 현재 상태 조회 (URL/PID/시작 시각) |
+| `/jira dashboard setup` | npm 의존성 설치 및 UI 빌드만 수행 |
+
+서버는 `http://127.0.0.1:8765`에 바인딩됩니다.
+
+### 수동 실행 (Troubleshooting)
+
+슬래시 커맨드 없이 직접 실행해야 하는 경우:
 
 ```bash
 # 1) Install root deps (express, chokidar)
