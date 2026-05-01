@@ -435,28 +435,13 @@ body > * { position: relative; z-index: 1; }
     0 28px 72px -24px rgba(15, 23, 42, 0.5);
 }
 
-/* priority hint: 좌측 컬러바 대신 카드 우상단에 미세한 dot */
-.wt-card::after {
-  content: "";
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--prio-dot-color, transparent);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6), 0 0 8px var(--prio-dot-color, transparent);
-  opacity: 0.85;
-  pointer-events: none;
-}
 
 /* === 1단: 헤더 === */
 .wt-card__header {
   display: flex;
   align-items: center;
   gap: 8px;
-  /* 우상단 prio dot 자리 확보 */
-  padding-right: 14px;
+  flex-wrap: wrap;
 }
 
 .wt-card__task-id {
