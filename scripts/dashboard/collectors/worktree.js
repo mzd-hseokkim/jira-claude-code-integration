@@ -42,12 +42,13 @@ function parseGitWorktreeList(stdout) {
 
 /**
  * Read and parse .jira-context.json from a worktree path.
- * Returns { taskId, cachedIssue } or null (file absent or parse error).
+ * Returns enriched context object or null (file absent or parse error).
+ * Fallback priority for each field: top-level → cachedIssue → default.
  * On parse error, calls logger.warn if logger is provided.
  *
  * @param {string} worktreePath
  * @param {{ warn: Function }|null} [logger]
- * @returns {{ taskId: string, cachedIssue: object|null }|null}
+ * @returns {{ taskId: string|null, cachedIssue: object|null, lastFetchedAt: string|null, completedSteps: string[], summary: string|null, priority: string|null, status: string|null, epic: string|null }|null}
  */
 function readJiraContext(worktreePath, logger = null) {
   const ctxPath = path.join(worktreePath, '.jira-context.json');
@@ -62,10 +63,16 @@ function readJiraContext(worktreePath, logger = null) {
 
   try {
     const obj = JSON.parse(raw);
+    const ci = (obj.cachedIssue && typeof obj.cachedIssue === 'object') ? obj.cachedIssue : null;
     return {
       taskId: obj.taskId || null,
-      cachedIssue: obj.cachedIssue || null,
-      lastFetchedAt: obj.cachedIssue && obj.cachedIssue.fetchedAt ? obj.cachedIssue.fetchedAt : null,
+      cachedIssue: ci,
+      lastFetchedAt: ci && ci.fetchedAt ? ci.fetchedAt : null,
+      completedSteps: Array.isArray(obj.completedSteps) ? obj.completedSteps : [],
+      summary: obj.summary || ci?.summary || null,
+      priority: obj.priority || ci?.priority || null,
+      status: obj.status || ci?.status || null,
+      epic: obj.epic || ci?.epic || null,
     };
   } catch (err) {
     logger && logger.warn('jira-context.parse-error', { path: ctxPath, error: err.message });
@@ -106,6 +113,11 @@ function collectWorktrees(store, workspaceRoot, logger) {
       cachedIssue: ctx ? ctx.cachedIssue : null,
       lastFetchedAt: ctx ? ctx.lastFetchedAt : null,
       noContext: ctx === null,
+      completedSteps: ctx ? ctx.completedSteps : [],
+      summary: ctx ? ctx.summary : null,
+      priority: ctx ? ctx.priority : null,
+      status: ctx ? ctx.status : null,
+      epic: ctx ? ctx.epic : null,
     };
     store.upsertWorktree(state);
   }
@@ -179,6 +191,11 @@ function startWorktreeCollector(store, opts) {
           cachedIssue: ctx.cachedIssue,
           lastFetchedAt: ctx.lastFetchedAt,
           noContext: false,
+          completedSteps: ctx.completedSteps,
+          summary: ctx.summary,
+          priority: ctx.priority,
+          status: ctx.status,
+          epic: ctx.epic,
         });
         logger && logger.info('worktree.context-changed', { path: worktreePath });
       };
@@ -194,6 +211,11 @@ function startWorktreeCollector(store, opts) {
           cachedIssue: null,
           lastFetchedAt: null,
           noContext: true,
+          completedSteps: [],
+          summary: null,
+          priority: null,
+          status: null,
+          epic: null,
         });
         logger && logger.info('worktree.context-removed', { path: worktreePath });
       });

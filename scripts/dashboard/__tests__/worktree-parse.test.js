@@ -78,3 +78,71 @@ test('U13: readJiraContext returns null and warns on corrupt JSON', () => {
 
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+// U14: top-level 필드가 cachedIssue보다 우선
+test('U14: top-level summary takes priority over cachedIssue.summary', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mae235-wt-'));
+  const ctx = {
+    taskId: 'T-1',
+    summary: 'A',
+    cachedIssue: { key: 'T-1', summary: 'B' },
+  };
+  fs.writeFileSync(path.join(dir, '.jira-context.json'), JSON.stringify(ctx));
+
+  const result = readJiraContext(dir);
+  assert.equal(result.summary, 'A');
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+// U15: top-level 필드 누락 시 cachedIssue로 폴백
+test('U15: falls back to cachedIssue.summary when top-level summary is absent', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mae235-wt-'));
+  const ctx = {
+    taskId: 'T-1',
+    cachedIssue: { key: 'T-1', summary: 'B' },
+  };
+  fs.writeFileSync(path.join(dir, '.jira-context.json'), JSON.stringify(ctx));
+
+  const result = readJiraContext(dir);
+  assert.equal(result.summary, 'B');
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+// U16: completedSteps 누락 시 기본값 []
+test('U16: completedSteps defaults to [] when absent', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mae235-wt-'));
+  fs.writeFileSync(path.join(dir, '.jira-context.json'), JSON.stringify({ taskId: 'T-1' }));
+
+  const result = readJiraContext(dir);
+  assert.deepEqual(result.completedSteps, []);
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+// U17: completedSteps가 배열이 아니면 [] 대체
+test('U17: completedSteps defaults to [] when not an array', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mae235-wt-'));
+  fs.writeFileSync(path.join(dir, '.jira-context.json'), JSON.stringify({ taskId: 'T-1', completedSteps: 'init' }));
+
+  const result = readJiraContext(dir);
+  assert.deepEqual(result.completedSteps, []);
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+// U18: 모든 신규 필드 부재 시 기본값
+test('U18: all new fields default to null/[] when absent from top-level and cachedIssue', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mae235-wt-'));
+  fs.writeFileSync(path.join(dir, '.jira-context.json'), JSON.stringify({ taskId: 'T-1', cachedIssue: {} }));
+
+  const result = readJiraContext(dir);
+  assert.equal(result.summary, null);
+  assert.equal(result.priority, null);
+  assert.equal(result.status, null);
+  assert.equal(result.epic, null);
+  assert.deepEqual(result.completedSteps, []);
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});
