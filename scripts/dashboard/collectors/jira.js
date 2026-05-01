@@ -13,9 +13,44 @@ const FETCH_TIMEOUT_MS = 10_000;
  * @returns {Promise<object>}  Jira issue object
  * @throws  On non-2xx response (includes status in error)
  */
+/**
+ * Jira issuelinks/parent 응답에서 카드에 표시할 link 정보를 추출.
+ * 현재 Phase 1: Blocks 타입만 파싱(blocks/blockedBy 양방향). parent는 별도 필드로.
+ *
+ * @param {object} fields
+ * @returns {{ blocks: Array<{key:string,status:string|null,statusCategory:string|null,summary:string|null}>,
+ *            blockedBy: Array<{key:string,status:string|null,statusCategory:string|null,summary:string|null}> }}
+ */
+function extractLinks(fields) {
+  const out = { blocks: [], blockedBy: [] };
+  if (!fields || !Array.isArray(fields.issuelinks)) return out;
+  for (const link of fields.issuelinks) {
+    const typeName = link?.type?.name || '';
+    if (typeName !== 'Blocks') continue; // Phase 1: Blocks만
+    // outwardIssue(이 이슈가 그 이슈를 막음 — blocks)
+    if (link.outwardIssue) {
+      out.blocks.push(linkSummary(link.outwardIssue));
+    }
+    // inwardIssue(이 이슈는 그 이슈에 의해 막혀있음 — blockedBy)
+    if (link.inwardIssue) {
+      out.blockedBy.push(linkSummary(link.inwardIssue));
+    }
+  }
+  return out;
+}
+
+function linkSummary(issue) {
+  return {
+    key: issue.key,
+    summary: issue.fields?.summary ?? null,
+    status: issue.fields?.status?.name ?? null,
+    statusCategory: issue.fields?.status?.statusCategory?.key ?? null, // 'done'|'indeterminate'|'new'
+  };
+}
+
 async function fetchIssue(creds, key) {
   const url = `${creds.jiraUrl.replace(/\/$/, '')}/rest/api/3/issue/${encodeURIComponent(key)}` +
-    '?fields=summary,status,priority,assignee,issuetype,description';
+    '?fields=summary,status,priority,assignee,issuetype,description,issuelinks,parent';
 
   const auth = Buffer.from(`${creds.email}:${creds.apiToken}`).toString('base64');
 
@@ -103,6 +138,7 @@ function startJiraCollector(store, opts) {
             ? (issue.fields.assignee.displayName || issue.fields.assignee.emailAddress)
             : 'Unassigned',
           issuetype: issue.fields && issue.fields.issuetype && issue.fields.issuetype.name,
+          links: extractLinks(issue.fields),
           fetchedAt: new Date().toISOString(),
         });
         logger && logger.info('jira-collector.refreshed', { path: entry.path, key: entry.taskId });

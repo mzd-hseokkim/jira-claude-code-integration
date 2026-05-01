@@ -105,6 +105,13 @@ export default function WorktreeCard({ worktree }) {
   const priority = cachedIssue?.priority ?? worktree.priority ?? null;
   const assignee = cachedIssue?.assignee ?? null; // top-level에는 assignee 없음
   const issueType = cachedIssue?.issuetype ?? null;
+  const links = cachedIssue?.links ?? null;
+
+  // 미해결 blocker = blockedBy 중 statusCategory가 done이 아닌 것.
+  const openBlockers = Array.isArray(links?.blockedBy)
+    ? links.blockedBy.filter(b => b.statusCategory !== 'done')
+    : [];
+  const isBlocked = openBlockers.length > 0;
 
   const sSlug = noContext ? 'neutral' : statusSlug(status);
   const pSlug = noContext ? 'neutral' : prioritySlug(priority);
@@ -126,6 +133,7 @@ export default function WorktreeCard({ worktree }) {
     `wt-card--prio-${pSlug}`,
     stateClass,
     isStale ? 'wt-card--stale' : '',
+    isBlocked ? 'wt-card--blocked' : '',
   ].filter(Boolean).join(' ');
 
   return (
@@ -139,6 +147,14 @@ export default function WorktreeCard({ worktree }) {
         {noContext && <span className="wt-card__no-context-badge" title={path}>no jira</span>}
         {isAwaiting && <span className="wt-card__awaiting-badge">⏵ 응답 대기</span>}
         {isStale && <span className="wt-card__stale-badge">stale</span>}
+        {isBlocked && (
+          <span
+            className="wt-card__blocked-badge"
+            title={openBlockers.map(b => `${b.key} · ${b.status ?? ''}`).join('\n')}
+          >
+            ⛔ blocked × {openBlockers.length}
+          </span>
+        )}
         <span className="wt-card__header-spacer" />
         {toolCount > 0 && (
           <span className="wt-card__tool-count" title={`이번 세션 도구 호출 ${toolCount}회`}>
@@ -205,6 +221,44 @@ export default function WorktreeCard({ worktree }) {
           </div>
         )}
       </dl>
+
+      {/* === 5단: 이슈 링크 (blocks/blocked by) === */}
+      {(links?.blocks?.length || links?.blockedBy?.length) ? (
+        <div className="wt-card__links">
+          {links.blockedBy?.length > 0 && (
+            <div className="wt-card__link-row">
+              <span className="wt-card__link-label">blocked by</span>
+              <ul className="wt-card__link-list">
+                {links.blockedBy.map(b => (
+                  <li
+                    key={b.key}
+                    className={`wt-card__link-item${b.statusCategory === 'done' ? ' wt-card__link-item--done' : ' wt-card__link-item--open'}`}
+                    title={`${b.summary ?? ''} (${b.status ?? '?'})`}
+                  >
+                    {b.key}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {links.blocks?.length > 0 && (
+            <div className="wt-card__link-row">
+              <span className="wt-card__link-label">blocks</span>
+              <ul className="wt-card__link-list">
+                {links.blocks.map(b => (
+                  <li
+                    key={b.key}
+                    className={`wt-card__link-item${b.statusCategory === 'done' ? ' wt-card__link-item--done' : ''}`}
+                    title={`${b.summary ?? ''} (${b.status ?? '?'})`}
+                  >
+                    {b.key}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      ) : null}
 
       <ActivityPanel activity={activity} />
     </div>

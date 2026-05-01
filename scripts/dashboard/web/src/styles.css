@@ -1169,6 +1169,80 @@ body > * { position: relative; z-index: 1; }
 }
 .wt-card--stale:hover { opacity: 1; }
 
+/* ===== Card state: blocked (미해결 blocker가 있음) ===== */
+.wt-card--blocked {
+  border-left: 3px solid #dc2626;
+}
+
+.wt-card__blocked-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #7f1d1d;
+  background: #fee2e2;
+  border: 1px solid #f87171;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
+/* ===== Issue links (blocks / blocked by) ===== */
+.wt-card__links {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10.5px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.25);
+}
+
+.wt-card__link-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wt-card__link-label {
+  color: #94a3b8;
+  font-weight: 600;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+  min-width: 64px;
+}
+
+.wt-card__link-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wt-card__link-item {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(148, 163, 184, 0.15);
+  color: #475569;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.wt-card__link-item--done {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
+  text-decoration: line-through;
+  text-decoration-color: rgba(22, 101, 52, 0.4);
+}
+
+.wt-card__link-item--open {
+  color: #7f1d1d;
+  background: #fee2e2;
+  border-color: #f87171;
+  font-weight: 600;
+}
+
 /* ===== ActivityPanel pulse dot (sub-agent active) ===== */
 .activity-panel__pulse-dot {
   display: inline-block;
