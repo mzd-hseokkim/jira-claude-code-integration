@@ -87,9 +87,16 @@ async function startServer(opts = {}) {
     clients.add(res);
     logger.info('sse.client-connected', { total: clients.size });
 
-    // Send initial snapshot
+    // Send initial snapshot — 신규 클라이언트가 즉시 polling cycle phase에
+    // 맞출 수 있도록 lastTickAt/tickMs/serverNowMs 포함.
     const snapshot = store.getSnapshot();
-    res.write(`event: snapshot\ndata: ${JSON.stringify({ worktrees: snapshot, ts: new Date().toISOString() })}\n\n`);
+    res.write(`event: snapshot\ndata: ${JSON.stringify({
+      worktrees: snapshot,
+      ts: new Date().toISOString(),
+      lastTickAt,
+      tickMs: lastTickMs,
+      serverNowMs: Date.now(),
+    })}\n\n`);
 
     req.on('close', () => {
       clients.delete(res);
@@ -112,9 +119,18 @@ async function startServer(opts = {}) {
 
   // Start collectors
   const worktreeCollector = startWorktreeCollector(store, { workspaceRoot, logger });
+  // 마지막 jira-collector tick 시점/주기 — snapshot 이벤트에 포함시켜
+  // 새 SSE 클라이언트도 즉시 polling 사이클 phase에 맞출 수 있게 한다.
+  let lastTickAt = null;
+  let lastTickMs = null;
   const jiraCollector = startJiraCollector(store, {
     logger,
     getCredentials: () => loadCredentials({ workspaceRoot }),
+    onTick: ({ at, tickMs }) => {
+      lastTickAt = at;
+      lastTickMs = tickMs;
+      broadcast('jira-collector.tick', { at, tickMs });
+    },
   });
 
   await new Promise((resolve, reject) => {

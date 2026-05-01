@@ -65,6 +65,7 @@ function startJiraCollector(store, opts) {
     backoffMs = DEFAULT_BACKOFF_MS,
     logger = null,
     getCredentials,
+    onTick = null,
   } = opts;
 
   let stopped = false;
@@ -72,6 +73,9 @@ function startJiraCollector(store, opts) {
 
   async function runCycle() {
     if (stopped) return;
+    if (typeof onTick === 'function') {
+      try { onTick({ at: Date.now(), tickMs }); } catch {}
+    }
 
     const stale = store.getStaleEntries(staleMs);
     if (stale.length === 0) return;

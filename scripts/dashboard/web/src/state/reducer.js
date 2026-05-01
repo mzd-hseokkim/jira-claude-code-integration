@@ -23,6 +23,9 @@ export const initialState = {
   lastConnectedAt: null,
   worktrees: {},
   lastEventAt: null,
+  // jira-collector polling cycle 기준점 (서버 시계 → 클라이언트 시계 보정값)
+  pollCycleAnchorMs: null, // 클라이언트 Date.now() 기준 사이클 시작점
+  pollCycleTickMs: null,   // 한 사이클 길이 (ms)
 };
 
 /**
@@ -37,11 +40,32 @@ export function reducer(state, action) {
       for (const wt of action.worktrees ?? []) {
         worktrees[wt.path] = wt;
       }
+      // 서버가 보낸 lastTickAt(서버 epoch ms)을 클라이언트 시계로 변환.
+      // 서버↔클라이언트 시계 오차 = clientNow - serverNowMs.
+      let pollCycleAnchorMs = state.pollCycleAnchorMs;
+      let pollCycleTickMs = state.pollCycleTickMs ?? action.tickMs ?? null;
+      if (action.lastTickAt && action.serverNowMs) {
+        const skew = Date.now() - action.serverNowMs;
+        pollCycleAnchorMs = action.lastTickAt + skew;
+        if (action.tickMs) pollCycleTickMs = action.tickMs;
+      }
       return {
         ...state,
         connection: 'connected',
         lastConnectedAt: new Date().toISOString(),
         worktrees,
+        pollCycleAnchorMs,
+        pollCycleTickMs,
+      };
+    }
+
+    case 'JIRA_TICK': {
+      // 서버에서 새 polling tick이 시작됨. 서버 시계 → 클라이언트 시계 보정.
+      const skew = action.serverNowMs ? (Date.now() - action.serverNowMs) : 0;
+      return {
+        ...state,
+        pollCycleAnchorMs: (action.at ?? Date.now()) + skew,
+        pollCycleTickMs: action.tickMs ?? state.pollCycleTickMs,
       };
     }
 

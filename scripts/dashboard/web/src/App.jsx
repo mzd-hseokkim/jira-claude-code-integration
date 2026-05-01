@@ -109,22 +109,23 @@ function Dashboard() {
     connState === 'connected' ? 'conn-chip conn-chip--live' :
     'conn-chip conn-chip--off';
 
-  // 다음 jira-collector polling(60초)까지의 진행률(0~1).
-  // 1초마다 갱신되며 100% 도달 시 자동으로 0부터 다시 시작.
-  const POLL_CYCLE_MS = 60_000;
+  // 다음 jira-collector polling까지의 진행률(0~1).
+  // 서버에서 받은 pollCycleAnchorMs(클라이언트 시계 보정 적용) 기준.
+  const POLL_CYCLE_FALLBACK_MS = 60_000;
+  const anchorMs = state.pollCycleAnchorMs;
+  const cycleMs = state.pollCycleTickMs ?? POLL_CYCLE_FALLBACK_MS;
   const [cycleProgress, setCycleProgress] = useState(0);
   useEffect(() => {
-    if (connState !== 'connected') {
+    if (connState !== 'connected' || anchorMs == null) {
       setCycleProgress(0);
       return undefined;
     }
-    const startedAt = Date.now();
     const id = setInterval(() => {
-      const elapsed = (Date.now() - startedAt) % POLL_CYCLE_MS;
-      setCycleProgress(elapsed / POLL_CYCLE_MS);
+      const elapsed = (Date.now() - anchorMs) % cycleMs;
+      setCycleProgress(elapsed / cycleMs);
     }, 250);
     return () => clearInterval(id);
-  }, [connState]);
+  }, [connState, anchorMs, cycleMs]);
 
   return (
     <>

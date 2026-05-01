@@ -43,11 +43,29 @@ export function useDashboardStream(dispatch) {
           const data = JSON.parse(e.data);
           everConnected.current = true;
           backoffMs = 500; // 성공 시 백오프 리셋
-          dispatch({ type: 'SNAPSHOT', worktrees: data.worktrees ?? [] });
+          dispatch({
+            type: 'SNAPSHOT',
+            worktrees: data.worktrees ?? [],
+            lastTickAt: data.lastTickAt ?? null,
+            tickMs: data.tickMs ?? null,
+            serverNowMs: data.serverNowMs ?? null,
+          });
           dispatch({ type: 'LIVE_EVENT', at: Date.now() });
         } catch {
           console.warn('[useDashboardStream] failed to parse snapshot event');
         }
+      });
+
+      es.addEventListener('jira-collector.tick', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          dispatch({
+            type: 'JIRA_TICK',
+            at: data.at,
+            tickMs: data.tickMs,
+            serverNowMs: data.at, // tick 이벤트는 서버 발행 직후라 at == serverNow로 근사
+          });
+        } catch {}
       });
 
       es.addEventListener('worktree.added', (e) => {
