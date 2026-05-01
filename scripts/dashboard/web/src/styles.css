@@ -507,6 +507,14 @@ body > * { position: relative; z-index: 1; }
   color: #9ca3af;
 }
 
+.wt-card__summary--path {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-style: normal;
+  font-size: 12px;
+  color: #475569;
+  word-break: break-all;
+}
+
 /* === 4단: 메타 한 줄 (branch · path · prio · @assignee) === */
 .wt-card__meta {
   display: flex;

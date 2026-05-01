@@ -32,6 +32,19 @@ function lastPathSegment(path) {
 }
 
 /**
+ * 절대경로를 home(~) 기반으로 단축. macOS/Linux only.
+ * @param {string|null|undefined} path
+ * @returns {string}
+ */
+function tildify(path) {
+  if (!path) return EMPTY;
+  // 클라이언트는 사용자 home을 모르니, 흔한 패턴(/Users/<u>/, /home/<u>/)을 제거.
+  return path
+    .replace(/^\/Users\/[^/]+/, '~')
+    .replace(/^\/home\/[^/]+/, '~');
+}
+
+/**
  * 한국어 Jira status 값을 CSS class slug로 변환.
  * 매핑 실패 또는 null/undefined → 'neutral'
  * @param {string|null|undefined} value
@@ -119,9 +132,11 @@ export default function WorktreeCard({ worktree }) {
     <div className={cardClass}>
       {/* === 1단: 헤더 (taskId + type + meta + status badge) === */}
       <header className="wt-card__header">
-        <span className="wt-card__task-id">{fmt(taskId)}</span>
+        <span className="wt-card__task-id">
+          {taskId ?? lastPathSegment(path)}
+        </span>
         {issueType && <span className="wt-card__issue-type">{issueType}</span>}
-        {noContext && <span className="wt-card__no-context-badge">no context</span>}
+        {noContext && <span className="wt-card__no-context-badge" title={path}>no jira</span>}
         {isAwaiting && <span className="wt-card__awaiting-badge">⏵ 응답 대기</span>}
         {isStale && <span className="wt-card__stale-badge">stale</span>}
         <span className="wt-card__header-spacer" />
@@ -147,26 +162,36 @@ export default function WorktreeCard({ worktree }) {
         )}
       </header>
 
-      {/* === 2단: summary === */}
+      {/* === 2단: summary (noContext면 path 한 줄로 대체) === */}
       <div className="wt-card__summary">
-        {summary != null
-          ? <span title={summary}>{summary}</span>
-          : <span className="wt-card__summary--empty" title="no Jira summary cached">(no summary)</span>}
+        {summary != null ? (
+          <span title={summary}>{summary}</span>
+        ) : noContext ? (
+          <span className="wt-card__summary--empty wt-card__summary--path" title={path}>
+            {tildify(path)}
+          </span>
+        ) : (
+          <span className="wt-card__summary--empty" title="no Jira summary cached">(no summary)</span>
+        )}
       </div>
 
-      {/* === 3단: SDLC stepper (lifecycle flow) === */}
-      <Stepper completedSteps={completedSteps} />
+      {/* === 3단: SDLC stepper (lifecycle flow) — noContext면 의미 없으니 숨김 === */}
+      {!noContext && <Stepper completedSteps={completedSteps} />}
 
-      {/* === 4단: 메타 한 줄 (branch · path · priority · assignee) === */}
+      {/* === 4단: 메타 한 줄 === */}
       <dl className="wt-card__meta">
-        <div className="wt-card__meta-item">
-          <dt className="wt-card__meta-label">branch</dt>
-          <dd className="wt-card__meta-value wt-card__meta-value--mono" title={branch}>{fmt(branch)}</dd>
-        </div>
-        <div className="wt-card__meta-item">
-          <dt className="wt-card__meta-label">path</dt>
-          <dd className="wt-card__meta-value wt-card__meta-value--mono" title={path}>{lastPathSegment(path)}</dd>
-        </div>
+        {branch && (
+          <div className="wt-card__meta-item">
+            <dt className="wt-card__meta-label">branch</dt>
+            <dd className="wt-card__meta-value wt-card__meta-value--mono" title={branch}>{branch}</dd>
+          </div>
+        )}
+        {!noContext && (
+          <div className="wt-card__meta-item">
+            <dt className="wt-card__meta-label">path</dt>
+            <dd className="wt-card__meta-value wt-card__meta-value--mono" title={path}>{lastPathSegment(path)}</dd>
+          </div>
+        )}
         {!noContext && priority != null && (
           <div className="wt-card__meta-item">
             <dt className="wt-card__meta-label">prio</dt>

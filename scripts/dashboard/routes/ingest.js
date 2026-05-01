@@ -87,9 +87,10 @@ function createIngestRouter(store, logger = null) {
       payload,
     };
 
-    // Push into the store. Use worktreePath as the key if mapped; fall back to a
-    // synthetic "no-context" key so the event is still recorded.
-    const storeKey = worktreePath ?? '__no-context__';
+    // Push into the store. Use worktreePath as the key if mapped; otherwise use
+    // the actual cwd from payload so the card shows real directory info. Fall
+    // back to synthetic "__no-context__" only if cwd is also missing.
+    const storeKey = worktreePath ?? cwd ?? '__no-context__';
     store.pushActivity(storeKey, { ts: receivedAt, type: hookName, data: event });
 
     logger && logger.info('ingest.received', { ingestId, hookName, cwd, label, taskId });
