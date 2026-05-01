@@ -461,10 +461,22 @@ A real-time activity monitor for your Claude Code worktrees. The dashboard colle
 
 ### Quick Start
 
+The web UI is built from `scripts/dashboard/web/` (Vite + React) into `scripts/dashboard/public/`. The build output is **not committed** — generate it once before launching:
+
 ```bash
+# 1) Install root deps (express, chokidar)
+npm install
+
+# 2) Install web deps and build the SPA bundle into scripts/dashboard/public/
+npm --prefix scripts/dashboard/web install
+npm --prefix scripts/dashboard/web run build
+
+# 3) Start the dashboard server
 npm run dashboard
 # or: node scripts/dashboard/server.js
 ```
+
+After the first build, daily use is just `npm run dashboard`. Re-run the build step whenever the React source changes.
 
 The server binds to `http://127.0.0.1:4173` and opens your default browser automatically. To suppress auto-open (CI / headless environments):
 
