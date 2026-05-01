@@ -9,8 +9,8 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/events': 'http://127.0.0.1:4173',
-      '/ingest': 'http://127.0.0.1:4173',
+      '/events': 'http://127.0.0.1:8765',
+      '/ingest': 'http://127.0.0.1:8765',
     },
   },
   test: {

@@ -11,7 +11,7 @@ const { startJiraCollector } = require('./collectors/jira');
 const { createIngestRouter } = require('./routes/ingest');
 const { openBrowser } = require('./openBrowser');
 
-const DEFAULT_PORT = 4173;
+const DEFAULT_PORT = 8765;
 
 /**
  * Start the dashboard backend server.

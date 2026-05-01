@@ -478,13 +478,13 @@ npm run dashboard
 
 After the first build, daily use is just `npm run dashboard`. Re-run the build step whenever the React source changes.
 
-The server binds to `http://127.0.0.1:4173` and opens your default browser automatically. To suppress auto-open (CI / headless environments):
+The server binds to `http://127.0.0.1:8765` and opens your default browser automatically. To suppress auto-open (CI / headless environments):
 
 ```bash
 DASHBOARD_NO_OPEN=1 npm run dashboard
 ```
 
-The default port is **4173** (fixed in this release; configurable in a future update).
+The default port is **8765** (override with `PORT=xxxx npm run dashboard`).
 
 ### Hooks
 
@@ -554,7 +554,7 @@ MIT
 
 ### 대시보드
 
-`npm run dashboard` 한 줄로 실시간 모니터링 대시보드를 기동할 수 있습니다. 서버는 `http://127.0.0.1:4173`에 바인딩되며 기본 브라우저가 자동으로 열립니다. CI/헤드리스 환경에서는 `DASHBOARD_NO_OPEN=1`로 자동 오픈을 비활성화하세요. hook 이벤트는 `hooks/hooks.json` → `dashboard-ingest.sh` → `/ingest` → SSE 순서로 UI에 실시간 전달되며, 서버 로그는 `<workspaceRoot>/logs/dashboard-server.log`에 JSON Lines 형식으로 기록됩니다(민감 필드 자동 redact).
+`npm run dashboard` 한 줄로 실시간 모니터링 대시보드를 기동할 수 있습니다. 서버는 `http://127.0.0.1:8765`에 바인딩되며 기본 브라우저가 자동으로 열립니다. CI/헤드리스 환경에서는 `DASHBOARD_NO_OPEN=1`로 자동 오픈을 비활성화하세요. hook 이벤트는 `hooks/hooks.json` → `dashboard-ingest.sh` → `/ingest` → SSE 순서로 UI에 실시간 전달되며, 서버 로그는 `<workspaceRoot>/logs/dashboard-server.log`에 JSON Lines 형식으로 기록됩니다(민감 필드 자동 redact).
 
 ### 핵심 특징
 
