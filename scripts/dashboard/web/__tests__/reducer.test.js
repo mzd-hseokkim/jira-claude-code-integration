@@ -84,4 +84,16 @@ describe('reducer', () => {
     const s2 = reducer(initialState, { type: 'CONNECTION_FAILED_INITIAL' });
     expect(s2.connection).toBe('never-connected');
   });
+
+  // U6 (MAE-239): LIVE_EVENT — lastEventAt만 갱신, 나머지 불변
+  it('LIVE_EVENT: lastEventAt 갱신, 나머지 state 불변', () => {
+    const s1 = reducer(initialState, {
+      type: 'SNAPSHOT',
+      worktrees: [makeWorktree('/a', { taskId: 'X-1' })],
+    });
+    const s2 = reducer(s1, { type: 'LIVE_EVENT', at: 123 });
+    expect(s2.lastEventAt).toBe(123);
+    expect(s2.connection).toBe(s1.connection);
+    expect(s2.worktrees).toBe(s1.worktrees); // same reference (no mutation)
+  });
 });

@@ -20,6 +20,11 @@ export default function ActivityPanel({ activity = [] }) {
   const hasSubagent = pickActiveSubagent(activity);
   const isBlocked = pickBlockedFlag(activity);
 
+  const toolName = currentTool?.name ?? EMPTY;
+  const promptText = latestPrompt?.text ?? EMPTY;
+  const subagentValue = hasSubagent ? 'active' : EMPTY;
+  const blockedValue = isBlocked ? '⚠ blocked' : EMPTY;
+
   return (
     <div className="activity-panel">
       <div className="activity-panel__title">Activity</div>
@@ -27,24 +32,37 @@ export default function ActivityPanel({ activity = [] }) {
         <div className="activity-panel__row">
           <dt>Last prompt</dt>
           <dd
+            key={promptText}
             className="activity-panel__prompt"
-            title={latestPrompt?.text ?? EMPTY}
+            title={promptText}
           >
-            {latestPrompt?.text ?? EMPTY}
+            {promptText}
           </dd>
         </div>
         <div className="activity-panel__row">
           <dt>Current tool</dt>
-          <dd>{currentTool?.name ?? EMPTY}</dd>
+          <dd key={toolName}>
+            {currentTool?.name != null && (
+              <span className="activity-panel__spinner" aria-hidden="true" />
+            )}
+            {toolName}
+          </dd>
         </div>
         <div className="activity-panel__row">
           <dt>Sub-agent</dt>
-          <dd>{hasSubagent ? 'active' : EMPTY}</dd>
+          <dd key={subagentValue}>
+            {hasSubagent
+              ? <span className="activity-panel__subagent--active">{subagentValue}</span>
+              : subagentValue}
+          </dd>
         </div>
         <div className="activity-panel__row">
           <dt>Blocked</dt>
-          <dd className={isBlocked ? 'activity-panel__value--blocked' : undefined}>
-            {isBlocked ? '⚠ blocked' : EMPTY}
+          <dd
+            key={blockedValue}
+            className={isBlocked ? 'activity-panel__value--blocked' : undefined}
+          >
+            {blockedValue}
           </dd>
         </div>
       </dl>

@@ -110,7 +110,7 @@ export default function WorktreeCard({ worktree }) {
           <dd>
             {noContext || status == null
               ? EMPTY
-              : <span className={`wt-badge wt-badge--status-${sSlug}`}>{status}</span>}
+              : <span key={status} className={`wt-badge wt-badge--status-${sSlug} wt-badge--status-flip`}>{status}</span>}
           </dd>
         </div>
         <div className="wt-card__field">

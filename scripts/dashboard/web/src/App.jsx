@@ -1,7 +1,9 @@
 import React from 'react';
 import { DashboardProvider, useDashboard } from './state/DashboardContext.jsx';
 import { useDashboardStream } from './hooks/useDashboardStream.js';
+import { useIdle } from './hooks/useIdle.js';
 import ConnectionBanner from './components/ConnectionBanner.jsx';
+import LiveIndicator from './components/LiveIndicator.jsx';
 import WorktreeCard from './components/WorktreeCard.jsx';
 
 /**
@@ -24,6 +26,7 @@ function Dashboard() {
   const { state, dispatch } = useDashboard();
   useDashboardStream(dispatch);
 
+  const isIdle = useIdle(state.lastEventAt);
   const sorted = Object.values(state.worktrees).sort(sortWorktrees);
 
   return (
@@ -32,8 +35,9 @@ function Dashboard() {
       <header className="dashboard-header">
         <h1>Claude Code Dashboard</h1>
         <span className="dashboard-header__count">{sorted.length} worktrees</span>
+        <LiveIndicator lastEventAt={state.lastEventAt} isIdle={isIdle} />
       </header>
-      <main className="dashboard-grid">
+      <main className={`dashboard-grid${isIdle ? ' is-idle' : ''}`}>
         {sorted.length === 0 ? (
           <p className="dashboard-empty">
             {state.connection === 'connected'

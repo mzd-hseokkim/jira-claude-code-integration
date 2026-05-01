@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import Stepper from '../src/components/Stepper.jsx';
 
 describe('Stepper', () => {
@@ -44,5 +44,34 @@ describe('Stepper', () => {
     render(<Stepper completedSteps={undefined} />);
     const initItem = screen.getByTitle('init');
     expect(initItem.className).toContain('wt-stepper__step--active');
+  });
+
+  // U1 (MAE-239): pending → done 전이 시 data-just-completed 속성 부여
+  it('U1 — pending→done 전이 시 data-just-completed 부여', async () => {
+    const { rerender } = render(<Stepper completedSteps={[]} />);
+    // init이 아직 done이 아님
+    expect(screen.getByTitle('init')).not.toHaveAttribute('data-just-completed');
+
+    await act(async () => {
+      rerender(<Stepper completedSteps={['init']} />);
+    });
+    // init이 done으로 바뀌어 data-just-completed 부여됨
+    expect(screen.getByTitle('init')).toHaveAttribute('data-just-completed');
+  });
+
+  // U2 (MAE-239): 동일 completedSteps 재렌더 시 속성 부여 안 함
+  it('U2 — 동일 completedSteps 재렌더 시 data-just-completed 없음', async () => {
+    const { rerender } = render(<Stepper completedSteps={['init']} />);
+
+    // 속성 제거될 때까지 대기 (500ms timeout)
+    await act(async () => {
+      await new Promise(r => setTimeout(r, 520));
+    });
+
+    // 같은 completedSteps 다시 렌더
+    await act(async () => {
+      rerender(<Stepper completedSteps={['init']} />);
+    });
+    expect(screen.getByTitle('init')).not.toHaveAttribute('data-just-completed');
   });
 });

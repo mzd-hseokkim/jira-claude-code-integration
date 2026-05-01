@@ -24,6 +24,7 @@ export function useDashboardStream(dispatch) {
           const data = JSON.parse(e.data);
           everConnected.current = true;
           dispatch({ type: 'SNAPSHOT', worktrees: data.worktrees ?? [] });
+          dispatch({ type: 'LIVE_EVENT', at: Date.now() });
         } catch {
           console.warn('[useDashboardStream] failed to parse snapshot event');
         }
@@ -33,6 +34,7 @@ export function useDashboardStream(dispatch) {
         try {
           const data = JSON.parse(e.data);
           dispatch({ type: 'WORKTREE_ADDED', path: data.path, state: data.state });
+          dispatch({ type: 'LIVE_EVENT', at: Date.now() });
         } catch {
           console.warn('[useDashboardStream] failed to parse worktree.added event');
         }
@@ -42,6 +44,7 @@ export function useDashboardStream(dispatch) {
         try {
           const data = JSON.parse(e.data);
           dispatch({ type: 'WORKTREE_CHANGED', path: data.path, state: data.state });
+          dispatch({ type: 'LIVE_EVENT', at: Date.now() });
         } catch {
           console.warn('[useDashboardStream] failed to parse worktree.changed event');
         }
@@ -51,6 +54,7 @@ export function useDashboardStream(dispatch) {
         try {
           const data = JSON.parse(e.data);
           dispatch({ type: 'WORKTREE_REMOVED', path: data.path });
+          dispatch({ type: 'LIVE_EVENT', at: Date.now() });
         } catch {
           console.warn('[useDashboardStream] failed to parse worktree.removed event');
         }

@@ -15,12 +15,14 @@
  *   WORKTREE_REMOVED      — worktree removed
  *   CONNECTION_LOST       — SSE stream disconnected mid-session
  *   CONNECTION_FAILED_INITIAL — first connection attempt failed
+ *   LIVE_EVENT            — any live SSE event received; updates lastEventAt
  */
 
 export const initialState = {
   connection: 'never-connected',
   lastConnectedAt: null,
   worktrees: {},
+  lastEventAt: null,
 };
 
 /**
@@ -74,6 +76,13 @@ export function reducer(state, action) {
       return {
         ...state,
         connection: 'never-connected',
+      };
+    }
+
+    case 'LIVE_EVENT': {
+      return {
+        ...state,
+        lastEventAt: action.at,
       };
     }
 
