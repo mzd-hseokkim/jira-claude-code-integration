@@ -9,14 +9,28 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
+# CLAUDE_PLUGIN_ROOT 자동 탐색 (셸 환경변수 비주입 케이스 대응)
+#   Claude Code의 hook command 문자열에서는 ${CLAUDE_PLUGIN_ROOT}가 자동 치환되지만
+#   skill의 Bash tool 셸에는 항상 주입되지는 않는다. 본 스크립트는 항상
+#   <plugin-root>/scripts/dashboard-control.sh 경로에 있으므로, 자기 위치 한 단계
+#   위를 plugin root로 자동 채택한다 (env 미설정 시).
+# ---------------------------------------------------------------------------
+if [[ -z "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+  _self="${BASH_SOURCE[0]:-$0}"
+  _self_dir="$(cd -- "$(dirname -- "$_self")" && pwd)"
+  CLAUDE_PLUGIN_ROOT="$(cd -- "$_self_dir/.." && pwd)"
+  export CLAUDE_PLUGIN_ROOT
+fi
+
+# ---------------------------------------------------------------------------
 # require_plugin_root
-#   Exits 1 with friendly message if CLAUDE_PLUGIN_ROOT is not set or empty.
+#   여기까지 왔는데도 비어 있으면(자기 위치 추정 실패) 친화적 에러로 종료.
 # ---------------------------------------------------------------------------
 require_plugin_root() {
   if [[ -z "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
-    echo "오류: CLAUDE_PLUGIN_ROOT 환경변수가 정의되지 않았습니다." >&2
-    echo "  이 스크립트는 Claude Code 플러그인 컨텍스트 외에서 직접 실행할 수 없습니다." >&2
-    echo "  /jira dashboard 슬래시 커맨드를 Claude Code 안에서 실행하세요." >&2
+    echo "오류: CLAUDE_PLUGIN_ROOT를 자동으로 결정할 수 없습니다." >&2
+    echo "  스크립트 위치 기반 추정이 실패했습니다 ($0)." >&2
+    echo "  CLAUDE_PLUGIN_ROOT를 직접 export 후 재시도하세요." >&2
     exit 1
   fi
 }
