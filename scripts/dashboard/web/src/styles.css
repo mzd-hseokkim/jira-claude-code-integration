@@ -668,35 +668,56 @@ body > * { position: relative; z-index: 1; }
   display: inline-block;
   text-transform: lowercase;
   transition: color 0.2s ease, font-weight 0.2s ease;
-  padding: 2px 4px;
+  padding: 1px 4px;
   border-radius: 3px;
   flex-shrink: 0;
+  font-size: 10.5px;
+  line-height: 1.4;
 }
 
-/* done: 진한 단어 (검정 가까이) */
+/* done: 옅은 그린 배경 + 진한 그린 텍스트 + 보더 */
 .wt-stepper__step--done {
-  color: #15803d;
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #86efac;
   font-weight: 600;
+  padding: 1px 4px;
 }
 
-/* active: 노란 배경 (chase는 직전 connector에서 처리) */
+/* active: amber 배경 + 보더 */
 .wt-stepper__step--active {
   color: #78350f;
   background: #fef3c7;
+  border: 1px solid #fbbf24;
   font-weight: 700;
+  padding: 1px 4px;
 }
 
-/* pending: 흐림 */
+/* pending도 chip 형태 통일 — 흐린 보더만 */
 .wt-stepper__step--pending {
-  color: #cbd5e1;
+  color: #94a3b8;
   font-weight: 400;
+  border: 1px solid transparent;
+  padding: 1px 4px;
 }
+
+/* skipped: done까지 갔지만 이 단계 자체는 거치지 않음 → 취소선 + 회색 */
+.wt-stepper__step--skipped {
+  color: #94a3b8;
+  font-weight: 400;
+  text-decoration: line-through;
+  text-decoration-color: rgba(100, 116, 139, 0.6);
+  border: 1px solid transparent;
+  padding: 1px 4px;
+}
+
+/* (pending은 위 chip 통일 블록에서 정의됨) */
 
 /* 연결선: 얇은 라인 + 작은 화살촉. 색상은 currentColor로 상태별 조정. */
 .wt-stepper__connector {
   display: inline-flex;
   align-items: center;
-  padding: 0 2px;
+  padding: 0 1px;
   user-select: none;
   flex-shrink: 0;
 }

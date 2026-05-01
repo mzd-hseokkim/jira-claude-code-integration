@@ -33,6 +33,10 @@ export function getStepState(stepId, completedSteps) {
   // 이 단계가 이미 완료됐으면 done
   if (completed.includes(stepId)) return 'done';
 
+  // 'done' 단계가 완료된 경우 = 전체 워크플로 종결.
+  // 그 단계 자체가 completedSteps에 없다면 "건너뛰어진" 단계로 표시.
+  if (completed.includes('done')) return 'skipped';
+
   // SDLC_STEPS 순서대로 첫 미완 단계를 찾는다
   const firstIncomplete = SDLC_STEPS.find(s => !completed.includes(s.id));
 

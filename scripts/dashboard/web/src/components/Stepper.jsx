@@ -39,7 +39,10 @@ export default function Stepper({ completedSteps }) {
         // 연결선 색상: 다음 단계의 상태에 따라. 다음 단계가 done이면 진한 흐름,
         // 그렇지 않으면 흐린 흐름. 현재 단계가 active면 다음 화살표를 부드럽게.
         const nextState = isLast ? null : getStepState(SDLC_STEPS[idx + 1].id, steps);
+        // skipped 단계가 양쪽에 끼면 흐름이 끊긴 듯한 dim 톤.
+        const isAroundSkipped = state === 'skipped' || nextState === 'skipped';
         const connectorClass = `wt-stepper__connector wt-stepper__connector--${
+          isAroundSkipped ? 'pending' :
           state === 'done' && nextState === 'done' ? 'done' :
           state === 'done' || state === 'active' ? 'active' :
           'pending'
@@ -68,7 +71,7 @@ export default function Stepper({ completedSteps }) {
                   className="wt-stepper__arrow"
                   viewBox="0 0 24 8"
                   preserveAspectRatio="none"
-                  width="22"
+                  width="14"
                   height="8"
                 >
                   <line
