@@ -111,21 +111,27 @@ export function pickLatestResponse(activity) {
 }
 
 /**
- * Returns true if the most recent Notification event's message contains
- * 'permission' or 'blocked'.
+ * 마지막 Notification 이벤트가 'permission' 또는 'blocked'를 포함하고,
+ * **그 이후에 다른 활동이 전혀 없을 때** true.
+ * 사용자가 권한을 승인하거나 다른 도구가 실행되면(=후속 이벤트가 발생하면)
+ * 차단 상태가 해제된 것으로 본다.
  *
  * @param {Array<{ts:string,type:string,data:{payload?:Record<string,unknown>}}>} activity
  * @returns {boolean}
  */
 export function pickBlockedFlag(activity) {
   if (!Array.isArray(activity)) return false;
+  let lastNotifIdx = -1;
   for (let i = activity.length - 1; i >= 0; i--) {
-    const ev = activity[i];
-    if (ev?.type !== 'Notification') continue;
-    const msg = String(ev.data?.payload?.message ?? '').toLowerCase();
-    return msg.includes('permission') || msg.includes('blocked');
+    if (activity[i]?.type === 'Notification') { lastNotifIdx = i; break; }
   }
-  return false;
+  if (lastNotifIdx === -1) return false;
+  // Notification 이후 어떤 hook이라도 떨어지면 차단 해제로 간주.
+  for (let i = lastNotifIdx + 1; i < activity.length; i++) {
+    if (activity[i]?.type) return false;
+  }
+  const msg = String(activity[lastNotifIdx].data?.payload?.message ?? '').toLowerCase();
+  return msg.includes('permission') || msg.includes('blocked');
 }
 
 /**
@@ -146,24 +152,26 @@ export function pickIsBusy(activity) {
 }
 
 /**
- * Awaiting = busy인 동시에 마지막 Notification이 input/permission 신호.
- * "Claude가 사용자 응답을 기다리는 중".
+ * Awaiting = busy 상태에서 마지막 Notification이 input/permission/waiting을
+ * 의미하고, **그 이후 다른 hook이 떨어지지 않은** 경우.
+ * 사용자가 권한을 승인하거나 prompt를 보내거나 도구가 다시 실행되면 해제.
  *
  * @param {Array<{ts:string,type:string,data?:{payload?:Record<string,unknown>}}>} activity
  * @returns {boolean}
  */
 export function pickIsAwaitingUser(activity) {
   if (!pickIsBusy(activity)) return false;
-  // 가장 최근 Notification이 input/permission 키워드를 담고 있는가
+  if (!Array.isArray(activity)) return false;
+  let lastNotifIdx = -1;
   for (let i = activity.length - 1; i >= 0; i--) {
-    const ev = activity[i];
-    const t = ev?.type;
-    if (t === 'UserPromptSubmit') return false; // Notification보다 prompt가 더 최근이면 입력 받은 것
-    if (t !== 'Notification') continue;
-    const msg = String(ev.data?.payload?.message ?? '').toLowerCase();
-    return msg.includes('permission') || msg.includes('input') || msg.includes('waiting');
+    if (activity[i]?.type === 'Notification') { lastNotifIdx = i; break; }
   }
-  return false;
+  if (lastNotifIdx === -1) return false;
+  for (let i = lastNotifIdx + 1; i < activity.length; i++) {
+    if (activity[i]?.type) return false;
+  }
+  const msg = String(activity[lastNotifIdx].data?.payload?.message ?? '').toLowerCase();
+  return msg.includes('permission') || msg.includes('input') || msg.includes('waiting');
 }
 
 /**
