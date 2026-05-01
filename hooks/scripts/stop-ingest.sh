@@ -27,7 +27,13 @@ ENRICHED="$(node -e '
         let o; try { o = JSON.parse(lines[i]); } catch { continue; }
         if (o.type !== "assistant") continue;
         const content = (o.message && o.message.content) || [];
-        const text = content.find(c => c && c.type === "text");
+        // 한 assistant 메시지에 text 블록이 여러 개일 때(예: 도구 사용 전 짧은
+        // 안내 한 줄 + 도구 결과 후 결론 본문) 마지막 text 블록을 우선 채택.
+        let text = null;
+        for (let k = content.length - 1; k >= 0; k--) {
+          const c = content[k];
+          if (c && c.type === "text") { text = c; break; }
+        }
         if (text && typeof text.text === "string" && text.text.trim()) {
           // 의미 있는 "마지막 줄" 추출.
           // 제외 대상: 빈 줄, 코드 펜스, markdown HR, 박스/구분선 문자만으로 된 줄.
