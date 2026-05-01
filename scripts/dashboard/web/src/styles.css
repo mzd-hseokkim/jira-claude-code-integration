@@ -213,6 +213,48 @@ body {
 .wt-card--prio-lowest  { border-left: 4px solid var(--color-prio-bar-lowest); }
 .wt-card--prio-neutral { border-left: 4px solid var(--color-prio-bar-neutral); }
 
+/* ===== SDLC Stepper ===== */
+.wt-stepper {
+  display: flex;
+  gap: 4px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  align-items: center;
+}
+
+.wt-stepper__step {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.wt-stepper__step--done {
+  background: #0052cc;
+}
+
+.wt-stepper__step--active {
+  background: transparent;
+  border: 2px solid #0052cc;
+  animation: stepper-pulse 1.2s ease-in-out infinite;
+}
+
+.wt-stepper__step--pending {
+  background: #ccc;
+}
+
+@keyframes stepper-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 82, 204, 0.4); }
+  50%       { box-shadow: 0 0 0 3px rgba(0, 82, 204, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wt-stepper__step--active {
+    animation: none;
+  }
+}
+
 /* ===== Activity Panel ===== */
 .activity-panel {
   border-top: 1px solid #f0f0f0;

@@ -1,5 +1,6 @@
 import React from 'react';
 import ActivityPanel from './ActivityPanel.jsx';
+import Stepper from './Stepper.jsx';
 
 /** 표시할 필드가 없을 때 사용하는 placeholder */
 const EMPTY = '—';
@@ -55,7 +56,7 @@ function prioritySlug(value) {
  * @param {{ worktree: import('../state/reducer.js').WorktreeState }} props
  */
 export default function WorktreeCard({ worktree }) {
-  const { path, branch, taskId, noContext, cachedIssue, activity = [] } = worktree;
+  const { path, branch, taskId, noContext, cachedIssue, activity = [], completedSteps } = worktree;
 
   // 폴백 우선순위: cachedIssue (Jira live) → top-level (worktree collector가 .jira-context.json에서 직접 직렬화한 값).
   // cold-start 시 cachedIssue=null 동안에도 .jira-context.json의 메타로 카드를 그릴 수 있게 함.
@@ -79,6 +80,8 @@ export default function WorktreeCard({ worktree }) {
       <div className="wt-card__summary" title={summary ?? EMPTY}>
         {fmt(summary)}
       </div>
+
+      <Stepper completedSteps={completedSteps} />
 
       <dl className="wt-card__fields">
         <div className="wt-card__field">
