@@ -20,10 +20,12 @@ function fmt(val) {
 export default function WorktreeCard({ worktree }) {
   const { path, branch, taskId, noContext, cachedIssue, activity = [] } = worktree;
 
-  const summary = cachedIssue?.summary ?? null;
-  const status = cachedIssue?.status ?? null;
-  const priority = cachedIssue?.priority ?? null;
-  const assignee = cachedIssue?.assignee ?? null;
+  // 폴백 우선순위: cachedIssue (Jira live) → top-level (worktree collector가 .jira-context.json에서 직접 직렬화한 값).
+  // cold-start 시 cachedIssue=null 동안에도 .jira-context.json의 메타로 카드를 그릴 수 있게 함.
+  const summary = cachedIssue?.summary ?? worktree.summary ?? null;
+  const status = cachedIssue?.status ?? worktree.status ?? null;
+  const priority = cachedIssue?.priority ?? worktree.priority ?? null;
+  const assignee = cachedIssue?.assignee ?? null; // top-level에는 assignee 없음
   const issueType = cachedIssue?.issuetype ?? null;
 
   return (

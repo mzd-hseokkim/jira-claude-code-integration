@@ -120,7 +120,10 @@ function createStore(opts = {}) {
     },
 
     /**
-     * Return entries where lastFetchedAt is older than staleMs and taskId is non-null.
+     * Return entries that need a Jira refresh:
+     *   - never fetched yet (lastFetchedAt = null) → cold start fill
+     *   - or fetched longer than staleMs ago
+     * Skips entries without a taskId or marked noContext.
      * @param {number} staleMs
      * @returns {WorktreeState[]}
      */
@@ -131,7 +134,10 @@ function createStore(opts = {}) {
         const { state } = record;
         if (!state.taskId) continue;
         if (state.noContext) continue;
-        if (!state.lastFetchedAt) continue;
+        if (!state.lastFetchedAt) {
+          results.push(_serialize(record));
+          continue;
+        }
         if (new Date(state.lastFetchedAt).getTime() < threshold) {
           results.push(_serialize(record));
         }

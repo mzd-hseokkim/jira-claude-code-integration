@@ -134,7 +134,16 @@ function startJiraCollector(store, opts) {
     if (tickTimer.unref) tickTimer.unref();
   }
 
-  scheduleTick();
+  // Run an initial cycle immediately to fill cold-start entries.
+  // Subsequent cycles are scheduled by scheduleTick() at every `tickMs` interval.
+  (async () => {
+    try {
+      await runCycle();
+    } catch (err) {
+      logger && logger.error('jira-collector.cycle-error', { error: err.message });
+    }
+    if (!stopped) scheduleTick();
+  })();
 
   return {
     stop() {

@@ -129,6 +129,7 @@ PYEOF
 - `completedSteps` 배열에 `"done"` 추가 (중복 방지)
 - `status`를 `"Done"`으로 변경
 - `completedAt`에 현재 ISO 8601 타임스탬프 추가
+- **`cachedIssue.status`도 갱신**: Step 6에서 transition한 결과 status명(예: `"완료"`, `"Done"`)으로 변경하고 `cachedIssue.fetchedAt`도 현재 시각으로 업데이트. 이게 빠지면 dashboard 같은 캐시 소비자가 stale 상태("진행 중")를 계속 보여준다 (cachedIssue가 없는 경우엔 생성하지 않고 skip).
 
 아래 형식으로 완료 요약 출력:
 
