@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { DashboardProvider, useDashboard } from './state/DashboardContext.jsx';
 import { useDashboardStream } from './hooks/useDashboardStream.js';
 import { useIdle } from './hooks/useIdle.js';
@@ -109,6 +109,23 @@ function Dashboard() {
     connState === 'connected' ? 'conn-chip conn-chip--live' :
     'conn-chip conn-chip--off';
 
+  // 다음 jira-collector polling(60초)까지의 진행률(0~1).
+  // 1초마다 갱신되며 100% 도달 시 자동으로 0부터 다시 시작.
+  const POLL_CYCLE_MS = 60_000;
+  const [cycleProgress, setCycleProgress] = useState(0);
+  useEffect(() => {
+    if (connState !== 'connected') {
+      setCycleProgress(0);
+      return undefined;
+    }
+    const startedAt = Date.now();
+    const id = setInterval(() => {
+      const elapsed = (Date.now() - startedAt) % POLL_CYCLE_MS;
+      setCycleProgress(elapsed / POLL_CYCLE_MS);
+    }, 250);
+    return () => clearInterval(id);
+  }, [connState]);
+
   return (
     <>
       <KittBar connection={connState} />
@@ -126,7 +143,15 @@ function Dashboard() {
               </span>
               <span className="dashboard-header__count-label">worktrees</span>
             </span>
-            <span className={connClass} aria-live="polite">
+            <span
+              className={connClass}
+              aria-live="polite"
+              style={
+                connState === 'connected'
+                  ? { '--cycle-fill': `${(cycleProgress * 100).toFixed(1)}%` }
+                  : undefined
+              }
+            >
               <span className="conn-chip__dot" aria-hidden="true" />
               {connLabel}
             </span>

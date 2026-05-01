@@ -201,13 +201,27 @@ body > * { position: relative; z-index: 1; }
   height: 7px;
   border-radius: 50%;
   display: inline-block;
+  position: relative;
+  z-index: 1;
 }
 
 .conn-chip--live {
   color: #bae6fd;
-  background: rgba(8, 47, 73, 0.7);
+  position: relative;
+  overflow: hidden;
   border: 1px solid rgba(125, 211, 252, 0.45);
   box-shadow: 0 0 14px rgba(125, 211, 252, 0.25);
+  /* 다음 polling cycle까지의 진행률을 아래→위로 그라데이션 fill.
+     --cycle-fill 변수는 React에서 0~100% 사이로 매 250ms 갱신. */
+  background:
+    linear-gradient(
+      0deg,
+      rgba(125, 211, 252, 0.32) 0%,
+      rgba(125, 211, 252, 0.32) var(--cycle-fill, 0%),
+      rgba(8, 47, 73, 0.7) var(--cycle-fill, 0%),
+      rgba(8, 47, 73, 0.7) 100%
+    );
+  transition: background 0.3s linear;
 }
 .conn-chip--live .conn-chip__dot {
   background: #7dd3fc;
