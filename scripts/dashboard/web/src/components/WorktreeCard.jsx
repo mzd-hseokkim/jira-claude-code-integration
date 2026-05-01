@@ -34,7 +34,8 @@ function statusSlug(value) {
   switch (v) {
     case '할 일':   return 'todo';
     case '진행 중': return 'in-progress';
-    case '검토':    return 'in-review';
+    case '검토 중': return 'in-review';  // 실제 Jira 한국어 값은 "검토 중" (스페이스 포함)
+    case '검토':    return 'in-review';  // 변형 보존 (혹시 다른 인스턴스에서 쓸 수 있음)
     case '완료':    return 'done';
     case '차단됨':  return 'blocked';
     default:        return 'neutral';
