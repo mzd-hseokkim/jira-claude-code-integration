@@ -29,19 +29,19 @@ ENRICHED="$(node -e '
         const content = (o.message && o.message.content) || [];
         const text = content.find(c => c && c.type === "text");
         if (text && typeof text.text === "string" && text.text.trim()) {
-          // 의미 있는 "마지막 줄" 추출:
-          // 빈 줄, 코드 펜스(```...), markdown HR(---/===) 제외하고 뒤에서부터.
+          // 의미 있는 "마지막 줄" 추출.
+          // 제외 대상: 빈 줄, 코드 펜스, markdown HR, 박스/구분선 문자만으로 된 줄.
+          const SEPARATOR_RE = /^[\s\-=*_~─━═─-╿]+$/;
           const rows = text.text.split("\n").map(s => s.trim());
           let lastLine = "";
           for (let j = rows.length - 1; j >= 0; j--) {
             const r = rows[j];
             if (!r) continue;
-            if (/^`{3,}/.test(r)) continue;          // 코드 펜스
-            if (/^[-=*_]{3,}$/.test(r)) continue;    // markdown HR
+            if (/^`{3,}/.test(r)) continue;       // 코드 펜스
+            if (SEPARATOR_RE.test(r)) continue;   // markdown HR + 박스 그리기 문자 줄
             lastLine = r;
             break;
           }
-          // fallback: 모든 라인이 필터링됐으면 raw 마지막 500자 (뒷부분)
           if (!lastLine) lastLine = text.text.slice(-500);
           preview = lastLine.slice(0, 500);
           break;

@@ -90,15 +90,15 @@ export function pickLatestResponse(activity) {
     const raw = ev.data?.payload?.lastAssistantText;
     if (raw == null || typeof raw !== 'string' || !raw.trim()) continue;
 
-    // 의미 있는 "마지막 줄" 추출 (hook 측에서 이미 처리되어 있을 수 있지만,
-    // 구버전 데이터 호환을 위해 selector에서도 한번 더 수행).
+    // 의미 있는 "마지막 줄" 추출. 빈 줄/코드펜스/구분선(HR + 박스 그리기 문자) 제외.
+    const SEPARATOR_RE = /^[\s\-=*_~─━═─-╿]+$/;
     const rows = raw.split('\n').map(s => s.trim());
     let lastLine = '';
     for (let j = rows.length - 1; j >= 0; j--) {
       const r = rows[j];
       if (!r) continue;
       if (/^`{3,}/.test(r)) continue;
-      if (/^[-=*_]{3,}$/.test(r)) continue;
+      if (SEPARATOR_RE.test(r)) continue;
       lastLine = r;
       break;
     }
