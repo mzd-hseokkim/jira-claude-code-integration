@@ -108,6 +108,19 @@ function GraphCanvasInner({ worktrees }) {
     setSelectedKey(node.id);
   }, []);
 
+  // 캔버스 빈 공간 클릭 시 패널 닫기.
+  const onPaneClick = useCallback(() => setSelectedKey(null), []);
+
+  // ESC 키로도 패널 닫기.
+  useEffect(() => {
+    if (selectedKey === null) return;
+    const handler = (e) => {
+      if (e.key === 'Escape') setSelectedKey(null);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [selectedKey]);
+
   // selectedKey에 해당하는 worktree 찾기.
   // phantom 노드: worktrees에 path가 없으므로 null이 됨.
   const selectedWorktree = useMemo(() => {
@@ -157,6 +170,7 @@ function GraphCanvasInner({ worktrees }) {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
+          onPaneClick={onPaneClick}
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
