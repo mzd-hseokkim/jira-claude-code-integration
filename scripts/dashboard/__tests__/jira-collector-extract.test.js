@@ -108,34 +108,11 @@ test('extractParent: null fields returns null', () => {
 // extractLinks (Blocks only — Phase 1)
 // ─────────────────────────────────────────────────────────────
 
-test('extractLinks: outwardIssue → blocks', () => {
+test('extractLinks: outwardIssue → blockedBy (그 이슈가 현재 이슈를 blocks)', () => {
   const fields = {
     issuelinks: [{
       type: { name: 'Blocks' },
       outwardIssue: {
-        key: 'MAE-300',
-        fields: {
-          summary: 'Blocked target',
-          status: { name: '할 일', statusCategory: { key: 'new' } },
-        },
-      },
-    }],
-  };
-  const result = extractLinks(fields);
-  assert.deepEqual(result.blocks, [{
-    key: 'MAE-300',
-    summary: 'Blocked target',
-    status: '할 일',
-    statusCategory: 'new',
-  }]);
-  assert.deepEqual(result.blockedBy, []);
-});
-
-test('extractLinks: inwardIssue → blockedBy', () => {
-  const fields = {
-    issuelinks: [{
-      type: { name: 'Blocks' },
-      inwardIssue: {
         key: 'MAE-200',
         fields: {
           summary: 'Blocker',
@@ -152,6 +129,29 @@ test('extractLinks: inwardIssue → blockedBy', () => {
     statusCategory: 'done',
   }]);
   assert.deepEqual(result.blocks, []);
+});
+
+test('extractLinks: inwardIssue → blocks (현재 이슈가 그 이슈를 blocks)', () => {
+  const fields = {
+    issuelinks: [{
+      type: { name: 'Blocks' },
+      inwardIssue: {
+        key: 'MAE-300',
+        fields: {
+          summary: 'Blocked target',
+          status: { name: '할 일', statusCategory: { key: 'new' } },
+        },
+      },
+    }],
+  };
+  const result = extractLinks(fields);
+  assert.deepEqual(result.blocks, [{
+    key: 'MAE-300',
+    summary: 'Blocked target',
+    status: '할 일',
+    statusCategory: 'new',
+  }]);
+  assert.deepEqual(result.blockedBy, []);
 });
 
 test('extractLinks: ignores non-Blocks link types', () => {
@@ -172,7 +172,7 @@ test('extractLinks: handles missing fields on linked issue', () => {
     }],
   };
   const result = extractLinks(fields);
-  assert.deepEqual(result.blocks, [{
+  assert.deepEqual(result.blockedBy, [{
     key: 'MAE-9',
     summary: null,
     status: null,
@@ -196,8 +196,9 @@ test('extractLinks: multiple Blocks links accumulate both directions', () => {
     ],
   };
   const result = extractLinks(fields);
-  assert.equal(result.blocks.length, 2);
-  assert.equal(result.blockedBy.length, 1);
-  assert.deepEqual(result.blocks.map((b) => b.key), ['A', 'B']);
-  assert.equal(result.blockedBy[0].key, 'C');
+  // outward는 blockedBy(그들이 나를 blocks), inward는 blocks(내가 그를 blocks).
+  assert.equal(result.blockedBy.length, 2);
+  assert.equal(result.blocks.length, 1);
+  assert.deepEqual(result.blockedBy.map((b) => b.key), ['A', 'B']);
+  assert.equal(result.blocks[0].key, 'C');
 });

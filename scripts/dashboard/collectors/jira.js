@@ -27,13 +27,15 @@ function extractLinks(fields) {
   for (const link of fields.issuelinks) {
     const typeName = link?.type?.name || '';
     if (typeName !== 'Blocks') continue; // Phase 1: Blocks만
-    // outwardIssue(이 이슈가 그 이슈를 막음 — blocks)
+    // Jira API: outwardIssue는 "현재 이슈로부터 outward 방향에 있는 이슈".
+    // Blocks 타입에서 outward 라벨 = "blocks"이므로 outwardIssue가 현재
+    // 이슈를 blocks → 현재 이슈는 그 이슈에 의해 blocked → blockedBy.
     if (link.outwardIssue) {
-      out.blocks.push(linkSummary(link.outwardIssue));
+      out.blockedBy.push(linkSummary(link.outwardIssue));
     }
-    // inwardIssue(이 이슈는 그 이슈에 의해 막혀있음 — blockedBy)
+    // 반대로 inwardIssue는 현재 이슈가 blocks 하는 대상 → blocks.
     if (link.inwardIssue) {
-      out.blockedBy.push(linkSummary(link.inwardIssue));
+      out.blocks.push(linkSummary(link.inwardIssue));
     }
   }
   return out;
