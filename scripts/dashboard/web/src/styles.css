@@ -582,13 +582,26 @@ body > * { position: relative; z-index: 1; }
   border-color: rgba(56, 189, 248, 0.85);
 }
 
-/* React Flow 컨테이너 */
+/* React Flow 컨테이너.
+   .graph-canvas__flow는 flexbox 항목으로 height을 받지만, 그 자식인
+   .react-flow가 height: 100%로 잡히려면 부모가 explicit 높이를 알아야 한다.
+   absolute + inset:0으로 부모 박스에 강제로 채워서 React Flow의 ResizeObserver가
+   width/height을 감지할 수 있게 한다 (없으면 height 0 → 노드 전체가 overflow:hidden에
+   잘려 안 보임). */
 .graph-canvas__flow {
   flex: 1 1 auto;
   position: relative;
   min-height: 0;
 }
+/* React Flow는 부모가 flex-grow로 받은 height을 자체 box에 반영하지 못하는
+   케이스가 있다(자식들을 absolute로 띄우니 자체 contents-height가 0).
+   absolute로 부모 box 전체를 채우도록 강제한다. */
 .graph-canvas__flow .react-flow {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   width: 100%;
   height: 100%;
 }
