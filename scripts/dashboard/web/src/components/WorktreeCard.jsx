@@ -93,8 +93,14 @@ export default function WorktreeCard({ worktree }) {
   // 1초 tick으로 상대시간 자동 갱신.
   const now = useNowTick(1000);
 
-  const isBusy = pickIsBusy(activity);
-  const isAwaiting = pickIsAwaitingUser(activity);
+  // ring buffer 외에 별도 보존되는 신호(PreToolUse 폭주 시 evict 방지).
+  const fallbackEvents = {
+    lastPromptEvent: worktree.lastPromptEvent ?? null,
+    lastStopEvent: worktree.lastStopEvent ?? null,
+  };
+
+  const isBusy = pickIsBusy(activity, fallbackEvents);
+  const isAwaiting = pickIsAwaitingUser(activity, fallbackEvents);
   const lastActivityTs = pickLastActivityTs(activity);
   const toolCount = pickToolCallCount(activity);
 
@@ -260,7 +266,7 @@ export default function WorktreeCard({ worktree }) {
         </div>
       ) : null}
 
-      <ActivityPanel activity={activity} />
+      <ActivityPanel activity={activity} fallback={fallbackEvents} />
     </div>
   );
 }

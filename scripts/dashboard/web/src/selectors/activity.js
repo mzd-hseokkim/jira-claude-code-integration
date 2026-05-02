@@ -13,22 +13,29 @@
  * @param {Array<{ts:string,type:string,data:{payload?:Record<string,unknown>}}>} activity
  * @returns {{ text: string, ts: string } | null}
  */
-export function pickLatestPrompt(activity) {
-  if (!Array.isArray(activity)) return null;
-  // Iterate from end to find latest
-  for (let i = activity.length - 1; i >= 0; i--) {
-    const ev = activity[i];
-    if (ev?.type !== 'UserPromptSubmit') continue;
-    const raw =
-      ev.data?.payload?.prompt ??
-      ev.data?.payload?.user_prompt ??
-      null;
-    if (raw == null) continue;
-    const normalized = String(raw).replace(/\n/g, ' ');
-    const text = normalized.length > 80 ? normalized.slice(0, 79) + '…' : normalized;
-    return { text, ts: ev.ts };
+function _formatPrompt(ev) {
+  if (!ev) return null;
+  const raw =
+    ev.data?.payload?.prompt ??
+    ev.data?.payload?.user_prompt ??
+    null;
+  if (raw == null) return null;
+  const normalized = String(raw).replace(/\n/g, ' ');
+  const text = normalized.length > 80 ? normalized.slice(0, 79) + '…' : normalized;
+  return { text, ts: ev.ts };
+}
+
+export function pickLatestPrompt(activity, fallbackEvent) {
+  if (Array.isArray(activity)) {
+    for (let i = activity.length - 1; i >= 0; i--) {
+      const ev = activity[i];
+      if (ev?.type !== 'UserPromptSubmit') continue;
+      const r = _formatPrompt(ev);
+      if (r) return r;
+    }
   }
-  return null;
+  // ring buffer evict로 사라진 경우 store의 별도 보존 필드 사용.
+  return _formatPrompt(fallbackEvent);
 }
 
 /**
@@ -82,32 +89,39 @@ export function pickActiveSubagent(activity) {
  * @param {Array<{ts:string,type:string,data:{payload?:Record<string,unknown>}}>} activity
  * @returns {{ text: string, ts: string } | null}
  */
-export function pickLatestResponse(activity) {
-  if (!Array.isArray(activity)) return null;
-  for (let i = activity.length - 1; i >= 0; i--) {
-    const ev = activity[i];
-    if (ev?.type !== 'Stop') continue;
-    const raw = ev.data?.payload?.lastAssistantText;
-    if (raw == null || typeof raw !== 'string' || !raw.trim()) continue;
+function _formatResponse(ev) {
+  if (!ev) return null;
+  const raw = ev.data?.payload?.lastAssistantText;
+  if (raw == null || typeof raw !== 'string' || !raw.trim()) return null;
 
-    // 의미 있는 "마지막 줄" 추출. 빈 줄/코드펜스/구분선(HR + 박스 그리기 문자) 제외.
-    const SEPARATOR_RE = /^[\s\-=*_~─━═─-╿]+$/;
-    const rows = raw.split('\n').map(s => s.trim());
-    let lastLine = '';
-    for (let j = rows.length - 1; j >= 0; j--) {
-      const r = rows[j];
-      if (!r) continue;
-      if (/^`{3,}/.test(r)) continue;
-      if (SEPARATOR_RE.test(r)) continue;
-      lastLine = r;
-      break;
-    }
-    if (!lastLine) lastLine = raw.trim();
-
-    const text = lastLine.length > 120 ? lastLine.slice(0, 119) + '…' : lastLine;
-    return { text, ts: ev.ts };
+  // 의미 있는 "마지막 줄" 추출. 빈 줄/코드펜스/구분선(HR + 박스 그리기 문자) 제외.
+  const SEPARATOR_RE = /^[\s\-=*_~─━═─-╿]+$/;
+  const rows = raw.split('\n').map(s => s.trim());
+  let lastLine = '';
+  for (let j = rows.length - 1; j >= 0; j--) {
+    const r = rows[j];
+    if (!r) continue;
+    if (/^`{3,}/.test(r)) continue;
+    if (SEPARATOR_RE.test(r)) continue;
+    lastLine = r;
+    break;
   }
-  return null;
+  if (!lastLine) lastLine = raw.trim();
+
+  const text = lastLine.length > 120 ? lastLine.slice(0, 119) + '…' : lastLine;
+  return { text, ts: ev.ts };
+}
+
+export function pickLatestResponse(activity, fallbackEvent) {
+  if (Array.isArray(activity)) {
+    for (let i = activity.length - 1; i >= 0; i--) {
+      const ev = activity[i];
+      if (ev?.type !== 'Stop') continue;
+      const r = _formatResponse(ev);
+      if (r) return r;
+    }
+  }
+  return _formatResponse(fallbackEvent);
 }
 
 /**
@@ -141,14 +155,20 @@ export function pickBlockedFlag(activity) {
  * @param {Array<{ts:string,type:string}>} activity
  * @returns {boolean}
  */
-export function pickIsBusy(activity) {
-  if (!Array.isArray(activity)) return false;
-  for (let i = activity.length - 1; i >= 0; i--) {
-    const t = activity[i]?.type;
-    if (t === 'Stop') return false;
-    if (t === 'UserPromptSubmit') return true;
+export function pickIsBusy(activity, fallback) {
+  if (Array.isArray(activity)) {
+    for (let i = activity.length - 1; i >= 0; i--) {
+      const t = activity[i]?.type;
+      if (t === 'Stop') return false;
+      if (t === 'UserPromptSubmit') return true;
+    }
   }
-  return false;
+  // ring buffer eviction 보정 — fallback 별도 필드의 timestamp 비교.
+  const promptTs = fallback?.lastPromptEvent?.ts;
+  const stopTs = fallback?.lastStopEvent?.ts;
+  if (!promptTs) return false;
+  if (!stopTs) return true;
+  return Date.parse(promptTs) > Date.parse(stopTs);
 }
 
 /**
@@ -159,8 +179,8 @@ export function pickIsBusy(activity) {
  * @param {Array<{ts:string,type:string,data?:{payload?:Record<string,unknown>}}>} activity
  * @returns {boolean}
  */
-export function pickIsAwaitingUser(activity) {
-  if (!pickIsBusy(activity)) return false;
+export function pickIsAwaitingUser(activity, fallback) {
+  if (!pickIsBusy(activity, fallback)) return false;
   if (!Array.isArray(activity)) return false;
   let lastNotifIdx = -1;
   for (let i = activity.length - 1; i >= 0; i--) {

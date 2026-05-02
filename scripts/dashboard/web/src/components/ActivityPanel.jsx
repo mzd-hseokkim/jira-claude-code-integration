@@ -15,9 +15,9 @@ const EMPTY = '—';
  *
  * @param {{ activity: Array<{ts:string,type:string,data:unknown}> }} props
  */
-export default function ActivityPanel({ activity = [] }) {
-  const latestPrompt = pickLatestPrompt(activity);
-  const latestResponse = pickLatestResponse(activity);
+export default function ActivityPanel({ activity = [], fallback = null }) {
+  const latestPrompt = pickLatestPrompt(activity, fallback?.lastPromptEvent);
+  const latestResponse = pickLatestResponse(activity, fallback?.lastStopEvent);
   const currentTool = pickCurrentTool(activity);
   const hasSubagent = pickActiveSubagent(activity);
   const isBlocked = pickBlockedFlag(activity);

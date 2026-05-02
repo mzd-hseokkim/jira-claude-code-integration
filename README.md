@@ -508,14 +508,18 @@ PORT=9000 npm run dashboard              # override default port
 
 ### What you see on each card
 
-- **Header** — Jira task id, issue type, **outlined status badge with leading dot** (Jira workflow status, distinct from agent activity), `⚙ N` cumulative tool calls in this session, `X분 전` last activity, and an `⏵ 응답 대기` badge when Claude is waiting on you.
-- **SDLC stepper** — One chip per `/jira-task` step (init/start/plan/design/impl/test/review/merge/pr/done) coloured by `completedSteps` in `.jira-context.json`.
-- **Activity panel** — Last prompt, **Last response (final concluding line of Claude's reply)**, current tool-in-flight, sub-agent indicator, and a blocked flag.
+- **Header** — Jira task id (or directory name when no Jira context), issue type, **outlined status badge with leading dot** (Jira workflow status, distinct from agent activity), `⚙ N` cumulative tool calls in this session, `X분 전` last activity, and badges for `⏵ 응답 대기` / `stale` / `⛔ blocked × N`.
+- **SDLC stepper** — One chip per `/jira-task` step (init/start/plan/design/impl/test/review/merge/pr/done) coloured by `completedSteps` in `.jira-context.json`. Skipped intermediate steps after `done` are shown with strikethrough.
+- **Activity panel** — Last prompt, **Last response (final concluding line of Claude's reply)**, current tool-in-flight, sub-agent indicator, and a blocked flag. Prompt/response signals are persisted on the server independent of the activity ring buffer so they survive long tool-call bursts.
+- **Issue links** — Below the meta row, `blocks` / `blocked by` chips show related issue keys. Open blockers are highlighted; resolved ones are struck through.
 - **Card border state**:
   - **Blue glow + pulse** = busy. Defined as "a `UserPromptSubmit` event without a matching `Stop` yet" — i.e. Claude is generating right now. Time-independent.
   - **Amber glow + pulse + 응답 대기 badge** = busy *and* most recent `Notification` mentions permission/input/waiting.
+  - **Red left stripe + `⛔ blocked` badge** = at least one un-resolved `is blocked by` link.
   - **Dim + `stale` badge** = Jira status is 완료 but the worktree still exists (cleanup candidate).
-- **Sort order**: most recent activity first, then taskId, then path.
+- **Header bar (KITT)** — Top of viewport scans left-right while connected (SSE live). The connection chip in the top-right fills bottom-up to indicate countdown to the next jira-collector poll.
+- **Sort & filter** — Header has chips for sort key (activity / taskId / summary) and a search field that matches taskId / summary / branch / path.
+- **Cards without Jira context** (e.g. main repo while running `/jira dashboard`) show only directory + path + activity, with stepper and Jira-only fields hidden.
 
 ### Hooks
 
@@ -586,18 +590,29 @@ MIT
 
 ### 대시보드
 
-`npm run dashboard` 한 줄로 실시간 모니터링 대시보드를 기동할 수 있습니다. 서버는 `http://127.0.0.1:8765`에 바인딩되며 기본 브라우저가 자동으로 열립니다. 첫 사용 시에는 `npm install && npm --prefix scripts/dashboard/web install && npm --prefix scripts/dashboard/web run build`로 React UI를 한 번 빌드해야 합니다(빌드 산출물은 커밋되지 않음). CI/헤드리스 환경은 `DASHBOARD_NO_OPEN=1`, 포트 변경은 `PORT=9000`.
+Claude Code 안에서 `/jira dashboard` 한 줄로 셋업·기동을 자동 수행합니다. 첫 실행 시 npm 의존성 설치와 UI 빌드를 자동으로 처리하고, 두 번째부터는 캐시 감지로 즉시 시작합니다.
+
+| 커맨드 | 동작 |
+|--------|------|
+| `/jira dashboard` | 상태 확인 → stopped이면 자동 setup+start |
+| `/jira dashboard start/stop/status/setup` | 개별 액션 |
+
+서버는 `http://127.0.0.1:8765`에 바인딩되며 기본 브라우저가 자동으로 열립니다. 수동 실행은 `npm run dashboard`로도 가능 (CI/헤드리스: `DASHBOARD_NO_OPEN=1`, 포트 변경: `PORT=9000`).
 
 각 worktree 카드는 다음을 보여줍니다:
 
-- **상단 배지**: Jira 워크플로 상태(outlined + 좌측 dot — agent 활성 상태와 시각적으로 분리), 누적 도구 호출 수(`⚙ N`), 마지막 활동 상대시간, 응답 대기 표시
-- **SDLC stepper**: `.jira-context.json`의 `completedSteps` 기반 단계 진행
-- **활동 패널**: 마지막 prompt, **마지막 응답의 결론 줄**, 진행 중 도구, sub-agent / blocked 상태
+- **상단 배지**: Jira 워크플로 상태(outlined + 좌측 dot), 누적 도구 호출 수(`⚙ N`), 마지막 활동 상대시간, 상태별 배지(`⏵ 응답 대기` / `stale` / `⛔ blocked × N`)
+- **SDLC stepper**: `.jira-context.json`의 `completedSteps` 기반 단계 진행. `done` 후 건너뛴 중간 단계는 취소선 표시
+- **활동 패널**: 마지막 prompt, **마지막 응답의 결론 줄**, 진행 중 도구, sub-agent / blocked 상태. prompt/response 신호는 ring buffer와 별도로 서버에 보존되어 도구 호출 폭주에도 사라지지 않음
+- **이슈 링크**: `blocks` / `blocked by` 칩 표시. 미해결 blocker는 강조, 완료된 것은 취소선
 - **카드 보더 상태**:
   - **파란 펄스 = busy** — `UserPromptSubmit` 이후 `Stop`이 아직 안 옴(시간 임계값 없음, "지금 응답 생성 중")
   - **앰버 펄스 + 응답 대기 배지** — busy + 최근 `Notification`이 permission/input/waiting을 포함
+  - **빨간 좌측 stripe + ⛔ blocked 배지** — 미해결 `is blocked by` 링크 존재
   - **dim + stale 배지** — Jira 상태가 완료인데 worktree가 아직 살아있음(정리 대상)
-- **정렬**: 최근 활동 desc → taskId
+- **상단 KITT 바**: SSE 연결 시 좌→우 스캔. LIVE 칩은 다음 jira-collector polling까지의 진행률을 아래→위로 fill
+- **정렬/필터**: 헤더에 정렬 칩(최근활동 / 이슈키 / summary) + 제목 검색 필드(taskId/summary/branch/path 매치)
+- **Jira context 없는 카드**(예: 메인 레포): 디렉토리명·path·활동만 표시, stepper와 Jira 전용 필드는 숨김
 
 Hook 흐름: `hooks/hooks.json` → `hooks/scripts/dashboard-ingest.sh`(UserPromptSubmit·PreToolUse·PostToolUse·SubagentStop·Notification) / `hooks/scripts/stop-ingest.sh`(Stop, transcript에서 마지막 assistant 텍스트 추출) → `POST /ingest` → SSE. 서버 로그는 `<workspaceRoot>/logs/dashboard-server.log`(JSON Lines, 민감 필드 자동 redact).
 
