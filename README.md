@@ -2,7 +2,7 @@
 
 **[English]** | [한국어](#korean)
 
-[![Version](https://img.shields.io/badge/version-0.24.0-blue)](#)
+[![Version](https://img.shields.io/badge/version-0.30.1-blue)](#)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-orange)](https://docs.anthropic.com/en/docs/claude-code)
 [![MCP](https://img.shields.io/badge/MCP-mcp--atlassian-purple)](https://github.com/sooperset/mcp-atlassian)
@@ -519,6 +519,8 @@ PORT=9000 npm run dashboard              # override default port
   - **Dim + `stale` badge** = Jira status is 완료 but the worktree still exists (cleanup candidate).
 - **Header bar (KITT)** — Top of viewport scans left-right while connected (SSE live). The connection chip in the top-right fills bottom-up to indicate countdown to the next jira-collector poll.
 - **Sort & filter** — Header has chips for sort key (activity / taskId / summary) and a search field that matches taskId / summary / branch / path.
+- **View toggle: Cards ↔ Graph** *(v0.30.x)* — Header has a Cards / Graph toggle. Graph mode renders worktrees as a force-directed graph (react-flow + d3-force) showing `blocks` / `parent` / `epic` relationships with color-coded edges, marching-ants flow direction, and arrow markers. Parent/epic edges anchor the hierarchy (parent on top, children below); blocks edges connect siblings. Click a node → side panel with the full WorktreeCard. Drag a node → it pins in place (simulation won't drag it back). Status/assignee chip filters dim non-matches; isolated nodes get a dashed border; cycle members get heavier red dashes.
+- **Cleanup button** *(v0.30.x)* — Cards in `stale` state (Jira `완료` but worktree alive) get a `🗑 정리` floating button on hover at the bottom-right. Click → confirm → server runs `git worktree remove` + `git branch -d`. Backend safety: only registered worktrees, only when status is done, dirty trees rejected, branch name read from store (no body injection).
 - **Cards without Jira context** (e.g. main repo while running `/jira dashboard`) show only directory + path + activity, with stepper and Jira-only fields hidden.
 
 ### Hooks
@@ -551,7 +553,6 @@ Log file: `<workspaceRoot>/logs/dashboard-server.log`
 - Browser env var (`BROWSER`) support on Linux
 - Windows PowerShell fallback (current: `cmd /c start`)
 - Fallback stdout URL prompt on browser-open failure
-- Cross-card relationship visualization (blockers, subtasks) — planned
 
 ---
 
@@ -566,6 +567,8 @@ Log file: `<workspaceRoot>/logs/dashboard-server.log`
 - [x] Requirements discovery: `/jira-task discover` → `docs/requirements/<slug>.requirements.md` *(v1.1.x)*
 - [x] Reviewer calibration log: review history analyzer (`scripts/analyze-review-log.py`) *(v0.22.x)*
 - [x] SKILL bloat refactor: 4 heavy SKILLs (create/discover/init/review) compressed from 1,989 → 921 lines (-54%) via `skills/<name>/refs/` split + script extraction *(v0.24.0)*
+- [x] Dashboard graph view: react-flow + d3-force visualization of `blocks` / `parent` / `epic` relationships with hierarchical force layout, drag-to-pin, status/assignee filters, isolated/cycle highlighting *(v0.30.x — Epic MAE-249)*
+- [x] Dashboard worktree cleanup button: in-card `🗑 정리` floating action for stale worktrees, with safety guards on the backend `POST /cleanup` *(v0.30.x)*
 - [ ] Bitbucket Cloud + GitLab MR support for `/jira-task pr`
 - [ ] Jira Server / Data Center (Personal Access Token)
 - [ ] Sub-task auto-creation from design doc task breakdown
@@ -612,6 +615,8 @@ Claude Code 안에서 `/jira dashboard` 한 줄로 셋업·기동을 자동 수�
   - **dim + stale 배지** — Jira 상태가 완료인데 worktree가 아직 살아있음(정리 대상)
 - **상단 KITT 바**: SSE 연결 시 좌→우 스캔. LIVE 칩은 다음 jira-collector polling까지의 진행률을 아래→위로 fill
 - **정렬/필터**: 헤더에 정렬 칩(최근활동 / 이슈키 / summary) + 제목 검색 필드(taskId/summary/branch/path 매치)
+- **카드/그래프 뷰 토글** *(v0.30.x)*: 헤더에서 두 모드 전환. 그래프 모드는 worktree를 force-directed 그래프(react-flow + d3-force)로 렌더링하여 `blocks` / `parent` / `epic` 관계를 색상 분리된 엣지(흐르는 점선 + 화살표)로 표시. parent/epic edge가 계층(부모 위, 자식 아래)을 형성하고 blocks edge는 형제 노드를 연결. 노드 클릭 → 우측 사이드 패널에 풀 카드, 노드 드래그 → 그 자리 고정(simulation이 끌어당기지 않음). status/assignee 필터·고립 노드(dashed border)·순환 엣지(굵은 빨간 점선) 강조 지원
+- **정리 버튼** *(v0.30.x)*: stale 상태(Jira 완료 + worktree 생존) 카드 우하단에 hover 시 `🗑 정리` floating 버튼 노출. 클릭 → confirm → 서버가 `git worktree remove` + `git branch -d` 실행. 백엔드 안전장치(등록된 worktree만, 완료 상태만, dirty 거부, branch 이름은 store에서만 조회)
 - **Jira context 없는 카드**(예: 메인 레포): 디렉토리명·path·활동만 표시, stepper와 Jira 전용 필드는 숨김
 
 Hook 흐름: `hooks/hooks.json` → `hooks/scripts/dashboard-ingest.sh`(UserPromptSubmit·PreToolUse·PostToolUse·SubagentStop·Notification) / `hooks/scripts/stop-ingest.sh`(Stop, transcript에서 마지막 assistant 텍스트 추출) → `POST /ingest` → SSE. 서버 로그는 `<workspaceRoot>/logs/dashboard-server.log`(JSON Lines, 민감 필드 자동 redact).
