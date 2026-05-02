@@ -21,11 +21,16 @@ export function mapToFlow({ nodes, edges }, options = {}) {
     return {
       id: n.id,
       type: 'graphNode',
-      // 초기 위치를 약간 분산시켜 simulation이 겹친 노드에서 시작하지 않게 함.
-      position: {
-        x: (i % 5) * 80 - 160,
-        y: Math.floor(i / 5) * 80 - 100,
-      },
+      // 초기 위치를 원형으로 분산시켜 simulation 수렴 속도와 결과 안정성 향상.
+      position: (() => {
+        const total = nodes.length;
+        const angle = (i / Math.max(total, 1)) * Math.PI * 2;
+        const radius = Math.max(120, total * 30);
+        return {
+          x: Math.cos(angle) * radius,
+          y: Math.sin(angle) * radius,
+        };
+      })(),
       data: {
         label: n.label,
         ...n.data,

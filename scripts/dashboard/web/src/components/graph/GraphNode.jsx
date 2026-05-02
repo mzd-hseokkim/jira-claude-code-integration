@@ -15,11 +15,14 @@ export default function GraphNode({ data }) {
     isDimmed ? 'graph-node--dimmed' : '',
     isIsolated ? 'graph-node--isolated' : '',
   ].filter(Boolean).join(' ');
+  // issue key만 추출 (예: "MAE-263 [graph-view][4.1] marching ants..." → "MAE-263")
+  const fullLabel = data?.label ?? data?.id ?? '?';
+  const compactKey = (data?.id) ?? String(fullLabel).split(/\s+/)[0];
   return (
-    <div className={className}>
+    <div className={className} title={fullLabel}>
       <Handle type="target" position={Position.Top} />
-      <div className="graph-node__label" title={data?.label}>
-        {data?.label ?? data?.id ?? '?'}
+      <div className="graph-node__label">
+        {compactKey}
       </div>
       {data?.status && !isPhantom && (
         <div className="graph-node__status">{data.status}</div>

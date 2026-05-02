@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ReactFlow, Background, Controls, useNodesState, useEdgesState } from '@xyflow/react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ReactFlow, Background, Controls, useNodesState, useEdgesState, useReactFlow, ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { selectGraphData } from '../selectors/graph.js';
 import { mapToFlow } from './graph/mapToFlow.js';
@@ -24,6 +24,14 @@ const nodeTypes = { graphNode: GraphNode };
  * @param {{ worktrees: Record<string, object> }} props
  */
 export default function GraphCanvas({ worktrees }) {
+  return (
+    <ReactFlowProvider>
+      <GraphCanvasInner worktrees={worktrees} />
+    </ReactFlowProvider>
+  );
+}
+
+function GraphCanvasInner({ worktrees }) {
   // selectGraphData는 순수 함수이므로 useMemo로 메모이제이션.
   const graphData = useMemo(
     () => selectGraphData(worktrees),
@@ -71,8 +79,27 @@ export default function GraphCanvas({ worktrees }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newNodesKey, newEdgesKey]);
 
-  // force-directed 레이아웃 적용.
-  useForceLayout(nodes, edges, setNodes);
+  // 사용자가 드래그한 노드를 그 자리에 고정 (pin).
+  const pinnedRef = useRef({});
+
+  // force-directed 레이아웃 적용. drag 결과를 simulation에 반영하기 위해 pinNode/unpinNode 받음.
+  const { pinNode } = useForceLayout(nodes, edges, setNodes, { pinnedRef });
+
+  const onNodeDragStop = useCallback((_event, node) => {
+    // 드래그 끝난 위치를 pin. simulation은 이 자리에 고정.
+    pinnedRef.current[node.id] = { x: node.position.x, y: node.position.y };
+    pinNode(node.id, node.position.x, node.position.y);
+  }, [pinNode]);
+
+  // ReactFlow 인스턴스 (fitView 수동 호출용).
+  const rf = useReactFlow();
+  // 노드가 처음 들어왔을 때 + simulation이 어느 정도 안정화된 시점에 fitView.
+  useEffect(() => {
+    if (initialNodes.length === 0) return;
+    const t1 = setTimeout(() => rf.fitView({ padding: 0.2, duration: 300 }), 800);
+    const t2 = setTimeout(() => rf.fitView({ padding: 0.2, duration: 400 }), 2200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [newNodesKey, rf]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 선택된 노드 key (이슈 key).
   const [selectedKey, setSelectedKey] = useState(null);
@@ -130,9 +157,13 @@ export default function GraphCanvas({ worktrees }) {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
+          onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
+          minZoom={0.2}
+          maxZoom={2}
           fitView
+          fitViewOptions={{ padding: 0.2 }}
         >
           <Background />
           <Controls />

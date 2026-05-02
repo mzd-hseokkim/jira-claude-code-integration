@@ -608,27 +608,31 @@ body > * { position: relative; z-index: 1; }
 
 /* ===== Graph Node ===== */
 .graph-node {
-  padding: 8px 14px;
+  padding: 6px 10px;
   border-radius: 8px;
-  background: rgba(30, 41, 59, 0.85);
+  background: rgba(30, 41, 59, 0.92);
   border: 1.5px solid rgba(148, 163, 184, 0.4);
-  color: rgba(226, 232, 240, 0.92);
-  font-size: 12px;
-  min-width: 90px;
+  color: rgba(226, 232, 240, 0.95);
+  font-size: 11px;
+  min-width: 72px;
+  width: max-content;
   text-align: center;
-  cursor: pointer;
+  cursor: grab;
   transition: border-color 0.15s, box-shadow 0.15s;
+}
+.graph-node:active {
+  cursor: grabbing;
 }
 .graph-node:hover {
   border-color: rgba(56, 189, 248, 0.7);
   box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
 }
 .graph-node__label {
-  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-weight: 700;
+  font-size: 11px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 140px;
+  letter-spacing: 0.02em;
 }
 .graph-node__status {
   margin-top: 3px;
