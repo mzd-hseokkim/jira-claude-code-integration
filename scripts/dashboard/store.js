@@ -74,12 +74,24 @@ function createStore(opts = {}) {
   return {
     /**
      * Insert or update a worktree entry. Emits 'worktree.added' or 'worktree.changed'.
+     *
+     * cachedIssue 보호: jira-collector(updateCachedIssue)가 owner. 이미 채워진
+     * cachedIssue는 worktree collector(파일에서 읽은 형태)의 update가 덮어쓰지
+     * 못한다. 두 형태가 달라(특히 links 필드 유무) 카드의 blocks/blockedBy가
+     * 사라지는 회귀(2026-05-02)를 막기 위함. cold-start(현재 null)일 때만
+     * 파일의 cachedIssue로 카드를 그릴 수 있게 채워준다.
+     *
      * @param {Partial<WorktreeState> & { path: string }} update
      */
     upsertWorktree(update) {
       const isNew = !_map.has(update.path);
       const record = _getOrCreate(update.path);
-      Object.assign(record.state, update);
+      const merged = { ...update };
+      if ('cachedIssue' in merged && record.state.cachedIssue && merged.cachedIssue) {
+        // 이미 jira-collector가 채워둔 게 있으면 보존 (links/assignee/issuetype 등 손실 방지).
+        delete merged.cachedIssue;
+      }
+      Object.assign(record.state, merged);
       const eventName = isNew ? 'worktree.added' : 'worktree.changed';
       _emitter.emit(eventName, { path: update.path, state: _serialize(record) });
     },

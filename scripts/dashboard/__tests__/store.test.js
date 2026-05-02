@@ -94,3 +94,55 @@ test('U4b: removeWorktree is a no-op for unknown path', () => {
   store.removeWorktree('/does-not-exist');
   assert.equal(emitted, false);
 });
+
+// U7: upsertWorktree가 jira-collector(updateCachedIssue)가 채운 cachedIssue를
+// 덮어쓰지 않는다 (worktree collector vs jira-collector 충돌 회귀 가드).
+test('U7: upsertWorktree preserves existing cachedIssue against partial overwrite', () => {
+  const store = createStore();
+  // Cold-start: worktree collector가 파일 형태(links 없음)로 cachedIssue 박음.
+  store.upsertWorktree({
+    path: '/wt',
+    taskId: 'T-1',
+    cachedIssue: { key: 'T-1', summary: 'from-file', status: 'In Progress' },
+  });
+  // jira-collector가 live API 데이터(links 포함)로 갱신.
+  store.updateCachedIssue('/wt', {
+    key: 'T-1', summary: 'live', status: 'In Progress',
+    links: { blocks: [{ key: 'T-2' }], blockedBy: [] },
+  });
+  // 이제 worktree collector가 chokidar trigger로 다시 file 형태(links 없음)를 보냄.
+  store.upsertWorktree({
+    path: '/wt',
+    taskId: 'T-1',
+    cachedIssue: { key: 'T-1', summary: 'from-file', status: 'In Progress' },
+  });
+  const snap = store.getSnapshot();
+  const entry = snap.find((w) => w.path === '/wt');
+  // links가 살아있어야 한다 (회귀 시 undefined가 됨).
+  assert.deepEqual(entry.cachedIssue.links, { blocks: [{ key: 'T-2' }], blockedBy: [] });
+  assert.equal(entry.cachedIssue.summary, 'live');
+});
+
+// U7b: cold-start (cachedIssue=null)일 때는 worktree collector가 채워준다.
+test('U7b: upsertWorktree fills cachedIssue when null (cold-start)', () => {
+  const store = createStore();
+  store.upsertWorktree({
+    path: '/wt2',
+    taskId: 'T-3',
+    cachedIssue: { key: 'T-3', summary: 'from-file' },
+  });
+  const snap = store.getSnapshot();
+  const entry = snap.find((w) => w.path === '/wt2');
+  assert.equal(entry.cachedIssue.summary, 'from-file');
+});
+
+// U7c: unlink 핸들러가 cachedIssue=null로 명시적으로 비우는 경로는 가드를 통과한다.
+test('U7c: upsertWorktree allows explicit cachedIssue=null clear', () => {
+  const store = createStore();
+  store.upsertWorktree({ path: '/wt3', cachedIssue: { key: 'T-4' } });
+  store.upsertWorktree({ path: '/wt3', cachedIssue: null, noContext: true });
+  const snap = store.getSnapshot();
+  const entry = snap.find((w) => w.path === '/wt3');
+  assert.equal(entry.cachedIssue, null);
+  assert.equal(entry.noContext, true);
+});
