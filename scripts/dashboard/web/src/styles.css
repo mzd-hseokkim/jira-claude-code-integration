@@ -684,7 +684,9 @@ body > * { position: relative; z-index: 1; }
   top: 12px;
   right: 12px;
   bottom: 72px; /* footer 높이 */
-  width: 320px;
+  /* PDCA stepper(8단계) + 메타 한 줄이 wrap 없이 들어가도록 폭 확장.
+     화면이 좁을 때는 viewport의 40% 까지만 차지. */
+  width: clamp(420px, 40vw, 560px);
   overflow-y: auto;
   background: rgba(15, 23, 42, 0.92);
   border: 1px solid rgba(148, 163, 184, 0.3);

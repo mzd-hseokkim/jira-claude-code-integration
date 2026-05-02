@@ -1,5 +1,5 @@
 import React from 'react';
-import { BezierEdge, MarkerType } from '@xyflow/react';
+import { BezierEdge } from '@xyflow/react';
 
 /** 관계 타입별 시각 스타일 (MAE-264) */
 const RELATION_STYLES = {
@@ -41,7 +41,6 @@ export function BlocksEdge(props) {
       {...props}
       label={label}
       style={style}
-      markerEnd={{ type: MarkerType.ArrowClosed, color: stroke }}
       labelBgStyle={{ fill: labelBg }}
       labelStyle={{ fill: labelColor, fontSize: 11, fontWeight: isCycle ? 600 : 400 }}
       labelBgPadding={[6, 3]}
@@ -57,7 +56,6 @@ export function ParentEdge(props) {
       {...props}
       label="parent"
       style={{ stroke, strokeWidth }}
-      markerEnd={{ type: MarkerType.ArrowClosed, color: stroke }}
       labelBgStyle={{ fill: labelBg }}
       labelStyle={{ fill: labelColor, fontSize: 11 }}
       labelBgPadding={[6, 3]}
@@ -73,7 +71,6 @@ export function EpicEdge(props) {
       {...props}
       label="epic"
       style={{ stroke, strokeWidth }}
-      markerEnd={{ type: MarkerType.ArrowClosed, color: stroke }}
       labelBgStyle={{ fill: labelBg }}
       labelStyle={{ fill: labelColor, fontSize: 11 }}
       labelBgPadding={[6, 3]}
