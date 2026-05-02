@@ -5,6 +5,7 @@ import { useIdle } from './hooks/useIdle.js';
 import ConnectionBanner from './components/ConnectionBanner.jsx';
 import KittBar from './components/KittBar.jsx';
 import WorktreeCard from './components/WorktreeCard.jsx';
+import GraphCanvas from './components/GraphCanvas.jsx';
 
 /**
  * 마지막 activity ts (없으면 null).
@@ -221,19 +222,23 @@ function Dashboard() {
           </div>
         </div>
       </header>
-      <main className={`dashboard-grid${isIdle ? ' is-idle' : ''}`}>
-        {sorted.length === 0 ? (
-          <p className="dashboard-empty">
-            {filter
-              ? `"${filter}" 에 매치되는 worktree가 없습니다.`
-              : connState === 'connected'
-                ? 'Worktree가 없습니다.'
-                : '연결을 기다리는 중…'}
-          </p>
-        ) : (
-          sorted.map((wt) => <WorktreeCard key={wt.path} worktree={wt} />)
-        )}
-      </main>
+      {viewMode === 'graph' ? (
+        <GraphCanvas worktrees={sorted} />
+      ) : (
+        <main className={`dashboard-grid${isIdle ? ' is-idle' : ''}`}>
+          {sorted.length === 0 ? (
+            <p className="dashboard-empty">
+              {filter
+                ? `"${filter}" 에 매치되는 worktree가 없습니다.`
+                : connState === 'connected'
+                  ? 'Worktree가 없습니다.'
+                  : '연결을 기다리는 중…'}
+            </p>
+          ) : (
+            sorted.map((wt) => <WorktreeCard key={wt.path} worktree={wt} />)
+          )}
+        </main>
+      )}
       <footer className="dashboard-footer">
         <span className="dashboard-footer__brand">jira-integration plugin</span>
         <span className="dashboard-footer__sep">·</span>

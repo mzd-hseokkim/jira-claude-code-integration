@@ -457,6 +457,33 @@ body > * { position: relative; z-index: 1; }
   .dashboard-grid { grid-template-columns: 1fr; }
 }
 
+/* ===== Graph Canvas (placeholder) ===== */
+.graph-canvas {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px 72px;
+  background: linear-gradient(180deg, rgba(71, 85, 105, 0.45) 0%, rgba(51, 65, 85, 0.35) 100%);
+}
+.graph-canvas__placeholder {
+  text-align: center;
+  color: rgba(226, 232, 240, 0.85);
+  padding: 28px 32px;
+  border: 1px dashed rgba(148, 163, 184, 0.45);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.35);
+}
+.graph-canvas__title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.graph-canvas__hint {
+  font-size: 13px;
+  color: rgba(203, 213, 225, 0.75);
+}
+
 /* ===== Worktree Card (frosted glass) ===== */
 .wt-card {
   position: relative;
