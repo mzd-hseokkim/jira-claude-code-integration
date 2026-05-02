@@ -1,6 +1,6 @@
 ---
 name: jira-task-report
-description: Generate a status report of my assigned Jira issues. Shows issue breakdown by status, assignee summary, and blockers. Works with both Scrum (sprint) and Kanban (no sprint) workflows. Use when user says "report", "status report", "jira-task report", "현황 리포트", "진행 상황", or wants to see assigned issue status.
+description: "Generate a status report of assigned Jira issues — breakdown by status, blockers, Scrum/Kanban support. Triggers: jira-task report, status report; 현황 리포트, 진행 상황."
 user-invocable: false
 allowed-tools:
   - Read

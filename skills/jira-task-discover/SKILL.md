@@ -1,6 +1,6 @@
 ---
 name: jira-task-discover
-description: Discover requirements from a free-form natural-language topic. Searches the codebase, asks batched clarifying questions, then writes a structured requirements document with an issue-breakdown proposal. Use when user says "discover", "jira-task discover", "요구사항 분석", "디스커버리", "요구사항 문서", "주제 분석", or wants to turn a vague topic into a concrete requirements doc before creating Jira issues.
+description: "Discover requirements from a free-form topic — searches codebase, asks clarifying questions, writes a structured requirements doc with issue-breakdown proposal. Triggers: discover, jira-task discover, requirements analysis; 요구사항 분석, 디스커버리, 요구사항 문서."
 user-invocable: false
 argument-hint: "<자연어 주제> [--lite] [--from <파일경로>]"
 allowed-tools:

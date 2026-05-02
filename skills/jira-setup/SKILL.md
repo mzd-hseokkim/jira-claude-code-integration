@@ -1,6 +1,6 @@
 ---
 name: jira-setup
-description: Interactive setup wizard for Jira MCP server registration. Guides through prerequisites check, credential collection, MCP server registration, and connection validation. Use when user says "/jira setup", "setup jira", "jira 설정", "MCP 등록", "연결 설정", or wants to configure Jira integration for the first time.
+description: "Interactive setup wizard for Jira MCP server registration and connection validation. Triggers: jira setup, setup jira; Jira 설정, MCP 등록."
 user-invocable: false
 argument-hint: ""
 allowed-tools:

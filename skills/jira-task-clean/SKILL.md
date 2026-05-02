@@ -1,6 +1,6 @@
 ---
 name: jira-task-clean
-description: Clean up git worktrees and branches for completed Jira tasks. Removes worktree, deletes feature branch, cleans MCP config, and removes context files. Use when user says "clean task", "remove worktree", "jira-task clean", "워크트리 정리", "브랜치 정리", or wants to clean up after a completed task.
+description: "Clean up git worktrees and branches for completed Jira tasks. Triggers: jira-task clean, remove worktree; 워크트리 정리, 브랜치 정리."
 user-invocable: false
 argument-hint: "<TASK-ID> [TASK-ID ...] | --all | --list"
 allowed-tools:

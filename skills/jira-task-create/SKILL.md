@@ -1,6 +1,6 @@
 ---
 name: jira-task-create
-description: Interactively create a new Jira issue (and optional sub-tasks with dependency links) from conversation context. Gathers details via dialog, proposes a sub-task breakdown when the scope warrants it, and creates everything in Jira using mcp-atlassian. Use when user says "create task", "new task", "jira 이슈 만들어", "태스크 등록", "/jira-task create", or wants to register a new Jira issue from scratch.
+description: "Interactively create a new Jira issue (and optional sub-tasks) from conversation context — gathers details via dialog and creates in Jira. Triggers: jira-task create, create task, new task; Jira 이슈 만들어, 태스크 등록, 이슈 생성."
 user-invocable: false
 argument-hint: "[초기 힌트 / 자연어 설명]"
 allowed-tools:

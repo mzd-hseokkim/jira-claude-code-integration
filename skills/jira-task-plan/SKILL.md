@@ -1,6 +1,6 @@
 ---
 name: jira-task-plan
-description: Generate a planning document from a Jira issue. Fetches issue details, related issues, and epic context, then generates a structured plan document. Use when user says "plan task", "create plan", "jira-task plan", "기획 문서", "계획 작성", or wants to plan the implementation of a Jira issue.
+description: "Generate a planning document from a Jira issue. Fetches issue details, related issues, and epic context. Triggers: jira-task plan, create plan; 기획 문서, 계획 작성."
 user-invocable: false
 argument-hint: "<TASK-ID>"
 allowed-tools:

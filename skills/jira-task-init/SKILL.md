@@ -1,6 +1,6 @@
 ---
 name: jira-task-init
-description: Fetch assigned high-priority Jira tasks and set up git worktrees for each. Supports three argument modes - count (bulk init), issue key (sub-task analysis), or natural language. Use when user says "init sprint", "setup tasks", "작업 환경 세팅", "worktree 세팅", "스프린트 초기화", "할당된 작업 가져와", "jira-task init", "init MAE-2", or wants to prepare multiple task branches.
+description: "Fetch assigned high-priority Jira tasks and set up git worktrees for each (count, issue key, or natural language). Triggers: jira-task init, init sprint, setup tasks; 작업 환경 세팅, 스프린트 초기화, 할당된 작업 가져와."
 user-invocable: false
 argument-hint: "[count | ISSUE-KEY | 자연어설명]"
 allowed-tools:

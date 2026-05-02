@@ -1,6 +1,6 @@
 ---
 name: jira-local-merge
-description: Locally merge a Jira task branch into the base branch without a remote or PR. Handles merge strategy selection, Jira status transition, and MCP config removal. Outputs worktree cleanup instructions for manual execution after session ends. Use when user says "local merge", "merge task", "jira-task merge", "로컬 병합", "원격 없이 병합", or wants to merge without a remote origin.
+description: "Locally merge a Jira task branch into the base branch without a remote or PR. Triggers: jira-task merge, local merge; 로컬 병합, 원격 없이 병합."
 user-invocable: false
 argument-hint: "<TASK-ID>"
 allowed-tools:

@@ -1,6 +1,6 @@
 ---
 name: jira-task-done
-description: Complete a Jira task. Generates a completion summary, transitions the issue, and posts the summary to Jira. Use when user says "done", "complete task", "finish task", "jira-task done", "작업 완료", "태스크 완료", or wants to wrap up work on a Jira issue.
+description: "Complete a Jira task — generates a summary, transitions the issue to Done, and posts to Jira. Triggers: jira-task done, complete task; 작업 완료, 태스크 완료."
 user-invocable: false
 argument-hint: "<TASK-ID>"
 allowed-tools:

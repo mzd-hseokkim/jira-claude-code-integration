@@ -1,6 +1,6 @@
 ---
 name: jira-dashboard
-description: Dashboard lifecycle management — setup, start, stop, status. Invoked by /jira dashboard command.
+description: "Manage the Jira dashboard server — setup, start, stop, or check status. Triggers: jira dashboard, dashboard status; 대시보드 시작, 대시보드 상태."
 allowed-tools:
   - Bash
 ---

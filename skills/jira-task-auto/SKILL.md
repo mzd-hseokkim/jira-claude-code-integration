@@ -1,6 +1,6 @@
 ---
 name: jira-task-auto
-description: Auto-execute the full Jira task workflow (start → plan → design → impl → test → review) sequentially. Resumes from completedSteps if already partially done. Use when user says "auto", "jira-task auto", "자동 실행", "전체 워크플로 자동", or wants to run the full workflow without manual steps.
+description: "Auto-execute the full Jira task workflow (start → plan → design → impl → test → review) sequentially. Triggers: jira-task auto, auto run; 자동 실행, 전체 워크플로 자동."
 user-invocable: false
 argument-hint: "<TASK-ID>"
 allowed-tools:
