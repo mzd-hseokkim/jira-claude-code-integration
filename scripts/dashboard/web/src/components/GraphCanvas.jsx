@@ -7,6 +7,12 @@ import { useForceLayout } from './graph/useForceLayout.js';
 import { edgeTypes } from './graph/edgeTypes.jsx';
 import GraphNode from './graph/GraphNode.jsx';
 import GraphSidePanel from './graph/GraphSidePanel.jsx';
+import GraphFilterBar from './graph/GraphFilterBar.jsx';
+import {
+  buildFilterOptions,
+  computeMatchedKeys,
+  isFilterActive,
+} from './graph/filter.js';
 
 const nodeTypes = { graphNode: GraphNode };
 
@@ -23,9 +29,23 @@ export default function GraphCanvas({ worktrees }) {
     [worktrees]
   );
 
+  const filterOptions = useMemo(
+    () => buildFilterOptions(worktrees),
+    [worktrees]
+  );
+
+  const [statusSet, setStatusSet] = useState(() => new Set());
+  const [assigneeSet, setAssigneeSet] = useState(() => new Set());
+
+  const matchedKeys = useMemo(
+    () => computeMatchedKeys(worktrees, statusSet, assigneeSet),
+    [worktrees, statusSet, assigneeSet]
+  );
+  const filterActive = isFilterActive(statusSet, assigneeSet);
+
   const { flowNodes: initialNodes, flowEdges: initialEdges } = useMemo(
-    () => mapToFlow(graphData),
-    [graphData]
+    () => mapToFlow(graphData, { matchedKeys }),
+    [graphData, matchedKeys]
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -33,8 +53,8 @@ export default function GraphCanvas({ worktrees }) {
 
   // initialNodes/initialEdges가 바뀌면 React Flow 상태도 reset.
   // (useNodesState/useEdgesState는 초기값만 사용하므로 명시적 reset 필요)
-  const newNodesKey = initialNodes.map(n => n.id).join(',');
-  const newEdgesKey = initialEdges.map(e => e.id).join(',');
+  const newNodesKey = initialNodes.map(n => `${n.id}:${n.data?.dimmed ? 'd' : 'n'}`).join(',');
+  const newEdgesKey = initialEdges.map(e => `${e.id}:${e.data?.dimmed ? 'd' : 'n'}`).join(',');
   useEffect(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);
@@ -64,8 +84,35 @@ export default function GraphCanvas({ worktrees }) {
     return null;
   }, [selectedKey, worktrees]);
 
+  const toggleInSet = useCallback((setter) => (value) => {
+    setter(prev => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  }, []);
+
+  const onToggleStatus = useMemo(() => toggleInSet(setStatusSet), [toggleInSet]);
+  const onToggleAssignee = useMemo(() => toggleInSet(setAssigneeSet), [toggleInSet]);
+  const onClearStatus = useCallback(() => setStatusSet(new Set()), []);
+  const onClearAssignee = useCallback(() => setAssigneeSet(new Set()), []);
+
+  const matchedCount = filterActive ? matchedKeys.size : graphData.nodes.length;
+
   return (
     <main className="graph-canvas" data-testid="graph-canvas" aria-label="그래프 뷰">
+      <GraphFilterBar
+        options={filterOptions}
+        statusSet={statusSet}
+        assigneeSet={assigneeSet}
+        onToggleStatus={onToggleStatus}
+        onToggleAssignee={onToggleAssignee}
+        onClearStatus={onClearStatus}
+        onClearAssignee={onClearAssignee}
+        matchedCount={matchedCount}
+        totalCount={graphData.nodes.length}
+      />
       <div className="graph-canvas__flow">
         <ReactFlow
           nodes={nodes}

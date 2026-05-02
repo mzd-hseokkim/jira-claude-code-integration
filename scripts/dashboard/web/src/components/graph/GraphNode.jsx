@@ -7,8 +7,14 @@ import { Handle, Position } from '@xyflow/react';
  */
 export default function GraphNode({ data }) {
   const isPhantom = Boolean(data?.phantom);
+  const isDimmed = Boolean(data?.dimmed);
+  const className = [
+    'graph-node',
+    isPhantom ? 'graph-node--phantom' : '',
+    isDimmed ? 'graph-node--dimmed' : '',
+  ].filter(Boolean).join(' ');
   return (
-    <div className={`graph-node${isPhantom ? ' graph-node--phantom' : ''}`}>
+    <div className={className}>
       <Handle type="target" position={Position.Top} />
       <div className="graph-node__label" title={data?.label}>
         {data?.label ?? data?.id ?? '?'}
