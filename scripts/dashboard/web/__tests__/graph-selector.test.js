@@ -270,3 +270,41 @@ describe('selectGraphData', () => {
     expect(nodes[0].data.phantom).toBeUndefined();
   });
 });
+
+// U23: collector(extractLinks)의 실제 출력 형태(객체 배열) 회귀 가드.
+// 2026-05-02 회귀: selector가 string 배열로 가정해 객체를 그대로 target으로 박아
+// localeCompare 에러 → ErrorBoundary fallback 발동.
+describe('selectGraphData — links.blocks가 객체 배열인 경우 (real collector 출력)', () => {
+  it('객체 형태의 links.blocks에서 .key를 추출해 edge로 변환한다', () => {
+    const worktrees = {
+      '/a': {
+        cachedIssue: {
+          key: 'MAE-1',
+          summary: 'first',
+          links: {
+            blocks: [
+              { key: 'MAE-2', summary: 'second', status: '할 일', statusCategory: 'new' },
+            ],
+            blockedBy: [],
+          },
+        },
+      },
+      '/b': {
+        cachedIssue: {
+          key: 'MAE-2',
+          summary: 'second',
+          links: { blocks: [], blockedBy: [] },
+        },
+      },
+    };
+    const result = selectGraphData(worktrees);
+    expect(result.edges).toHaveLength(1);
+    expect(result.edges[0]).toMatchObject({
+      source: 'MAE-1',
+      target: 'MAE-2',
+      type: 'blocks',
+    });
+    // edge.target은 반드시 string (정렬 가능해야 함).
+    expect(typeof result.edges[0].target).toBe('string');
+  });
+});

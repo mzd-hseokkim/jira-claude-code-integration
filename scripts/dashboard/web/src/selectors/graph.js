@@ -48,7 +48,11 @@ export function buildBlocksEdges(worktrees) {
     const issue = wt?.cachedIssue;
     if (!issue?.key) continue;
     const blocks = issue.links?.blocks ?? [];
-    for (const targetKey of blocks) {
+    for (const entry of blocks) {
+      // collector(extractLinks)가 { key, summary, status, statusCategory } 객체를 만든다.
+      // 옛 시점에 string 배열을 가정한 코드 회귀 방지로 두 형태 모두 수용.
+      const targetKey = typeof entry === 'string' ? entry : entry?.key;
+      if (!targetKey || typeof targetKey !== 'string') continue;
       if (targetKey === issue.key) continue; // self-loop guard
       const id = `blocks:${issue.key}->${targetKey}`;
       if (seen.has(id)) continue;
