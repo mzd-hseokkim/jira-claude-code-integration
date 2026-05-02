@@ -64,12 +64,7 @@ body::after {
     radial-gradient(circle at 88% 78%, rgba(34, 211, 238, 0.4) 1.5px, transparent 2.5px),
     radial-gradient(circle at 55% 50%, rgba(96, 165, 250, 0.3) 1.5px, transparent 2.5px);
   background-repeat: no-repeat;
-  animation: circuit-flicker 6s ease-in-out infinite;
-}
-
-@keyframes circuit-flicker {
-  0%, 100% { opacity: 0.6; }
-  50%      { opacity: 1; }
+  opacity: 0.8;
 }
 
 /* 본문 컨텐츠를 패턴 위에 띄우기 */
@@ -96,10 +91,10 @@ body > * { position: relative; z-index: 1; }
   margin: 0;
   padding: 14px 24px 12px;
   background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.92) 0%, rgba(15, 23, 42, 0.82) 100%);
+    linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(15, 23, 42, 0.92) 100%);
   border-bottom: 1px solid rgba(125, 211, 252, 0.22);
-  backdrop-filter: blur(14px) saturate(160%);
-  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   box-shadow:
     0 1px 0 rgba(125, 211, 252, 0.06) inset,
     0 8px 24px -16px rgba(15, 23, 42, 0.7);
@@ -379,9 +374,9 @@ body > * { position: relative; z-index: 1; }
   font-size: 10.5px;
   color: #64748b;
   background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.55) 0%, rgba(15, 23, 42, 0.85) 100%);
-  backdrop-filter: blur(10px) saturate(160%);
-  -webkit-backdrop-filter: blur(10px) saturate(160%);
+    linear-gradient(180deg, rgba(15, 23, 42, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border-top: 1px solid rgba(125, 211, 252, 0.18);
   letter-spacing: 0.04em;
   text-transform: lowercase;
@@ -423,9 +418,7 @@ body > * { position: relative; z-index: 1; }
 /* ===== Worktree Card (frosted glass) ===== */
 .wt-card {
   position: relative;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: #ffffff;
   border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 14px;
   padding: 14px 16px;
@@ -438,6 +431,7 @@ body > * { position: relative; z-index: 1; }
     0 8px 24px -8px rgba(15, 23, 42, 0.45),
     0 20px 56px -20px rgba(15, 23, 42, 0.4);
   transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+  contain: layout paint;
 }
 
 .wt-card:hover {
@@ -626,8 +620,6 @@ body > * { position: relative; z-index: 1; }
   white-space: nowrap;
   letter-spacing: 0.01em;
   border: 1px solid rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
 }
 
 .wt-badge--status-todo        { background: var(--color-status-todo-bg);        color: var(--color-status-todo-text); }
@@ -1280,5 +1272,4 @@ body > * { position: relative; z-index: 1; }
   .wt-card--awaiting                 { animation: none; }
   .activity-panel__pulse-dot         { animation: none; }
   .kitt-bar__scanner                 { animation: none; left: 50%; }
-  body::after                        { animation: none; }
 }
