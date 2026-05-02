@@ -59,6 +59,30 @@ function extractParent(fields) {
   };
 }
 
+function isEpic(issuetype) {
+  const name = issuetype?.name;
+  return name === 'Epic' || name === '에픽';
+}
+
+/**
+ * Jira issue 응답에서 epic key를 추출.
+ * 정책 (MAE-256): Story/Task('작업' hierarchyLevel 0)의 parent가 Epic이면 그 키를 반환.
+ * Subtask는 응답에 grandparent가 펼쳐지지 않으므로 null을 반환 — selector(MAE-261)에서
+ * worktree 간 parent join으로 해결.
+ *
+ * @param {object|null|undefined} fields  Jira issue 응답의 fields 객체
+ * @returns {string|null}  epic issue key (예: "MAE-249") 또는 null
+ */
+function extractEpic(fields) {
+  if (!fields) return null;
+  if (isEpic(fields.issuetype)) return null;
+  const parent = fields.parent;
+  if (parent && isEpic(parent.fields?.issuetype)) {
+    return parent.key ?? null;
+  }
+  return null;
+}
+
 async function fetchIssue(creds, key) {
   const url = `${creds.jiraUrl.replace(/\/$/, '')}/rest/api/3/issue/${encodeURIComponent(key)}` +
     '?fields=summary,status,priority,assignee,issuetype,description,issuelinks,parent';
@@ -151,6 +175,7 @@ function startJiraCollector(store, opts) {
           issuetype: issue.fields && issue.fields.issuetype && issue.fields.issuetype.name,
           links: extractLinks(issue.fields),
           parent: extractParent(issue.fields),
+          epic: extractEpic(issue.fields),
           fetchedAt: new Date().toISOString(),
         });
         logger && logger.info('jira-collector.refreshed', { path: entry.path, key: entry.taskId });
@@ -205,4 +230,4 @@ function startJiraCollector(store, opts) {
   };
 }
 
-module.exports = { startJiraCollector, fetchIssue };
+module.exports = { startJiraCollector, fetchIssue, extractEpic };
