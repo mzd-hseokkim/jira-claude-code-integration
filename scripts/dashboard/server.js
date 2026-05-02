@@ -9,6 +9,7 @@ const { loadCredentials } = require('./credentials');
 const { startWorktreeCollector } = require('./collectors/worktree');
 const { startJiraCollector } = require('./collectors/jira');
 const { createIngestRouter } = require('./routes/ingest');
+const { createCleanupRouter } = require('./routes/cleanup');
 const { openBrowser } = require('./openBrowser');
 
 const DEFAULT_PORT = 8765;
@@ -69,6 +70,7 @@ async function startServer(opts = {}) {
     app.get('/events', handleSSE);
     app.get('/health', (_req, res) => res.json({ ok: true }));
     app.use('/ingest', createIngestRouter(store, logger));
+    app.use('/cleanup', createCleanupRouter(store, logger, workspaceRoot));
     app.use(express.static(path.join(__dirname, 'public')));
   } catch {
     // express not available — use raw http (minimal, for environments without npm install)

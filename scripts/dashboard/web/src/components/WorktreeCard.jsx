@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ActivityPanel from './ActivityPanel.jsx';
 import Stepper from './Stepper.jsx';
 import {
@@ -127,6 +127,39 @@ export default function WorktreeCard({ worktree }) {
   // Stale = Jira 상태가 완료인데 worktree가 아직 살아있음 (정리 대상).
   const isStale = !noContext && status === '완료';
 
+  // 정리 버튼 상태.
+  const [cleaning, setCleaning] = useState(false);
+  const [cleanupError, setCleanupError] = useState(null);
+
+  async function handleCleanup() {
+    if (!path) return;
+    const ok = window.confirm(
+      `worktree와 branch를 제거할까요?\n\n` +
+      `- worktree: ${path}\n` +
+      `- branch: ${branch ?? '(없음)'}\n\n` +
+      `(uncommitted 변경이 있으면 거부됩니다.)`
+    );
+    if (!ok) return;
+    setCleaning(true);
+    setCleanupError(null);
+    try {
+      const res = await fetch('/cleanup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCleanupError(json.error ?? `HTTP ${res.status}`);
+      }
+      // 성공 시: SSE worktree.removed로 카드가 사라지므로 별도 처리 불요.
+    } catch (err) {
+      setCleanupError(err.message);
+    } finally {
+      setCleaning(false);
+    }
+  }
+
   // 카드 활성 상태 클래스: awaiting(우선) > busy > idle.
   const stateClass = isAwaiting
     ? 'wt-card--awaiting'
@@ -153,6 +186,21 @@ export default function WorktreeCard({ worktree }) {
         {noContext && <span className="wt-card__no-context-badge" title={path}>no jira</span>}
         {isAwaiting && <span className="wt-card__awaiting-badge">⏵ 응답 대기</span>}
         {isStale && <span className="wt-card__stale-badge">stale</span>}
+        {isStale && (
+          <button
+            type="button"
+            className="wt-card__cleanup-btn"
+            onClick={handleCleanup}
+            disabled={cleaning}
+            title={cleanupError ?? `${branch ?? path} 제거`}
+            aria-label="worktree 및 branch 제거"
+          >
+            {cleaning ? '정리 중…' : '🗑 정리'}
+          </button>
+        )}
+        {cleanupError && (
+          <span className="wt-card__cleanup-error" title={cleanupError}>⚠ {cleanupError}</span>
+        )}
         {isBlocked && (
           <span
             className="wt-card__blocked-badge"

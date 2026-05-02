@@ -1420,6 +1420,40 @@ body > * { position: relative; z-index: 1; }
   font-weight: 600;
 }
 
+/* 정리 버튼: stale 상태일 때만 노출. worktree + branch 제거. */
+.wt-card__cleanup-btn {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #991b1b;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 0.15s, border-color 0.15s;
+}
+.wt-card__cleanup-btn:hover:not(:disabled) {
+  background: #fecaca;
+  border-color: #f87171;
+}
+.wt-card__cleanup-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.wt-card__cleanup-error {
+  font-size: 10px;
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 1px 6px;
+  border-radius: 3px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ===== Card state: busy (Claude가 응답 생성 중) =====
    배경 살짝 푸르게 + 두꺼운 청색 링 + 강한 glow. */
 .wt-card--busy {
