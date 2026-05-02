@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from 'd3-force';
+import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceY } from 'd3-force';
 
 /**
  * d3-force 기반 force-directed 레이아웃 훅.
@@ -47,16 +47,27 @@ export function useForceLayout(initialNodes, edges, setNodes, opts = {}) {
     });
     d3NodesRef.current = d3Nodes;
 
+    // edge type을 보존해서 link 강도/거리를 분리.
     const d3Links = edges.map(e => ({
       source: e.source,
       target: e.target,
+      relType: e.type,  // 'blocks' | 'parent' | 'epic'
     }));
 
+    // parent/epic 엣지를 따라 BFS로 depth 계산 (target=부모 → 작은 y, source=자식 → 큰 y).
+    // 부모-자식 계층이 위→아래로 자연스럽게 흐르도록 forceY로 끌어당기기.
+    const targetY = computeHierarchyTargetY(d3Nodes, edges);
+
     const simulation = forceSimulation(d3Nodes)
-      .force('link', forceLink(d3Links).id(d => d.id).distance(180).strength(0.6))
+      .force('link', forceLink(d3Links).id(d => d.id)
+        // parent/epic은 짧고 강하게 (계층 응집), blocks는 길고 약하게 (느슨).
+        .distance(l => (l.relType === 'parent' || l.relType === 'epic') ? 140 : 220)
+        .strength(l => (l.relType === 'parent' || l.relType === 'epic') ? 0.9 : 0.3))
       .force('charge', forceManyBody().strength(-900).distanceMax(600))
       .force('center', forceCenter(0, 0))
       .force('collide', forceCollide(80))
+      // 계층 y-pinning: depth가 정의된 노드는 그 y로 끌림. 미정의는 0.
+      .force('y', forceY().y(d => targetY[d.id] ?? 0).strength(d => targetY[d.id] != null ? 0.18 : 0))
       .alphaDecay(0.04)
       .alphaMin(0.02);
 
@@ -118,4 +129,69 @@ export function useForceLayout(initialNodes, edges, setNodes, opts = {}) {
       sim.alpha(0.3).restart();
     },
   };
+}
+
+/**
+ * parent/epic 엣지를 따라 노드의 계층 depth를 계산하고 target y 좌표를 부여.
+ *
+ * 규칙:
+ * - parent/epic edge에서 source = 자식, target = 부모 (selectGraphData 계약).
+ * - 부모는 자식보다 y가 작아야 함(위쪽). 즉 target.depth = source.depth - 1.
+ * - 루트(자식 없거나 부모 없는 노드)는 depth 0에 가깝게 둔다.
+ *
+ * 알고리즘:
+ *   1. parent/epic edge로 부모→자식 그래프 구성.
+ *   2. 부모로 들어오는 엣지가 없는 노드(=루트)를 찾아 depth 0에서 시작.
+ *   3. BFS로 자식 depth = 부모 depth + 1 부여.
+ *   4. y = depth * 200.
+ *
+ * @param {Array<{id:string}>} d3Nodes
+ * @param {Array<{source:string, target:string, type:string}>} edges
+ * @returns {Record<string, number>} id → target y (없으면 미정의)
+ */
+function computeHierarchyTargetY(d3Nodes, edges) {
+  // hierarchy edges만 추출. source=자식, target=부모.
+  const hier = edges.filter(e => e.type === 'parent' || e.type === 'epic');
+  if (hier.length === 0) return {};
+
+  // 부모 → 자식들 map (BFS는 부모에서 자식으로 내려감).
+  const childrenOf = new Map();
+  // 부모로 들어오는 엣지 카운트(자식인지 판별 — 즉 본인이 다른 노드의 자식이면 카운트).
+  const isChild = new Set();
+  for (const e of hier) {
+    isChild.add(e.source);  // source = 자식
+    if (!childrenOf.has(e.target)) childrenOf.set(e.target, []);
+    childrenOf.get(e.target).push(e.source);
+  }
+
+  const allIds = d3Nodes.map(n => n.id);
+  // 루트 후보: 부모(target) 위치에는 등장하는데 자식(source)으로는 등장 안 하는 노드.
+  // 또는 hierarchy edge에 전혀 등장 안 하는 노드도 그냥 depth 0에서 시작.
+  const targets = new Set(hier.map(e => e.target));
+  const roots = allIds.filter(id => targets.has(id) && !isChild.has(id));
+
+  const depth = {};
+  const queue = [];
+  for (const r of roots) { depth[r] = 0; queue.push(r); }
+
+  while (queue.length) {
+    const cur = queue.shift();
+    const kids = childrenOf.get(cur) ?? [];
+    for (const k of kids) {
+      if (k in depth) continue; // 이미 더 가까운 부모로 부여됨
+      depth[k] = depth[cur] + 1;
+      queue.push(k);
+    }
+  }
+
+  // y 좌표로 변환 (depth 0 = y -200 정도 위, depth 1 = 0, 2 = +200, ...).
+  // 평균 depth를 0에 맞춰 캔버스 중앙에 펼치도록 조정.
+  const depths = Object.values(depth);
+  if (depths.length === 0) return {};
+  const avg = depths.reduce((a,b) => a+b, 0) / depths.length;
+  const out = {};
+  for (const [id, d] of Object.entries(depth)) {
+    out[id] = (d - avg) * 200;
+  }
+  return out;
 }
