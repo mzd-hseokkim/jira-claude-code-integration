@@ -24,6 +24,7 @@ export function mapToFlow({ nodes, edges }) {
     source: e.source,
     target: e.target,
     type: e.type,
+    className: 'marching-ants',
     data: e.data ?? {},
   }));
 

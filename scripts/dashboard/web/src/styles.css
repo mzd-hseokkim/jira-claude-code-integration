@@ -457,6 +457,17 @@ body > * { position: relative; z-index: 1; }
   .dashboard-grid { grid-template-columns: 1fr; }
 }
 
+/* ===== Marching Ants Edge Animation ===== */
+@keyframes marching-ants-flow {
+  0%   { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -12; }
+}
+
+.marching-ants .react-flow__edge-path {
+  stroke-dasharray: 8 4;
+  animation: marching-ants-flow 1s linear infinite;
+}
+
 /* ===== Graph Canvas ===== */
 .graph-canvas {
   flex: 1 1 auto;
