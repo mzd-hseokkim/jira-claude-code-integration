@@ -2,7 +2,7 @@
 
 **[English]** | [한국어](#korean)
 
-[![Version](https://img.shields.io/badge/version-0.30.1-blue)](#)
+[![Version](https://img.shields.io/badge/version-0.31.0-blue)](#)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-orange)](https://docs.anthropic.com/en/docs/claude-code)
 [![MCP](https://img.shields.io/badge/MCP-mcp--atlassian-purple)](https://github.com/sooperset/mcp-atlassian)
