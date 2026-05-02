@@ -13,6 +13,7 @@ import {
   computeMatchedKeys,
   isFilterActive,
 } from './graph/filter.js';
+import { findIsolatedNodes, findCycleEdges } from './graph/analysis.js';
 
 const nodeTypes = { graphNode: GraphNode };
 
@@ -43,9 +44,18 @@ export default function GraphCanvas({ worktrees }) {
   );
   const filterActive = isFilterActive(statusSet, assigneeSet);
 
+  const isolatedSet = useMemo(
+    () => findIsolatedNodes(graphData.nodes, graphData.edges),
+    [graphData]
+  );
+  const cycleEdgeSet = useMemo(
+    () => findCycleEdges(graphData.nodes, graphData.edges.filter(e => e.type === 'blocks')),
+    [graphData]
+  );
+
   const { flowNodes: initialNodes, flowEdges: initialEdges } = useMemo(
-    () => mapToFlow(graphData, { matchedKeys }),
-    [graphData, matchedKeys]
+    () => mapToFlow(graphData, { matchedKeys, isolatedSet, cycleEdgeSet }),
+    [graphData, matchedKeys, isolatedSet, cycleEdgeSet]
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -53,8 +63,8 @@ export default function GraphCanvas({ worktrees }) {
 
   // initialNodes/initialEdges가 바뀌면 React Flow 상태도 reset.
   // (useNodesState/useEdgesState는 초기값만 사용하므로 명시적 reset 필요)
-  const newNodesKey = initialNodes.map(n => `${n.id}:${n.data?.dimmed ? 'd' : 'n'}`).join(',');
-  const newEdgesKey = initialEdges.map(e => `${e.id}:${e.data?.dimmed ? 'd' : 'n'}`).join(',');
+  const newNodesKey = initialNodes.map(n => `${n.id}:${n.data?.dimmed ? 'd' : 'n'}:${n.data?.isolated ? 'i' : '_'}`).join(',');
+  const newEdgesKey = initialEdges.map(e => `${e.id}:${e.data?.dimmed ? 'd' : 'n'}:${e.data?.cycle ? 'c' : '_'}`).join(',');
   useEffect(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);

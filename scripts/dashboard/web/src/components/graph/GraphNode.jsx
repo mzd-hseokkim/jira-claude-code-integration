@@ -8,10 +8,12 @@ import { Handle, Position } from '@xyflow/react';
 export default function GraphNode({ data }) {
   const isPhantom = Boolean(data?.phantom);
   const isDimmed = Boolean(data?.dimmed);
+  const isIsolated = Boolean(data?.isolated);
   const className = [
     'graph-node',
     isPhantom ? 'graph-node--phantom' : '',
     isDimmed ? 'graph-node--dimmed' : '',
+    isIsolated ? 'graph-node--isolated' : '',
   ].filter(Boolean).join(' ');
   return (
     <div className={className}>

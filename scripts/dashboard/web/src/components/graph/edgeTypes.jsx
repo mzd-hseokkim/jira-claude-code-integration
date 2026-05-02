@@ -24,15 +24,26 @@ const RELATION_STYLES = {
 };
 
 export function BlocksEdge(props) {
-  const { stroke, strokeWidth, labelBg, labelColor } = RELATION_STYLES.blocks;
+  const isCycle = Boolean(props?.data?.cycle);
+  const base = RELATION_STYLES.blocks;
+  // 사이클 멤버 엣지: 짙은 빨강 + 점선 + 굵게 + 'blocks ⟲' 라벨 (MAE-267).
+  const stroke = isCycle ? '#7f1d1d' : base.stroke;
+  const strokeWidth = isCycle ? 2.5 : base.strokeWidth;
+  const labelBg = isCycle ? '#fee2e2' : base.labelBg;
+  const labelColor = isCycle ? '#7f1d1d' : base.labelColor;
+  const label = isCycle ? 'blocks ⟲' : 'blocks';
+  // dash 패턴 '8 4' — marching-ants 흐름(.react-flow__edge-path 애니메이션)과 시각적으로 분리되도록 길게.
+  const style = isCycle
+    ? { stroke, strokeWidth, strokeDasharray: '8 4' }
+    : { stroke, strokeWidth };
   return (
     <BezierEdge
       {...props}
-      label="blocks"
-      style={{ stroke, strokeWidth }}
+      label={label}
+      style={style}
       markerEnd={{ type: MarkerType.ArrowClosed, color: stroke }}
       labelBgStyle={{ fill: labelBg }}
-      labelStyle={{ fill: labelColor, fontSize: 11 }}
+      labelStyle={{ fill: labelColor, fontSize: 11, fontWeight: isCycle ? 600 : 400 }}
       labelBgPadding={[6, 3]}
       labelBgBorderRadius={4}
     />

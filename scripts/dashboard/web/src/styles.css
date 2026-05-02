@@ -646,6 +646,21 @@ body > * { position: relative; z-index: 1; }
   opacity: 0.18;
 }
 
+/* 고립 노드: dashed 테두리 + 약한 흐림 (MAE-267)
+   dimmed와 누적 가능 — 결합 셀렉터 .graph-node--isolated.graph-node--dimmed로 우선순위 명시. */
+.graph-node--isolated {
+  border-style: dashed;
+  border-color: rgba(148, 163, 184, 0.7);
+  opacity: 0.7;
+}
+.graph-node--isolated:hover {
+  opacity: 0.9;
+}
+/* dimmed가 함께 적용된 경우 더 강한 흐림이 우선 */
+.graph-node--isolated.graph-node--dimmed {
+  opacity: 0.22;
+}
+
 /* ===== Graph Side Panel ===== */
 .graph-side-panel {
   position: absolute;
