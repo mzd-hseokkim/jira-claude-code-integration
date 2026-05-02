@@ -186,21 +186,6 @@ export default function WorktreeCard({ worktree }) {
         {noContext && <span className="wt-card__no-context-badge" title={path}>no jira</span>}
         {isAwaiting && <span className="wt-card__awaiting-badge">⏵ 응답 대기</span>}
         {isStale && <span className="wt-card__stale-badge">stale</span>}
-        {isStale && (
-          <button
-            type="button"
-            className="wt-card__cleanup-btn"
-            onClick={handleCleanup}
-            disabled={cleaning}
-            title={cleanupError ?? `${branch ?? path} 제거`}
-            aria-label="worktree 및 branch 제거"
-          >
-            {cleaning ? '정리 중…' : '🗑 정리'}
-          </button>
-        )}
-        {cleanupError && (
-          <span className="wt-card__cleanup-error" title={cleanupError}>⚠ {cleanupError}</span>
-        )}
         {isBlocked && (
           <span
             className="wt-card__blocked-badge"
@@ -315,6 +300,22 @@ export default function WorktreeCard({ worktree }) {
       ) : null}
 
       <ActivityPanel activity={activity} fallback={fallbackEvents} />
+
+      {isStale && (
+        <button
+          type="button"
+          className="wt-card__cleanup-fab"
+          onClick={handleCleanup}
+          disabled={cleaning}
+          title={cleanupError ?? `${branch ?? path} 제거`}
+          aria-label="worktree 및 branch 제거"
+        >
+          {cleaning ? '정리 중…' : '🗑 정리'}
+        </button>
+      )}
+      {cleanupError && (
+        <span className="wt-card__cleanup-error" title={cleanupError}>⚠ {cleanupError}</span>
+      )}
     </div>
   );
 }
