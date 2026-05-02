@@ -230,4 +230,4 @@ function startJiraCollector(store, opts) {
   };
 }
 
-module.exports = { startJiraCollector, fetchIssue, extractEpic };
+module.exports = { startJiraCollector, fetchIssue, extractEpic, extractParent, extractLinks };
