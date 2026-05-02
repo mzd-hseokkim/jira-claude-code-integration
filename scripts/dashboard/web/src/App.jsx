@@ -6,6 +6,7 @@ import ConnectionBanner from './components/ConnectionBanner.jsx';
 import KittBar from './components/KittBar.jsx';
 import WorktreeCard from './components/WorktreeCard.jsx';
 import GraphCanvas from './components/GraphCanvas.jsx';
+import GraphErrorBoundary from './components/GraphErrorBoundary.jsx';
 
 /**
  * 마지막 activity ts (없으면 null).
@@ -223,7 +224,9 @@ function Dashboard() {
         </div>
       </header>
       {viewMode === 'graph' ? (
-        <GraphCanvas worktrees={state.worktrees} />
+        <GraphErrorBoundary onFallback={() => setViewMode('cards')}>
+          <GraphCanvas worktrees={state.worktrees} />
+        </GraphErrorBoundary>
       ) : (
         <main className={`dashboard-grid${isIdle ? ' is-idle' : ''}`}>
           {sorted.length === 0 ? (
