@@ -66,6 +66,7 @@ function Dashboard() {
   const [sortKey, setSortKey] = useState('activity');
   const [sortDir, setSortDir] = useState('desc');
   const [filter, setFilter] = useState('');
+  const [viewMode, setViewMode] = useState('cards');
 
   function handleSortClick(key) {
     if (key === sortKey) {
@@ -159,6 +160,27 @@ function Dashboard() {
           </div>
         </div>
         <div className="dashboard-header__controls">
+          <div className="view-toggle" role="radiogroup" aria-label="뷰 모드">
+            <span className="view-toggle__label">VIEW</span>
+            <button
+              type="button"
+              className={`view-toggle__btn${viewMode === 'cards' ? ' view-toggle__btn--active' : ''}`}
+              role="radio"
+              aria-checked={viewMode === 'cards'}
+              onClick={() => setViewMode('cards')}
+            >
+              카드
+            </button>
+            <button
+              type="button"
+              className={`view-toggle__btn${viewMode === 'graph' ? ' view-toggle__btn--active' : ''}`}
+              role="radio"
+              aria-checked={viewMode === 'graph'}
+              onClick={() => setViewMode('graph')}
+            >
+              그래프
+            </button>
+          </div>
           <div className="sort-chips" role="toolbar" aria-label="정렬 기준">
             <span className="sort-chips__label">SORT</span>
             {SORT_OPTIONS.map(opt => {

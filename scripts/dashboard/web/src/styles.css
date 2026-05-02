@@ -251,6 +251,48 @@ body > * { position: relative; z-index: 1; }
   flex-wrap: wrap;
 }
 
+.view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 4px;
+}
+
+.view-toggle__label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #64748b;
+  margin-right: 4px;
+}
+
+.view-toggle__btn {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 999px;
+  padding: 4px 11px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.view-toggle__btn:hover {
+  color: #e0f2fe;
+  border-color: rgba(125, 211, 252, 0.4);
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.view-toggle__btn--active {
+  color: #0c4a6e;
+  background: linear-gradient(135deg, #bae6fd 0%, #7dd3fc 100%);
+  border-color: rgba(186, 230, 253, 0.7);
+  box-shadow: 0 0 14px rgba(125, 211, 252, 0.45);
+  font-weight: 600;
+}
+
 .sort-chips {
   display: inline-flex;
   align-items: center;
