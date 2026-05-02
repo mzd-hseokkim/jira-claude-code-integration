@@ -48,6 +48,17 @@ function linkSummary(issue) {
   };
 }
 
+function extractParent(fields) {
+  const parent = fields?.parent;
+  if (!parent || !parent.key) return null;
+  return {
+    key: parent.key,
+    summary: parent.fields?.summary ?? null,
+    status: parent.fields?.status?.name ?? null,
+    statusCategory: parent.fields?.status?.statusCategory?.key ?? null,
+  };
+}
+
 async function fetchIssue(creds, key) {
   const url = `${creds.jiraUrl.replace(/\/$/, '')}/rest/api/3/issue/${encodeURIComponent(key)}` +
     '?fields=summary,status,priority,assignee,issuetype,description,issuelinks,parent';
@@ -139,6 +150,7 @@ function startJiraCollector(store, opts) {
             : 'Unassigned',
           issuetype: issue.fields && issue.fields.issuetype && issue.fields.issuetype.name,
           links: extractLinks(issue.fields),
+          parent: extractParent(issue.fields),
           fetchedAt: new Date().toISOString(),
         });
         logger && logger.info('jira-collector.refreshed', { path: entry.path, key: entry.taskId });
