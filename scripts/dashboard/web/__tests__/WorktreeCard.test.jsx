@@ -150,9 +150,9 @@ describe('WorktreeCard — noContext fallback', () => {
     activity: [],
   };
 
-  it('"no context" 배지 표시', () => {
+  it('"no jira" 배지 표시', () => {
     render(<WorktreeCard worktree={noCtxWorktree} />);
-    expect(screen.getByText('no context')).toBeInTheDocument();
+    expect(screen.getByText('no jira')).toBeInTheDocument();
   });
 
   it('Jira 필드 자리에 "—" 표시', () => {
