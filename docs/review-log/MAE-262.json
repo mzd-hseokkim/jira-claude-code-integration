@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MAE-262",
+  "entries": [
+    {
+      "taskId": "MAE-262",
+      "timestamp": "2026-05-02T09:34:23Z",
+      "reviewerVersion": "1a96d60c458c",
+      "outcome": "fail",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "info",
+          "file": "scripts/dashboard/web/src/components/GraphCanvas.jsx",
+          "line": 33,
+          "category": "bug",
+          "message": "setEdges 누락으로 worktrees 변경 시 edges 리셋 안됨"
+        },
+        {
+          "id": "F-002",
+          "severity": "info",
+          "file": "scripts/dashboard/web/__tests__/useForceLayout.test.js",
+          "line": null,
+          "category": "test",
+          "message": "U1 테스트 미구현 (tick 후 좌표 변동)"
+        },
+        {
+          "id": "F-003",
+          "severity": "info",
+          "file": "scripts/dashboard/web/__tests__/useForceLayout.test.js",
+          "line": null,
+          "category": "test",
+          "message": "U3 테스트 미구현 (RAF throttle 검증)"
+        },
+        {
+          "id": "F-004",
+          "severity": "info",
+          "file": "scripts/dashboard/web/__tests__/GraphCanvas.test.jsx",
+          "line": null,
+          "category": "test",
+          "message": "E5 테스트 미구현 (그래프↔카드 모드 전환 시 simulation.stop)"
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 4
+      },
+      "falsePositive": null,
+      "userOverride": null
+    },
+    {
+      "taskId": "MAE-262",
+      "timestamp": "2026-05-02T10:07:54Z",
+      "reviewerVersion": "1a96d60c458c",
+      "outcome": "pass",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "info",
+          "file": "scripts/dashboard/web/src/components/GraphCanvas.jsx",
+          "line": 41,
+          "category": "deadCode",
+          "message": "eslint-disable 주석이 의도된 것이나 ESLint 미설정 환경에서 no-op"
+        },
+        {
+          "id": "F-002",
+          "severity": "info",
+          "file": "scripts/dashboard/web/src/components/graph/useForceLayout.js",
+          "line": 79,
+          "category": "deadCode",
+          "message": "동일 eslint-disable 주석"
+        },
+        {
+          "id": "F-003",
+          "severity": "info",
+          "file": "scripts/dashboard/web/src/components/GraphCanvas.jsx",
+          "line": 60,
+          "category": "performance",
+          "message": "worktrees 전체 순회 매 selection마다 - 현 스케일에서 YAGNI"
+        },
+        {
+          "id": "F-004",
+          "severity": "info",
+          "file": "scripts/dashboard/web/__tests__/GraphCanvas.test.jsx",
+          "line": 91,
+          "category": "testCoverage",
+          "message": "E3 케이스 fallback assertion 약함"
+        },
+        {
+          "id": "F-005",
+          "severity": "info",
+          "file": "scripts/dashboard/web/src/components/graph/useForceLayout.js",
+          "line": 23,
+          "category": "robustness",
+          "message": "deps 키 구분자 콤마 사용 - 충돌안전 구분자 권장"
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 5
+      },
+      "falsePositive": null,
+      "userOverride": null
+    }
+  ]
+}

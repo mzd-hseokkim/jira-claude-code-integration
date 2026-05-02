@@ -223,7 +223,7 @@ function Dashboard() {
         </div>
       </header>
       {viewMode === 'graph' ? (
-        <GraphCanvas worktrees={sorted} />
+        <GraphCanvas worktrees={state.worktrees} />
       ) : (
         <main className={`dashboard-grid${isIdle ? ' is-idle' : ''}`}>
           {sorted.length === 0 ? (
