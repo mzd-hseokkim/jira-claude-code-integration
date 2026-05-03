@@ -225,6 +225,10 @@ function startJiraCollector(store, opts) {
       const { creds, skip } = resolveCredsForEntry(entry);
       if (skip) continue;
 
+      const entryLog = logger && typeof logger.child === 'function' && entry.workspaceRoot
+        ? logger.child({ workspace: entry.workspaceRoot })
+        : logger;
+
       try {
         const issue = await fetchIssue(creds, entry.taskId);
         store.updateCachedIssue(entry.path, {
@@ -241,20 +245,20 @@ function startJiraCollector(store, opts) {
           epic: extractEpic(issue.fields),
           fetchedAt: new Date().toISOString(),
         });
-        logger && logger.info('jira-collector.refreshed', { path: entry.path, key: entry.taskId });
+        entryLog && entryLog.info('jira-collector.refreshed', { path: entry.path, key: entry.taskId });
       } catch (err) {
         if (err.status === 401 || err.status === 403) {
           // Auth failure — abort this cycle entirely
-          logger && logger.error('jira-collector.auth-error', { key: entry.taskId, status: err.status });
+          entryLog && entryLog.error('jira-collector.auth-error', { key: entry.taskId, status: err.status });
           return;
         }
         if (err.status === 429) {
           // Rate limit — abort this cycle, next tick will retry
-          logger && logger.error('jira-collector.rate-limited', { key: entry.taskId });
+          entryLog && entryLog.error('jira-collector.rate-limited', { key: entry.taskId });
           return;
         }
         // 5xx / timeout / network — skip this entry, continue
-        logger && logger.warn('jira-collector.fetch-error', { key: entry.taskId, error: err.message });
+        entryLog && entryLog.warn('jira-collector.fetch-error', { key: entry.taskId, error: err.message });
       }
 
       // Sequential backoff between requests

@@ -90,6 +90,9 @@ function readJiraContext(worktreePath, logger = null) {
  * @returns {Set<string>} paths seen for this root
  */
 function collectWorktreesForRoot(store, workspaceRoot, logger) {
+  const log = logger && typeof logger.child === 'function'
+    ? logger.child({ workspace: workspaceRoot })
+    : logger;
   let stdout;
   try {
     stdout = execSync('git worktree list --porcelain', {
@@ -98,7 +101,7 @@ function collectWorktreesForRoot(store, workspaceRoot, logger) {
       timeout: 10_000,
     });
   } catch (err) {
-    logger && logger.error('git-worktree-list.failed', { workspaceRoot, error: err.message });
+    log && log.error('git-worktree-list.failed', { workspaceRoot, error: err.message });
     console.error('[worktree] git worktree list failed:', err.message);
     return new Set();
   }
@@ -111,7 +114,7 @@ function collectWorktreesForRoot(store, workspaceRoot, logger) {
     // feature work, and the base worktree is not a unit of work.
     if (wt.branch === 'main' || wt.branch === 'master') continue;
     seenPaths.add(wt.path);
-    const ctx = readJiraContext(wt.path, logger);
+    const ctx = readJiraContext(wt.path, log);
     const state = {
       path: wt.path,
       branch: wt.branch,
@@ -213,7 +216,10 @@ function startWorktreeCollector(store, opts) {
 
       const handleChange = (filePath) => {
         const worktreePath = path.dirname(filePath);
-        const ctx = readJiraContext(worktreePath, logger);
+        const wtLog = logger && typeof logger.child === 'function'
+          ? logger.child({ workspace: worktreePath })
+          : logger;
+        const ctx = readJiraContext(worktreePath, wtLog);
         if (ctx === null) {
           // File may have been removed or is unreadable; re-run full collect
           collectWorktrees(store, workspaceRoots, logger);
@@ -236,13 +242,16 @@ function startWorktreeCollector(store, opts) {
           status: ctx.status,
           epic: ctx.epic,
         });
-        logger && logger.info('worktree.context-changed', { path: worktreePath });
+        wtLog && wtLog.info('worktree.context-changed', { path: worktreePath });
       };
 
       watcher.on('change', handleChange);
       watcher.on('add', handleChange);
       watcher.on('unlink', (filePath) => {
         const worktreePath = path.dirname(filePath);
+        const wtLog = logger && typeof logger.child === 'function'
+          ? logger.child({ workspace: worktreePath })
+          : logger;
         store.upsertWorktree({
           path: worktreePath,
           branch: null,
@@ -257,7 +266,7 @@ function startWorktreeCollector(store, opts) {
           status: null,
           epic: null,
         });
-        logger && logger.info('worktree.context-removed', { path: worktreePath });
+        wtLog && wtLog.info('worktree.context-removed', { path: worktreePath });
       });
       watcher.on('error', (err) => {
         logger && logger.error('chokidar.error', { error: err.message });

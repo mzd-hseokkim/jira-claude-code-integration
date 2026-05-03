@@ -182,7 +182,10 @@ function createIngestRouter(store, logger = null, workspacesModule = null) {
     const storeKey = worktreePath ?? cwd ?? '__no-context__';
     store.pushActivity(storeKey, { ts: receivedAt, type: hookName, data: event });
 
-    logger && logger.info('ingest.received', { ingestId, hookName, cwd, label, taskId });
+    const ingestLog = label === 'mapped' && worktreePath && logger && typeof logger.child === 'function'
+      ? logger.child({ workspace: worktreePath })
+      : logger;
+    ingestLog && ingestLog.info('ingest.received', { ingestId, hookName, cwd, label, taskId });
 
     // Always respond 200 — forwarder ignores the body, but include it for debugging.
     res.json({ ok: true, ingestId, taskId, label });

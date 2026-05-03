@@ -53,7 +53,10 @@ function createWorkspacesRouter(store, logger, opts = {}) {
           }
         }
       } catch (err) {
-        logger && logger.warn('workspaces-route.derive-failed', { path: entry.path, error: err.message });
+        const entryLog = logger && typeof logger.child === 'function'
+          ? logger.child({ workspace: entry.path })
+          : logger;
+        entryLog && entryLog.warn('workspaces-route.derive-failed', { path: entry.path, error: err.message });
         health = 'unknown';
       }
 

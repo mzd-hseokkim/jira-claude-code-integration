@@ -42,11 +42,16 @@ function createCleanupRouter(store, logger, repoRoot) {
       return res.status(400).json({ error: 'unknown worktree path' });
     }
 
+    // entry 확정 후 workspace child logger 파생
+    const log = logger && typeof logger.child === 'function' && entry.workspaceRoot
+      ? logger.child({ workspace: entry.workspaceRoot })
+      : logger;
+
     // 완료 상태만 허용.
     const status = entry.cachedIssue?.status ?? entry.status ?? null;
     const doneStatuses = new Set(['완료', 'Done', 'done']);
     if (!doneStatuses.has(status)) {
-      logger && logger.warn('cleanup.not-done', { path: wtPath, status });
+      log && log.warn('cleanup.not-done', { path: wtPath, status });
       return res.status(400).json({ error: 'worktree not in done state', status });
     }
 
@@ -57,7 +62,7 @@ function createCleanupRouter(store, logger, repoRoot) {
       timeout: 10_000,
     });
     if (dirtyCheck.status !== 0) {
-      logger && logger.warn('cleanup.git-status-failed', { path: wtPath, stderr: dirtyCheck.stderr });
+      log && log.warn('cleanup.git-status-failed', { path: wtPath, stderr: dirtyCheck.stderr });
       return res.status(400).json({ error: 'git status failed', detail: dirtyCheck.stderr?.slice(0, 200) });
     }
     if (dirtyCheck.stdout.trim().length > 0) {
@@ -73,10 +78,10 @@ function createCleanupRouter(store, logger, repoRoot) {
       timeout: 15_000,
     });
     if (wtRemove.status !== 0) {
-      logger && logger.error('cleanup.worktree-remove-failed', { path: wtPath, stderr: wtRemove.stderr });
+      log && log.error('cleanup.worktree-remove-failed', { path: wtPath, stderr: wtRemove.stderr });
       return res.status(500).json({ error: 'git worktree remove failed', detail: wtRemove.stderr?.slice(0, 200) });
     }
-    logger && logger.info('cleanup.worktree-removed', { path: wtPath });
+    log && log.info('cleanup.worktree-removed', { path: wtPath });
 
     // branch 삭제 (best-effort — 실패해도 worktree는 이미 제거됨).
     let branchRemoved = false;
@@ -88,9 +93,9 @@ function createCleanupRouter(store, logger, repoRoot) {
       });
       if (brRemove.status === 0) {
         branchRemoved = true;
-        logger && logger.info('cleanup.branch-removed', { branch });
+        log && log.info('cleanup.branch-removed', { branch });
       } else {
-        logger && logger.warn('cleanup.branch-remove-failed', { branch, stderr: brRemove.stderr?.slice(0, 200) });
+        log && log.warn('cleanup.branch-remove-failed', { branch, stderr: brRemove.stderr?.slice(0, 200) });
       }
     }
 

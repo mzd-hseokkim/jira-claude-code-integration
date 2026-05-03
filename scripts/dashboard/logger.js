@@ -46,6 +46,21 @@ function createLogger(filePath) {
     });
   }
 
+  function child(context) {
+    // Normalize: null/undefined/primitive → empty context (no-op child)
+    const ctx = (context !== null && typeof context === 'object' && !Array.isArray(context))
+      ? context
+      : {};
+
+    return {
+      info(event, data) { write('info', event, { ...ctx, ...data }); },
+      warn(event, data) { write('warn', event, { ...ctx, ...data }); },
+      error(event, data) { write('error', event, { ...ctx, ...data }); },
+      // child.close is a no-op — stream is owned by the root logger
+      close() { return Promise.resolve(); },
+    };
+  }
+
   return {
     info(event, data) { write('info', event, data); },
     warn(event, data) { write('warn', event, data); },
@@ -53,6 +68,7 @@ function createLogger(filePath) {
     close() {
       return new Promise((resolve) => stream.end(resolve));
     },
+    child,
   };
 }
 
