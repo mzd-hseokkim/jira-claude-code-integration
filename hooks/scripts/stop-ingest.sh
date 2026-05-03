@@ -26,10 +26,12 @@ PAYLOAD="$(cat)"
 extract_and_send() {
   local payload="$1"
   local enriched
-  enriched="$(node -e '
+  # Windows(Git Bash/MSYS2) UTF-8 → ANSI(CP949) argv 변환 회피.
+  # payload를 argv 대신 stdin(fd 0)으로 node에 흘린다.
+  enriched="$(printf '%s' "$payload" | node -e '
     const fs = require("fs");
     let payload = {};
-    try { payload = JSON.parse(process.argv[1] || "{}"); } catch {}
+    try { payload = JSON.parse(fs.readFileSync(0, "utf8") || "{}"); } catch {}
     const tp = payload.transcript_path;
     let preview = null;
     if (tp && fs.existsSync(tp)) {
@@ -65,18 +67,18 @@ extract_and_send() {
     }
     payload.lastAssistantText = preview;
     process.stdout.write(JSON.stringify(payload));
-  ' "$payload" 2>/dev/null)"
+  ' 2>/dev/null)"
 
   [ -z "$enriched" ] && enriched="$payload"
 
-  curl \
+  printf '%s' "${enriched}" | curl \
     --connect-timeout 0.5 \
     --max-time 1 \
     --noproxy '*' \
     -s -o /dev/null \
     -X POST \
     -H 'Content-Type: application/json' \
-    --data-binary "${enriched}" \
+    --data-binary @- \
     "${INGEST_URL}?hook=Stop" \
     >/dev/null 2>&1 || true
 }
