@@ -72,6 +72,9 @@ function createStore(opts = {}) {
           // ring buffer가 가득 차도 prompt/response 신호가 사라지지 않도록 함.
           lastPromptEvent: null,
           lastStopEvent: null,
+          // AC-5: jira-collector가 workspace별 credentials 상태를 기록.
+          // null = 아직 평가 안 됨, 'ok' = 정상, 'missing' = CredentialsNotFoundError
+          credsStatus: null,
         },
         activity: new RingBuffer(ringBufferSize),
       });

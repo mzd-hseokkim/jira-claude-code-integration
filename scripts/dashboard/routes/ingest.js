@@ -1,6 +1,59 @@
 'use strict';
 
 const { randomUUID } = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
+const os = require('node:os');
+
+/**
+ * Walk up the directory tree from startPath looking for a .git directory or file.
+ * Returns the directory containing .git, or null if not found / path invalid.
+ *
+ * @param {string} startPath  - absolute path to start from
+ * @param {{ logger?: object }} [opts]
+ * @returns {string|null}
+ */
+function findGitRoot(startPath, opts = {}) {
+  const logger = opts.logger || null;
+  if (typeof startPath !== 'string' || !path.isAbsolute(startPath)) return null;
+
+  let current = startPath;
+  while (true) {
+    let gitStat;
+    try {
+      gitStat = fs.statSync(path.join(current, '.git'));
+    } catch (err) {
+      if (err.code !== 'ENOENT' && err.code !== 'ENOTDIR') {
+        // Unexpected fs error (permissions, etc.) — bail out
+        logger && logger.warn('findGitRoot.stat-error', { dir: current, err: err.message });
+        return null;
+      }
+      gitStat = null;
+    }
+
+    if (gitStat) return current; // found .git (dir or file for linked worktrees)
+
+    const parent = path.dirname(current);
+    if (parent === current) return null; // reached filesystem root
+    current = parent;
+  }
+}
+
+/**
+ * Determine if a git root path should be rejected for auto-registration (D-7).
+ * Rejects: filesystem root, $HOME itself, $HOME direct children.
+ *
+ * @param {string} gitRoot
+ * @returns {boolean}
+ */
+function shouldRejectAutoRegister(gitRoot) {
+  const parsed = path.parse(gitRoot);
+  if (parsed.root === gitRoot) return true; // filesystem root (e.g. C:\, /)
+  const home = os.homedir();
+  if (gitRoot === home) return true;
+  if (path.dirname(gitRoot) === home) return true;
+  return false;
+}
 
 /**
  * Hook names that are recognized as first-class events.
@@ -52,11 +105,12 @@ function lookupWorktree(store, cwd) {
 /**
  * Create the Express router for POST /ingest.
  *
- * @param {object} store      - createStore() instance from store.js
- * @param {object} [logger]   - optional logger with .info() / .warn()
+ * @param {object} store              - createStore() instance from store.js
+ * @param {object} [logger]           - optional logger with .info() / .warn()
+ * @param {object} [workspacesModule] - workspaces module (register, events). If omitted, auto-register is disabled.
  * @returns {import('express').Router}
  */
-function createIngestRouter(store, logger = null) {
+function createIngestRouter(store, logger = null, workspacesModule = null) {
   const express = require('express');
   const router = express.Router();
 
@@ -78,6 +132,29 @@ function createIngestRouter(store, logger = null) {
       const mapped = lookupWorktree(store, cwd);
       taskId = mapped.taskId;
       worktreePath = mapped.worktreePath;
+
+      // auto-register on miss: if no worktree matched and workspacesModule is wired,
+      // try to find git root and register as new workspace.
+      if (!worktreePath && cwd && workspacesModule) {
+        const gitRoot = findGitRoot(cwd, { logger });
+        if (gitRoot) {
+          if (shouldRejectAutoRegister(gitRoot)) {
+            logger && logger.info('ingest.auto-register-rejected', { cwd, gitRoot });
+          } else {
+            try {
+              workspacesModule.register(gitRoot);
+              logger && logger.info('ingest.auto-registered', { cwd, gitRoot });
+              // Re-lookup after registration
+              const remapped = lookupWorktree(store, cwd);
+              taskId = remapped.taskId;
+              worktreePath = remapped.worktreePath;
+            } catch (regErr) {
+              logger && logger.warn('ingest.auto-register-failed', { cwd, gitRoot, err: regErr.message });
+            }
+          }
+        }
+      }
+
       label = worktreePath ? 'mapped' : 'no-context';
     } catch (err) {
       // Error Handling: worktreeMap.lookup throw → log + no-context (design §Error Handling row 7)
@@ -114,4 +191,4 @@ function createIngestRouter(store, logger = null) {
   return router;
 }
 
-module.exports = { createIngestRouter, lookupWorktree };
+module.exports = { createIngestRouter, lookupWorktree, findGitRoot, shouldRejectAutoRegister };

@@ -3,6 +3,13 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
+const { EventEmitter } = require('node:events');
+
+/**
+ * In-process event bus for workspace registry changes.
+ * Emits: 'workspace.registered' | 'workspace.unregistered' — payload: { path: string }
+ */
+const events = new EventEmitter();
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -167,6 +174,7 @@ function register(workspacePath, opts = {}) {
   }
 
   writeAtomic(_getRegistryFile(), JSON.stringify(registry, null, 2));
+  events.emit('workspace.registered', { path: resolved });
   return { ...entry };
 }
 
@@ -187,6 +195,7 @@ function unregister(workspacePath) {
 
   registry.workspaces.splice(idx, 1);
   writeAtomic(_getRegistryFile(), JSON.stringify(registry, null, 2));
+  events.emit('workspace.unregistered', { path: resolved });
   return true;
 }
 
@@ -280,4 +289,5 @@ module.exports = {
   touch,
   loadAndPrune,
   _setRegistryDirForTest,
+  events,
 };

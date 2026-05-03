@@ -127,7 +127,19 @@ function sleep(ms) {
  * Start the Jira stale-refresh collector.
  *
  * @param {object} store
- * @param {{ staleMs?: number, tickMs?: number, backoffMs?: number, logger?: object, getCredentials: Function }} opts
+ * @param {{
+ *   staleMs?: number, tickMs?: number, backoffMs?: number, logger?: object,
+ *   getCredentials: Function,
+ *   getCredentialsForWorkspace?: (workspaceRoot: string) => object,
+ *   onTick?: Function
+ * }} opts
+ *
+ * `getCredentialsForWorkspace` (optional): called with each entry's workspaceRoot.
+ *   If provided, per-workspace credential loading is used (AC-5).
+ *   Entries whose credentials fail with CredentialsNotFoundError are skipped and
+ *   their `credsStatus` is set to 'missing' in the store.
+ *   Falls back to `getCredentials` (global) when workspaceRoot is absent.
+ *
  * @returns {{ stop(): void }}
  */
 function startJiraCollector(store, opts) {
@@ -137,11 +149,61 @@ function startJiraCollector(store, opts) {
     backoffMs = DEFAULT_BACKOFF_MS,
     logger = null,
     getCredentials,
+    getCredentialsForWorkspace = null,
     onTick = null,
   } = opts;
 
+  // per-workspace credentials status cache (runtime only, D-6)
+  // Map<workspaceRoot, 'ok' | 'missing'>
+  const credsStatusByRoot = new Map();
+
   let stopped = false;
   let tickTimer = null;
+
+  /**
+   * Resolve credentials for a stale entry.
+   * Returns { creds } on success, or { skip: true } when creds are missing.
+   *
+   * Also upserts credsStatus into the store for each worktree of the workspace.
+   */
+  function resolveCredsForEntry(entry) {
+    if (!getCredentialsForWorkspace || !entry.workspaceRoot) {
+      // Fall back to global credentials
+      try {
+        return { creds: getCredentials() };
+      } catch (err) {
+        return { skip: true, err };
+      }
+    }
+
+    const root = entry.workspaceRoot;
+    // Skip immediately if we already know this workspace is missing creds
+    if (credsStatusByRoot.get(root) === 'missing') {
+      return { skip: true };
+    }
+
+    try {
+      const creds = getCredentialsForWorkspace(root);
+      if (credsStatusByRoot.get(root) !== 'ok') {
+        credsStatusByRoot.set(root, 'ok');
+        store.upsertWorktree({ path: entry.path, credsStatus: 'ok' });
+      }
+      return { creds };
+    } catch (err) {
+      const { CredentialsNotFoundError } = require('../credentials');
+      if (err instanceof CredentialsNotFoundError) {
+        if (credsStatusByRoot.get(root) !== 'missing') {
+          credsStatusByRoot.set(root, 'missing');
+          logger && logger.warn('jira-collector.creds-missing', { workspaceRoot: root });
+        }
+        store.upsertWorktree({ path: entry.path, credsStatus: 'missing' });
+        return { skip: true };
+      }
+      // Unexpected error — log and skip this entry
+      logger && logger.error('jira-collector.credentials-error', { workspaceRoot: root, error: err.message });
+      return { skip: true, err };
+    }
+  }
 
   async function runCycle() {
     if (stopped) return;
@@ -152,17 +214,16 @@ function startJiraCollector(store, opts) {
     const stale = store.getStaleEntries(staleMs);
     if (stale.length === 0) return;
 
-    let creds;
-    try {
-      creds = getCredentials();
-    } catch (err) {
-      logger && logger.error('jira-collector.credentials-error', { error: err.message });
-      return;
-    }
+    // Reset per-cycle 'missing' cache so we re-check on each tick
+    // (user may have added credentials since last cycle)
+    credsStatusByRoot.clear();
 
     for (const entry of stale) {
       if (stopped) break;
       if (!entry.taskId) continue;
+
+      const { creds, skip } = resolveCredsForEntry(entry);
+      if (skip) continue;
 
       try {
         const issue = await fetchIssue(creds, entry.taskId);

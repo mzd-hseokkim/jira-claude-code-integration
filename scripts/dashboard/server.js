@@ -93,7 +93,7 @@ async function startServer(opts = {}) {
     app = express();
     app.get('/events', handleSSE);
     app.get('/health', (_req, res) => res.json({ ok: true }));
-    app.use('/ingest', createIngestRouter(store, logger));
+    app.use('/ingest', createIngestRouter(store, logger, workspaces));
     app.use('/cleanup', createCleanupRouter(store, logger, workspaceRoot));
     app.use(express.static(path.join(__dirname, 'public')));
   } catch {
@@ -145,6 +145,20 @@ async function startServer(opts = {}) {
 
   // Start collectors
   const worktreeCollector = startWorktreeCollector(store, { workspaceRoots, logger });
+
+  // D-5: on new workspace registration, immediately re-collect worktrees so the
+  // same ingest response can already see the new workspace's worktrees.
+  workspaces.events.on('workspace.registered', ({ path: newRoot }) => {
+    try {
+      const { collectWorktrees } = require('./collectors/worktree');
+      // Extend workspaceRoots in-place so future polls also cover the new root.
+      if (!workspaceRoots.includes(newRoot)) workspaceRoots.push(newRoot);
+      collectWorktrees(store, workspaceRoots, logger);
+      logger && logger.info('server.workspace-registered-collect', { newRoot });
+    } catch (err) {
+      logger && logger.error('server.workspace-registered-collect-error', { newRoot, error: err.message });
+    }
+  });
   // 마지막 jira-collector tick 시점/주기 — snapshot 이벤트에 포함시켜
   // 새 SSE 클라이언트도 즉시 polling 사이클 phase에 맞출 수 있게 한다.
   let lastTickAt = null;
@@ -152,6 +166,7 @@ async function startServer(opts = {}) {
   const jiraCollector = startJiraCollector(store, {
     logger,
     getCredentials: () => loadCredentials({ workspaceRoot }),
+    getCredentialsForWorkspace: (root) => loadCredentials({ workspaceRoot: root, force: true }),
     onTick: ({ at, tickMs }) => {
       lastTickAt = at;
       lastTickMs = tickMs;
