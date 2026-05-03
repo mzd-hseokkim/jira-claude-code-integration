@@ -10,6 +10,7 @@ const { startWorktreeCollector } = require('./collectors/worktree');
 const { startJiraCollector } = require('./collectors/jira');
 const { createIngestRouter } = require('./routes/ingest');
 const { createCleanupRouter } = require('./routes/cleanup');
+const { createWorkspacesRouter } = require('./routes/workspaces');
 const { openBrowser } = require('./openBrowser');
 const workspaces = require('./workspaces');
 
@@ -85,6 +86,11 @@ async function startServer(opts = {}) {
     broadcast('worktree.removed', { path: wPath, ts: new Date().toISOString() });
   });
 
+  // jira-collector tick state — declared early so the /workspaces route can
+  // capture it via getter closure before the collector is started below.
+  let lastTickAt = null;
+  let lastTickMs = null;
+
   // Create minimal HTTP server (avoids Express dependency at import time for tests,
   // but in production we use express if available, falling back to node:http).
   let app;
@@ -95,6 +101,10 @@ async function startServer(opts = {}) {
     app.get('/health', (_req, res) => res.json({ ok: true }));
     app.use('/ingest', createIngestRouter(store, logger, workspaces));
     app.use('/cleanup', createCleanupRouter(store, logger, workspaceRoot));
+    app.use('/workspaces', createWorkspacesRouter(store, logger, {
+      getLastTickAt: () => lastTickAt,
+      pluginRoot: process.env.CLAUDE_PLUGIN_ROOT || null,
+    }));
     app.use(express.static(path.join(__dirname, 'public')));
   } catch {
     // express not available — use raw http (minimal, for environments without npm install)
@@ -161,8 +171,7 @@ async function startServer(opts = {}) {
   });
   // 마지막 jira-collector tick 시점/주기 — snapshot 이벤트에 포함시켜
   // 새 SSE 클라이언트도 즉시 polling 사이클 phase에 맞출 수 있게 한다.
-  let lastTickAt = null;
-  let lastTickMs = null;
+  // (lastTickAt/lastTickMs는 위쪽 express 셋업 직전에 선언됨 — /workspaces route에서 capture)
   const jiraCollector = startJiraCollector(store, {
     logger,
     getCredentials: () => loadCredentials({ workspaceRoot }),

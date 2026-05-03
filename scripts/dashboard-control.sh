@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # dashboard-control.sh — Dashboard lifecycle helper for /jira dashboard skill.
 # Functions: require_plugin_root, pid_file_path, read_pid_file, write_pid_file,
-#            is_running, check_plugin_root_match, dashboard_setup, dashboard_start,
-#            dashboard_stop, dashboard_status, cmd_default
+#            is_running, dashboard_setup, dashboard_start,
+#            dashboard_stop, dashboard_status, dashboard_register_and_attach,
+#            _fetch_workspaces_summary, cmd_default
 # Usage: bash dashboard-control.sh <start|stop|status|setup|"">
 # Return: 0=success, non-zero=error. stdout=user output. stderr=warnings/errors.
 
@@ -96,28 +97,6 @@ is_running() {
     return 0  # running
   else
     return 2  # stale
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# check_plugin_root_match
-#   -> 0=match (or already running with correct root)
-#   -> 1=mismatch (running with different root)
-#   -> 2=stopped (no PID file)
-# ---------------------------------------------------------------------------
-check_plugin_root_match() {
-  require_plugin_root
-  local pid_file
-  pid_file="$(pid_file_path)"
-  if [[ ! -f "${pid_file}" ]]; then
-    return 2  # stopped
-  fi
-  local file_root
-  file_root="$(grep '^PLUGIN_ROOT=' "${pid_file}" | cut -d= -f2-)"
-  if [[ "${file_root}" == "${CLAUDE_PLUGIN_ROOT}" ]]; then
-    return 0  # match
-  else
-    return 1  # mismatch
   fi
 }
 
@@ -235,6 +214,8 @@ dashboard_start() {
 # ---------------------------------------------------------------------------
 # dashboard_stop
 #   Reads PID from file, kills process (graceful), removes PID file.
+#   Multi-workspace 의도: dashboard 서버는 단일 프로세스이므로 stop은 등록된
+#   모든 workspace를 함께 종료한다 (개별 unregister가 아니라 서버 자체 종료).
 # ---------------------------------------------------------------------------
 dashboard_stop() {
   local pid_file
@@ -255,7 +236,7 @@ dashboard_stop() {
   fi
 
   if kill -0 "${pid}" 2>/dev/null; then
-    echo "Dashboard 서버(PID ${pid})를 종료합니다 ..."
+    echo "Dashboard 서버(PID ${pid})를 종료합니다 — 등록된 모든 workspace가 함께 정지됩니다."
     if ! kill "${pid}" 2>/dev/null; then
       echo "경고: kill ${pid} 실패. 이미 종료된 것으로 처리합니다." >&2
     else
@@ -300,6 +281,8 @@ dashboard_status() {
     echo "  URL        : http://127.0.0.1:${port:-8765}"
     echo "  PID        : ${pid}"
     echo "  시작 시각  : ${started_at}"
+    echo ""
+    _fetch_workspaces_summary "${port:-8765}" || true
   else
     echo "상태: stopped (stale PID 파일 감지 → 자동 정리)"
     rm -f "${pid_file}"
@@ -308,9 +291,143 @@ dashboard_status() {
 }
 
 # ---------------------------------------------------------------------------
+# _fetch_workspaces_summary <port>
+#   Print a plain-text table of registered workspaces + collector health.
+#   Tries:
+#     1) curl GET http://127.0.0.1:<port>/workspaces (timeout 1s)
+#     2) node -e require('../scripts/dashboard/workspaces').list()  → health=unknown
+#     3) workspaces.json direct read                                 → health=unknown
+#   Always returns 0 — best-effort, status command must not fail because of this.
+# ---------------------------------------------------------------------------
+_fetch_workspaces_summary() {
+  local port="${1:-8765}"
+  local body=""
+  local source=""
+
+  # Try 1: curl
+  if command -v curl >/dev/null 2>&1; then
+    body="$(curl -sS --max-time 1 "http://127.0.0.1:${port}/workspaces" 2>/dev/null || true)"
+    if [[ -n "${body}" ]]; then
+      source="http"
+    fi
+  fi
+
+  # Try 2: node http
+  if [[ -z "${body}" ]] && command -v node >/dev/null 2>&1; then
+    body="$(node -e "
+      const http=require('http');
+      const req=http.get({host:'127.0.0.1',port:${port},path:'/workspaces',timeout:1000},(res)=>{
+        let b='';res.on('data',(c)=>b+=c);res.on('end',()=>process.stdout.write(b));
+      });
+      req.on('error',()=>process.exit(0));
+      req.on('timeout',()=>{req.destroy();process.exit(0)});
+    " 2>/dev/null || true)"
+    if [[ -n "${body}" ]]; then
+      source="http"
+    fi
+  fi
+
+  # Try 3: workspaces.json direct (health=unknown)
+  if [[ -z "${body}" ]] && command -v node >/dev/null 2>&1; then
+    local plugin_root="${CLAUDE_PLUGIN_ROOT:-}"
+    if [[ -n "${plugin_root}" && -f "${plugin_root}/scripts/dashboard/workspaces.js" ]]; then
+      body="$(node -e "
+        const w=require('${plugin_root}/scripts/dashboard/workspaces');
+        const list=w.list();
+        process.stdout.write(JSON.stringify({workspaces:list.map((e)=>({path:e.path,registeredAt:e.registeredAt,lastSeenAt:e.lastSeenAt,status:e.status,health:'unknown',worktreeCount:0})),serverPluginRoot:null,serverNowMs:Date.now()}));
+      " 2>/dev/null || true)"
+      if [[ -n "${body}" ]]; then
+        source="registry-file"
+      fi
+    fi
+  fi
+
+  if [[ -z "${body}" ]]; then
+    echo "  Workspaces : (조회 실패 — 서버 응답 없음)"
+    return 0
+  fi
+
+  # Parse JSON via node and emit a plain-text table.
+  printf '%s' "${body}" | WS_SRC="${source}" node -e '
+    let raw="";process.stdin.on("data",(c)=>raw+=c);process.stdin.on("end",()=>{
+      let j;try{j=JSON.parse(raw)}catch{console.log("  Workspaces : (응답 파싱 실패)");return;}
+      const ws=Array.isArray(j.workspaces)?j.workspaces:[];
+      const src=process.env.WS_SRC||"";
+      console.log("  Workspaces (" + ws.length + (src?" / source="+src:"") + "):");
+      if(ws.length===0){console.log("    (등록된 워크스페이스 없음)");return;}
+      const rows=ws.map((w)=>({
+        path:String(w.path||""),
+        last:String(w.lastSeenAt||"").replace(/\.\d+Z$/,"Z"),
+        health:String(w.health||"unknown"),
+        wc:Number(w.worktreeCount||0),
+      }));
+      const wPath=Math.max(4,...rows.map((r)=>r.path.length));
+      const wLast=Math.max(9,...rows.map((r)=>r.last.length));
+      const wHealth=Math.max(6,...rows.map((r)=>r.health.length));
+      const pad=(s,n)=>s+" ".repeat(Math.max(0,n-s.length));
+      console.log("    " + pad("PATH",wPath) + "  " + pad("LAST_SEEN",wLast) + "  " + pad("HEALTH",wHealth) + "  WT");
+      for(const r of rows){
+        console.log("    " + pad(r.path,wPath) + "  " + pad(r.last,wLast) + "  " + pad(r.health,wHealth) + "  " + r.wc);
+      }
+    });
+  ' 2>/dev/null || echo "  Workspaces : (출력 실패)"
+  return 0
+}
+
+# ---------------------------------------------------------------------------
+# dashboard_register_and_attach
+#   Register cwd into the workspace registry and print attach status.
+#   Idempotent — repeated calls just bump lastSeenAt.
+#
+#   On registry write failure: warn + still print status (graceful degrade).
+# ---------------------------------------------------------------------------
+dashboard_register_and_attach() {
+  require_plugin_root
+  local cwd
+  cwd="$(pwd)"
+
+  if ! command -v node >/dev/null 2>&1; then
+    echo "경고: node를 찾지 못했습니다. workspace 등록을 건너뜁니다." >&2
+    dashboard_status
+    return 0
+  fi
+
+  # Call workspaces.register(cwd) and detect new vs existing entry.
+  # Output: "NEW" or "EXISTING" or "ERROR:<msg>"
+  local result
+  result="$(CWD_VAL="${cwd}" node -e "
+    try{
+      const w=require(process.env.CLAUDE_PLUGIN_ROOT + '/scripts/dashboard/workspaces');
+      const before=w.list().some((e)=>e.path===require('path').resolve(process.env.CWD_VAL));
+      const entry=w.register(process.env.CWD_VAL);
+      process.stdout.write(before?'EXISTING':'NEW');
+    }catch(err){process.stdout.write('ERROR:'+err.message);}
+  " 2>/dev/null || echo "ERROR:node-failed")"
+
+  case "${result}" in
+    NEW)
+      echo "Dashboard에 attach합니다 — 현재 cwd를 신규 workspace로 등록했습니다."
+      echo "  cwd : ${cwd}"
+      ;;
+    EXISTING)
+      echo "Dashboard에 attach합니다 — 현재 cwd는 이미 등록되어 있습니다 (lastSeenAt 갱신)."
+      echo "  cwd : ${cwd}"
+      ;;
+    ERROR:*)
+      echo "경고: workspace 등록 실패 — attach만 진행합니다." >&2
+      echo "  사유: ${result#ERROR:}" >&2
+      ;;
+  esac
+
+  echo ""
+  dashboard_status
+  return 0
+}
+
+# ---------------------------------------------------------------------------
 # cmd_default
-#   No-argument entrypoint: status check → stopped=setup+start, mismatch=restart,
-#   running=info only.
+#   No-argument entrypoint: status check → stopped=setup+start, stale=cleanup+start,
+#   running=register+attach (multi-workspace: never restart on plugin-root change).
 # ---------------------------------------------------------------------------
 cmd_default() {
   require_plugin_root
@@ -324,29 +441,10 @@ cmd_default() {
   # run_state: 0=running, 1=stopped, 2=stale
 
   if [[ "${run_state}" -eq 0 ]]; then
-    # Running — check plugin root match
-    # NOTE: same set -e guard; check_plugin_root_match returns 1 on mismatch.
-    local match_state
-    check_plugin_root_match || match_state=$?
-    match_state=${match_state:-0}
-    if [[ "${match_state}" -eq 1 ]]; then
-      # Mismatch: old version is running
-      local pid_file
-      pid_file="$(pid_file_path)"
-      local old_root
-      old_root="$(grep '^PLUGIN_ROOT=' "${pid_file}" | cut -d= -f2-)"
-      echo "버전 변경 감지: 실행 중인 Dashboard의 플러그인 경로가 현재와 다릅니다."
-      echo "  이전 경로: ${old_root}"
-      echo "  현재 경로: ${CLAUDE_PLUGIN_ROOT}"
-      echo "기존 서버를 중지하고 새 버전으로 재기동합니다 ..."
-      dashboard_stop || true
-      dashboard_start
-      return $?
-    else
-      # Running with correct root — just show status
-      dashboard_status
-      return 0
-    fi
+    # Running — register cwd into the workspace registry and attach.
+    # Multi-workspace: PLUGIN_ROOT 차이는 정상 (각 worktree마다 다른 plugin root 가능).
+    dashboard_register_and_attach
+    return $?
   elif [[ "${run_state}" -eq 2 ]]; then
     # Stale: clean up and start fresh
     echo "오래된 PID 파일을 정리하고 Dashboard를 시작합니다 ..."
