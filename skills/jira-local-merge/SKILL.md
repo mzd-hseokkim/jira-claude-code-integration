@@ -160,71 +160,20 @@ merge 충돌 발생 시 사용자에게 알리고 중단. 충돌 해결 후 재�
 
 ### Step 8: Update Context & Completion Summary
 
-워크트리의 `.jira-context.json`과 `<repoRoot>/.jira-context.json` 양쪽을 업데이트:
-- `completedSteps`에 `"merge"` 추가
-- `status`를 `"In Review"`로 변경
-- `mergedAt`에 현재 ISO 8601 타임스탬프 추가
-
-**중요**: 두 컨텍스트 파일은 형태가 다르다. 형태별로 다르게 처리해야 메인 레포의 누적 이력이 손상되지 않는다.
-
-- **워크트리 컨텍스트** (`{taskId, branch, ...}`): 기존처럼 최상위 필드 갱신
-- **메인 레포 aggregate 컨텍스트** (`{tasks: [...], worktreeBase, ...}`): `tasks` 배열에서 해당 `taskId` 항목을 찾아 그 항목 내부의 필드만 갱신. 절대 최상위에 워크트리 필드를 쓰지 말 것 — 메인 컨텍스트가 워크트리 형태로 덮어써져 누적 이력이 유실된다.
+워크트리의 `.jira-context.json`과 `<repoRoot>/.jira-context.json` 양쪽을 공용 스크립트로 갱신한다 (스크립트 위치는 프로젝트 CLAUDE.md의 "Jira Context Update Script" 섹션 참고).
 
 ```bash
-python3 - "<TASK-ID>" "<worktree>/.jira-context.json" "<repoRoot>/.jira-context.json" << 'PYEOF'
-import json, datetime, os, sys
-
-task_id, *ctx_files = sys.argv[1], *sys.argv[2:]
-# UTC ISO 8601 with Z suffix — TZ-naive timestamp는 dashboard reader(MAE-302)가 stale로 처리
-now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-def update_worktree_ctx(ctx, task_id):
-    """워크트리 형태: 최상위에 직접 갱신."""
-    steps = ctx.get("completedSteps", [])
-    if "merge" not in steps:
-        steps.append("merge")
-    ctx["completedSteps"] = steps
-    ctx["status"] = "In Review"
-    ctx["mergedAt"] = now
-    return True
-
-def update_aggregate_ctx(ctx, task_id):
-    """aggregate 형태: tasks[]에서 해당 taskId 항목만 갱신. 최상위 미변경."""
-    tasks = ctx.get("tasks", [])
-    for t in tasks:
-        if t.get("taskId") == task_id:
-            steps = t.get("completedSteps", [])
-            if "merge" not in steps:
-                steps.append("merge")
-            t["completedSteps"] = steps
-            t["status"] = "In Review"
-            t["mergedAt"] = now
-            return True
-    return False  # 항목이 없으면 추가하지 않음 (init 누락)
-
-for ctx_file in ctx_files:
-    if not os.path.isfile(ctx_file):
-        print(f"No context file at {ctx_file}, skipping")
-        continue
-    with open(ctx_file, "r", encoding="utf-8") as f:
-        ctx = json.load(f)
-    is_aggregate = isinstance(ctx.get("tasks"), list)
-    if is_aggregate:
-        updated = update_aggregate_ctx(ctx, task_id)
-        if updated:
-            print(f"Aggregate context updated for {task_id}: {ctx_file}")
-        else:
-            print(f"No {task_id} entry in aggregate {ctx_file}, skipping")
-            continue
-    else:
-        update_worktree_ctx(ctx, task_id)
-        print(f"Worktree context updated: {ctx_file}")
-    with open(ctx_file, "w", encoding="utf-8") as f:
-        json.dump(ctx, f, indent=2, ensure_ascii=False)
-PYEOF
+python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> merge "In Review" \
+    "<worktree>/.jira-context.json" \
+    "<repoRoot>/.jira-context.json"
 ```
 
-호출 예: `python3 - "MAE-178" "/Users/.../worktree/MAE-178/.jira-context.json" "/Users/.../repo/.jira-context.json" << 'PYEOF' ...`
+스크립트는 다음을 일괄 처리한다:
+- `completedSteps`에 `"merge"` 추가 (중복 방지)
+- `status`를 `"In Review"`로 set
+- `mergedAt`에 현재 UTC ISO 8601 (Z suffix) 기록 — TZ-naive timestamp는 dashboard reader가 stale로 처리하므로 Z 접미사 필수
+- `cachedIssue.status` / `cachedIssue.fetchedAt`도 함께 갱신 (cachedIssue가 있을 때만)
+- aggregate vs worktree 형식 자동 감지 (aggregate는 `tasks[]`에서 해당 `taskId` 항목만 갱신)
 
 아래 형식으로 완료 요약 출력:
 

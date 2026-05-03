@@ -166,6 +166,16 @@ The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스
   done
   ```
   찾지 못하면 사용자에게 안내하고 첨부 업로드는 스킵, 워크플로는 계속 진행.
+- **Jira Context Update Script** (merge/done 공통): worktree-local + aggregate 두 컨텍스트의 `completedSteps`/`status`/`<step>At`/`cachedIssue` 갱신은 `scripts/jira-context-update.py`(공용)로 처리. Jira Attach Script와 동일한 lookup 패턴으로 경로를 결정한다.
+  ```bash
+  JIRA_CTX_UPDATE_PY=""
+  for c in "scripts/jira-context-update.py" \
+           "$(node -e "try{console.log(require('./.jira-context.json').repoRoot)}catch{}" 2>/dev/null)/scripts/jira-context-update.py" \
+           $(find "$HOME/.claude" -name jira-context-update.py -type f 2>/dev/null | head -1); do
+    [ -n "$c" ] && [ -f "$c" ] && JIRA_CTX_UPDATE_PY="$c" && break
+  done
+  ```
+  사용법: `python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> <step> <status> <ctx-file> [<ctx-file>...]` — aggregate vs worktree 형식은 자동 감지. missing 파일은 자동 skip.
 - When posting comments to Jira, use markdown format.
 - Always fetch issue details before transitioning status.
 - Use `jira_get_transitions`로 전환 목록 조회 후 `jira_transition_issue`에 **transitionId**를 전달.
