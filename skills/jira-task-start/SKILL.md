@@ -26,15 +26,29 @@ allowed-tools:
 
 ## Workflow
 
-### Step 1: Fetch Issue Details
+### Step 0: Detect Mode (post-init vs fresh)
 
-Use `mcp__atlassian__jira_get_issue` with the provided TASK-ID.
+cwd에서 `.jira-context.json`을 `Read`로 읽어보고 아래로 분기 — **init이 이미 워크트리·README·context를 만들어둔 상태이면 중복 작업을 건너뛴다.**
+
+- **post-init 모드** (hot path): 파일이 존재하고 `taskId === <TASK-ID>`이며 `worktreePath`가 디스크에 있음.
+  - Step 3(worktree 생성 체크), Step 4(README 생성)를 **스킵**한다.
+  - Step 6은 통째 rewrite 대신 patch (기존 필드 보존 + 추가).
+- **fresh 모드**: 위 조건 미충족.
+  - 모든 Step 그대로 수행.
+
+이 분기 결정은 사용자에게 한 줄로 알려준다 — 예: `📂 post-init 모드: worktree·README·context 재생성 생략.`
+
+### Step 1: Fetch Issue Details (cache-first)
+
+먼저 `.jira-context.json`의 `cachedIssue`를 확인한다. **모든 필수 필드(`summary`, `description`, `priority`, `assignee`, `issuetype`)가 채워져 있고 `fetchedAt`이 있으면 fetch를 건너뛴다** — init이 만들어둔 캐시가 이미 충분한 경우.
+
+cache miss면 `mcp__atlassian__jira_get_issue` 호출:
 
 **Context optimization**: 호출 시 다음 파라미터로 응답을 슬림화한다.
 - `fields="summary,status,priority,assignee,issuetype,description,subtasks,issuelinks"`
 - `comment_limit=0` (start 단계에서는 코멘트 이력 불필요)
 
-호출 후 결과를 `.jira-context.json`의 `cachedIssue`에 저장한다 (CLAUDE.md "Issue Cache" 참고 — 후속 단계가 재조회를 생략할 수 있게).
+호출 후 결과를 `.jira-context.json`의 `cachedIssue`에 저장한다 (CLAUDE.md "Issue Cache" 참고 — 후속 단계가 재조회를 생략할 수 있게). `fetchedAt`은 반드시 `new Date().toISOString()` (UTC `Z`) 형식.
 
 Display to the user:
 - **Key**: Issue key
@@ -58,18 +72,11 @@ Use `mcp__atlassian__jira_get_transitions` to fetch available transitions, then 
 If the transition fails, the issue may already be in progress or the transition name differs.
 In that case, inform the user of the current status and continue with the remaining steps.
 
-### Step 3: Create Feature Branch / Worktree (if not already exists)
+### Step 3: Create Feature Branch / Worktree (fresh mode only)
 
-먼저 `init`으로 이미 생성되었는지 확인:
-```bash
-# 이미 worktree/branch가 있는지 확인
-git branch --list "feature/<TASK-ID>"
-git worktree list | grep "<TASK-ID>"
-```
+**post-init 모드면 본 Step 스킵.** Step 0에서 `.jira-context.json`의 `worktreePath`가 디스크에 존재함을 이미 확인했으므로 git 체크 자체가 불필요.
 
-**이미 존재하면**: 생성을 스킵하고 Step 4로 진행.
-
-**없으면**: worktree를 새로 생성:
+**fresh 모드**: worktree를 새로 생성:
 ```bash
 REPO_ROOT=$(git rev-parse --show-toplevel)
 PARENT_DIR=$(dirname "$REPO_ROOT")
@@ -85,9 +92,11 @@ git rev-parse --verify master 2>/dev/null   # 3rd
 git worktree add -b "feature/<TASK-ID>" "$WORKTREE_BASE/<TASK-ID>" <base-branch>
 ```
 
-### Step 4: Generate Task Context README
+### Step 4: Generate Task Context README (fresh mode only)
 
-Create a `TASK-README.md` in the worktree directory (or project root for branch) with:
+**post-init 모드면 본 Step 스킵.** init이 이미 만든 `TASK-README.md`를 덮어쓰지 않는다. 보강이 필요하면 사용자가 직접 수정.
+
+**fresh 모드**: `TASK-README.md`를 worktree 디렉토리(또는 branch는 project root)에 생성:
 
 ```markdown
 # <TASK-ID>: <Summary>
@@ -115,34 +124,17 @@ Use `mcp__atlassian__jira_add_comment` with:
 - `issueKey`: The TASK-ID
 - `comment`: "브랜치 `feature/<TASK-ID>`에서 개발을 시작했습니다. 작업 디렉토리: `<worktree-path or branch>`"
 
-### Step 6: Save Local Context
+### Step 6: Patch Local Context (no full rewrite)
 
-기존 `.jira-context.json`이 있으면 읽어서 `completedSteps`를 보존하고, 없으면 새로 생성.
-worktree 디렉토리와 원본 레포 양쪽에 저장:
-```json
-{
-  "taskId": "<TASK-ID>",
-  "branch": "feature/<TASK-ID>",
-  "worktreePath": "<path-to-worktree>",
-  "baseBranch": "<detected-base-branch>",
-  "startedAt": "<ISO 8601 timestamp>",
-  "summary": "<issue summary>",
-  "status": "In Progress",
-  "completedSteps": ["start"],
-  "cachedIssue": {
-    "key": "<TASK-ID>",
-    "summary": "<...>",
-    "status": "<...>",
-    "priority": "<...>",
-    "assignee": "<...>",
-    "issuetype": "<...>",
-    "description": "<...>",
-    "fetchedAt": "<ISO 8601 timestamp>"
-  }
-}
-```
+기존 `.jira-context.json`이 있으면 **patch 방식**으로 갱신 — 통째 rewrite 금지. 원칙:
 
-`init`에서 이미 `completedSteps: ["init"]`이 있으면 `["init", "start"]`로 병합.
+- 기존 필드(`branch`, `worktreePath`, `baseBranch`, `repoRoot`, `summary`, `priority`, `initializedAt` 등)는 그대로 보존.
+- 추가/갱신: `status: "In Progress"`, `startedAt: <new Date().toISOString()>`, `cachedIssue: {...}` (Step 1에서 fetch했거나 이미 충분했던 캐시).
+- `completedSteps`: 기존 배열에 `"start"`만 append (이미 있으면 dedup).
+
+파일이 없는 경우(fresh 모드)에만 새로 생성.
+
+워크트리 디렉토리와 원본 레포 양쪽에 동일한 patch 적용. **모든 timestamp는 `new Date().toISOString()` UTC `Z` 형식**.
 
 ### Step 7: Completion Summary
 
