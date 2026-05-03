@@ -78,9 +78,11 @@ Agent({
 | 3 | design | `general-purpose` | opus | 결정·아키텍처, 가장 사고 집약적 |
 | 4 | impl | `general-purpose` | sonnet | 코드 생성, 토큰 다량 소비 |
 | 5 | test | `general-purpose` | sonnet | 실행 + 결과 정리 |
-| 6 | review | `jira-integration:jira-reviewer` | opus | self-praise bias 차단 + 사고 집약적 |
+| 6 | review | `general-purpose` | opus | 오케스트레이션만 — 실제 리뷰 작업은 inner `jira-reviewer` agent가 수행 |
 
-review만 specialized subagent를 사용한다 (v0.17.19 정착). 나머지는 `general-purpose`가 단계별 SKILL을 내부에서 호출.
+전 단계 `general-purpose`로 통일한다. review의 self-praise bias 차단은 `jira-task-review` Skill 내부에서 자체적으로 띄우는 `jira-reviewer` subagent가 담당한다 (Step 2, `Reviewer Independence Rule`).
+
+> **회귀 방지 (v0.32.3, MAE-N/A — 인라인 핫픽스)**: 과거 review 단계에서 `subagent_type: jira-integration:jira-reviewer`로 wrapper agent를 먼저 띄우고, 그 안에서 `jira-task-review` Skill이 다시 동일한 `jira-reviewer` subagent를 spawn하는 **2단 nesting**이 발생했다. 동일 작업을 위한 reviewer agent 부팅이 두 번 일어나 review-fix loop과 결합 시 task별 누적 지연이 +20분에 달했다. wrapper는 어차피 orchestration(파일 쓰기 + Jira 게시)만 하고 실제 리뷰 판단은 inner agent가 하므로, wrapper를 `general-purpose`로 바꿔 **single nesting**으로 맞춘다. 페르소나 독립성은 그대로 보장됨 — inner agent가 fresh context.
 
 ### 표준 Prompt 형식
 
@@ -106,10 +108,12 @@ Jira task <TASK-ID>의 <단계명> 단계를 수행하라.
 산출물 본문(plan/design/test/review 문서 내용 등)을 부모에 그대로 출력하지 마라 — 부모 컨텍스트 오염 방지.
 ```
 
-review 단계 (jira-reviewer subagent 호출):
+review 단계 (general-purpose wrapper):
 
 ```
 Jira task <TASK-ID>의 review 단계를 수행하라. `jira-integration:jira-task-review` Skill을 호출하고, 동일한 *최소 요약* 형식으로 결과만 반환하라. 산출물 본문 미반환.
+
+주의: 본 wrapper는 orchestration(파일 작성·Jira 게시)만 담당한다. 실제 리뷰 판단·gap analysis·lint는 Skill이 내부적으로 띄우는 `jira-reviewer` subagent가 수행하니 이 wrapper에서 추가로 Agent를 띄우지 마라.
 ```
 
 ### 단계 간 진행 메시지
@@ -128,9 +132,49 @@ review sub-agent 완료 후 `.jira-context.json`을 `Read`로 읽어 `completedS
 
 `"review"`가 `completedSteps`에 있으면 → Step 5(Completion Summary)로 진행.
 
-### 미통과 (Request Changes) — 자동 수정 루프
+### 미통과 (Request Changes) — Scope 분기 + 자동 수정 루프
 
-`"review"`가 `completedSteps`에 없으면 → 품질 게이트 미통과. 최대 **2회** 자동 수정 후 재검증한다.
+`"review"`가 `completedSteps`에 없으면 → 품질 게이트 미통과. **fix loop 진입 전** 다음 휴리스틱으로 scope shortfall 여부를 판정한다 (v0.32.3 추가).
+
+#### Scope Shortfall Triage
+
+`docs/review/<TASK-ID>.review.md`를 `Read`로 읽고 다음 신호를 추출한다:
+- **Gap matchRate**: "설계-구현 매칭률" 또는 "Implementation Plan 매칭" 등에 기재된 백분율 (정규식: `매칭률[^0-9]*([0-9]+)%` 또는 `(\d+)\s*/\s*\d+\s*\(([0-9.]+)%\)`).
+- **Critical count**: "Critical" 섹션 항목 수.
+- **Warning count**: "Warning" 섹션 항목 수.
+
+**분기 규칙**:
+
+| 조건 | 판정 | 동작 |
+|------|------|------|
+| matchRate < 70% **또는** Critical count ≥ 3 | **Scope shortfall** | fix loop 진입 안 함, 즉시 중단 (아래 Scope Shortfall Bail) |
+| matchRate ≥ 70% **그리고** Critical count < 3 | **Trivial fix** | 기존 fix loop 진입 (최대 2회) |
+| 위 두 신호 추출 실패 (parse error) | 기존 동작 보존 | fix loop 진입 (fail-safe) |
+
+**근거**: matchRate가 낮거나 Critical이 많으면 scope 자체가 누락된 상태. fix sub-agent 한 번에 부족분을 다 메우기 어렵고, 2회 fix loop을 돌려도 동일한 review 실패가 반복되며 시간만 소진(MAE-277 사례에서 +20분 누적). 이런 경우 사용자가 의식적으로 추가 작업을 결정해야 한다.
+
+#### Scope Shortfall Bail (즉시 중단)
+
+```
+❌ Auto 모드 중단 (scope shortfall): review 품질 게이트가 부분 구현 신호를 보였습니다.
+
+신호:
+- 설계-구현 매칭률: <matchRate>% (임계값 70%)
+- Critical 이슈: <count>건 (임계값 3건)
+
+판단: 단일 fix sub-agent로 메우기 어려운 scope 누락으로 보입니다. 자동 fix loop을 건너뛰고 사용자 결정에 위임합니다.
+
+현재 진행 상황: <completedSteps>
+
+다음 권장 흐름 중 택일:
+1. 부분 구현을 그대로 수용하고 Phase 1으로 종료 → `/jira-task merge <TASK-ID>` 후 미구현 subtask는 별도 init
+2. 추가 구현 직접 수행 → 해당 worktree에서 추가 작업 후 `/jira-task review <TASK-ID>` 재실행
+3. impl/test/review 단계만 수동 재실행 → 단계별로 `/jira-task <단계> <TASK-ID>` 호출
+```
+
+#### Trivial Fix Path — 자동 수정 루프
+
+위 분기가 "Trivial fix"이면 최대 **2회** 자동 수정 후 재검증한다.
 
 **품질 기준:**
 - 설계-구현 매칭률 100%
