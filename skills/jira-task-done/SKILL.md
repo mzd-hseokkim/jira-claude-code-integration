@@ -30,10 +30,7 @@ allowed-tools:
 Check for `.jira-context.json` to get the active task context.
 If TASK-ID is provided as argument, use that instead.
 
-Verify the feature branch exists:
-```bash
-git branch --list "feature/<TASK-ID>"
-```
+`completedSteps`에 `"merge"` 또는 `"pr"`가 있으면 본 단계는 컨텍스트만으로 충분 — git 호출 불필요. 둘 다 없으면 (예외 경로: 사용자가 merge/pr 없이 done을 호출) 그때만 `git branch --list "feature/<TASK-ID>"`로 브랜치 존재 확인.
 
 ### Step 2: Fetch Current Issue Status
 
@@ -41,19 +38,24 @@ git branch --list "feature/<TASK-ID>"
 
 ### Step 3: Summarize Changes
 
-Get the diff summary against the base branch:
-```bash
-git log --oneline <base-branch>..feature/<TASK-ID>
-git diff --stat <base-branch>..feature/<TASK-ID>
-```
+**기본 경로 (merge/pr 완료 후 done 호출)**: git 호출 0회.
+
+merge 단계에서 이미 Jira 코멘트(`## Task Merged Locally`)에 변경 파일·삽입/삭제 라인 수가 게시되어 있고, plan/design/impl/test 문서에 모든 요약이 있다. Step 2의 cachedIssue 코멘트 또는 PDCA 문서를 그대로 인용한다.
+
+**예외 경로 (merge/pr 없이 done 직접 호출)**: 그때만 squash·merge 형태에 따라 적절한 git 명령으로 stat 1회 조회.
+
+- squash-merged onto base: `git show --stat $(git log --grep="<TASK-ID>" -1 --format=%H <base-branch>)`
+- 일반 merge: `git diff --stat <base-branch>..feature/<TASK-ID>`
+- 판단 기준: `<base>..feature/<TASK-ID>`가 비어 있으면 squash, 비어있지 않으면 일반.
 
 ### Step 4: Generate Completion Summary
 
-git diff/log 정보와 PDCA 문서들을 기반으로 완료 요약 생성:
+다음 출처를 우선순위대로 인용해 완료 요약 생성 (git 재조회 금지):
 
-1. `docs/plan/<TASK-ID>.plan.md` 존재 시 기획 요약 추출
-2. `docs/design/<TASK-ID>.design.md` 존재 시 설계 요약 추출
-3. git log/diff로 실제 변경사항 요약
+1. `.jira-context.json`의 cachedIssue 코멘트 중 `## Task Merged Locally` 또는 `## Pull Request Created` (변경 파일/라인 수)
+2. `docs/plan/<TASK-ID>.plan.md` (기획 요약)
+3. `docs/design/<TASK-ID>.design.md` (설계 요약)
+4. `docs/test/<TASK-ID>.test-report.md` (테스트 결과)
 
 ### Step 5: Post Completion Report to Jira
 
