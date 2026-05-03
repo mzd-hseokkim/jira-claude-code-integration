@@ -18,7 +18,7 @@ allowed-tools:
 
 ## Overview
 
-`jira-task-discover`는 모호한 자연어 주제를 입력받아, 코드베이스 탐색과 사용자 질문을 거쳐 명시적인 요구사항 분석 문서를 만든다. 이 스킬의 산출물은 다음 단계인 `jira-task-create`(MAE-116에서 `--from-requirements` 추가)의 입력이 된다.
+`jira-task-discover`는 모호한 자연어 주제를 입력받아, 코드베이스 탐색과 사용자 질문을 거쳐 명시적인 요구사항 분석 문서를 만든다. 이 스킬의 산출물은 다음 단계인 `jira-task-create`(`--from-requirements`)의 입력이 된다.
 
 **입력 (3종):**
 - 위치 인자: 자연어 주제 (필수). 예: `"사용자 알림 시스템"`
@@ -30,9 +30,9 @@ allowed-tools:
 
 **비목표 (Non-goals):**
 - Jira 이슈/코멘트/첨부 생성 안 함 (로컬 문서 단계로 한정)
-- `.jira-context.json` 읽기/쓰기 안 함 (`completedSteps` 갱신은 MAE-118의 책임)
+- `.jira-context.json` 읽기/쓰기 안 함
 - 인덱스 파일(`docs/requirements/INDEX.md` 등) 자동 관리 안 함
-- `templates/requirements.template.md` 생성 안 함 (MAE-117의 책임). 부재 시 에러로 종료
+- `templates/requirements.template.md` 생성 안 함 (부재 시 에러로 종료)
 
 ## Input Model
 
@@ -203,7 +203,7 @@ Step 4 합성 산출물(FR / Edge Cases / Out of Scope / Open Questions)을 사�
 ---
 ```
 
-`.jira-context.json`은 건드리지 않는다 (`completedSteps`에 `"discover"` 추가는 MAE-118의 책임).
+`.jira-context.json`은 건드리지 않는다.
 
 ## Error Handling
 
@@ -227,10 +227,8 @@ Step 4 합성 산출물(FR / Edge Cases / Out of Scope / Open Questions)을 사�
 
 ## Non-goals
 
-- Jira 이슈 생성/코멘트/첨부 — `discover`는 로컬 문서 단계로 한정. 이슈 등록은 `jira-task-create`(MAE-116)의 책임
+- Jira 이슈 생성/코멘트/첨부 — `discover`는 로컬 문서 단계로 한정. 이슈 등록은 `jira-task-create`의 책임
 - `.jira-context.json` 읽기/쓰기 — 본 스킬은 Jira 컨텍스트에 의존하지 않으며 갱신도 하지 않음
-- `completedSteps`에 `"discover"` 추가 — MAE-118에서 처리
-- `commands/jira-task.md`의 `discover` 액션 라우팅 — MAE-119에서 처리. 본 스킬은 직접 Skill 도구 호출로도 동작
-- `templates/requirements.template.md` 파일 생성 — MAE-117의 책임
+- `templates/requirements.template.md` 파일 생성 — 본 스킬은 템플릿을 소비만 함
 - 인덱스 파일 자동 관리 (`docs/requirements/INDEX.md` 등)
 - 외부 API/네트워크 호출 (LLM 추론 외)

@@ -48,23 +48,48 @@ Use Glob and Grep to understand the existing codebase:
 - Check for existing similar implementations that can be referenced
 - Note the tech stack and frameworks in use
 
-### Step 3: Generate Design Document
+### Step 3: Generate Design Document (Template Fill Flow)
 
-Step 1.5의 plan 입력 + Step 2의 코드베이스 분석 결과를 기반으로 `docs/design/<TASK-ID>.design.md` 생성.
+**중요**: 본 단계는 **템플릿 복사 + placeholder 채우기** 흐름이다. 문서를 처음부터 Write하지 말 것. 출력 토큰을 줄이는 게 핵심.
 
-산출물 작성 전 반드시 Read tool로 `templates/design.template.md`를 읽고 contract(필수/권장/옵셔널 분류, Data Model·Implementation Plan 코드 작성 금지 규약, 옵셔널 마커 규약, plan vs design 결정 경계)를 따른다.
+#### 3.1 템플릿 복사 + 주석 제거 (한 번에)
 
-**필수 섹션 작성 가이드 (요점만):**
+```bash
+mkdir -p docs/design
+# HTML 주석(가이드)은 산출물에 불필요 — perl로 제거하면서 복사
+perl -0777 -pe 's/<!--.*?-->//gs' templates/design.template.md \
+    > docs/design/<TASK-ID>.design.md
+```
 
-- **Plan Inputs**: plan doc 경로 + Plan Open Items 처리 표 + AC↔구현 매핑 표. plan 미수행이면 `N/A — plan 생략` + Jira/협의 기반으로 채움.
-- **Architecture**: 자유 서술이지만 다음 셋은 반드시 답이 보여야 함 — (1) 신규 vs 수정 컴포넌트, (2) 모듈 의존 방향, (3) 외부 시스템 경계(in-process / sync API / async).
-- **Key Decisions**: design이 내린 *구현 방식* 결정. 0건일 수 없음 — 변경 없음을 결정한 경우에도 그것 자체를 한 줄 기록. *스코프* 결정은 plan으로 (여기 적지 않음).
-- **Data Model**: 시그니처/명세 수준만, 코드 작성 금지. 데이터 변경 없으면 `N/A — no data changes`.
-- **Implementation Plan**: 파일별 변경 유형 + 규모(S/M/L). plan의 Task Breakdown 규모와 어긋나면 Open Items로 이월.
-- **Error Handling**: 시나리오 → 유형(a/b/c) → 처리. 유형 분류로 누락 검증.
-- **Security Checklist**: 6개 항목 모두 Yes/No/N/A 명시. 빈칸 금지.
-- **Test Plan**: Unit + E2E 케이스 + AC 매핑 표 (plan AC와 검증 케이스 연결). impl 단계에서 그대로 구현 가능한 수준이어야 함.
-- **Open Items**: 미해결 결정 항목. `N/A — 모두 해결`이거나 미해결 항목이 있는 경우 이월 사유 필수. **미해결 P1 항목이 남으면 impl 진입 금지** — 사용자에게 명시적으로 경고.
+위 명령은 단일/다중 라인 HTML 주석을 모두 제거한다. 결과 파일은 헤더 + placeholder + 빈 표 행만 남는다.
+
+#### 3.2 Placeholder 일괄 치환 (Edit 도구)
+
+복사된 파일의 placeholder만 Edit으로 교체한다. 전체 본문을 다시 쓰지 말 것.
+
+기본 치환 대상:
+- `{task_id}` → 실제 TASK-ID
+- `{summary}` → Jira issue summary
+- 표 본문의 `{...}` placeholder → 실제 내용 (Step 1.5 + Step 2 결과 반영)
+
+표 행이 부족하면 행만 추가 Edit. 충분하면 그대로 채움.
+
+#### 3.3 섹션별 채우기 가이드 (요약)
+
+치환 시 따라야 할 contract:
+
+- **Plan Inputs**: Step 1.5 결과 — plan doc 경로 + Plan Open Items 처리 표 + AC↔구현 매핑 표. plan 미수행이면 `N/A — plan 생략` 한 줄.
+- **Architecture**: (1) 신규 vs 수정 컴포넌트, (2) 모듈 의존 방향, (3) 외부 시스템 경계 — 셋 다 명시.
+- **Key Decisions**: *구현 방식* 결정만. 0건 불가 — "변경 없음 — 기존 패턴 유지"도 한 줄 기록. 스코프 결정은 plan으로.
+- **Data Model**: 시그니처/명세 수준만. 코드 금지. 변경 없으면 `N/A — no data changes`.
+- **Sequence Diagram**: 핵심 호출 흐름 1개. 단순하면 생략하고 `N/A` 한 줄.
+- **Implementation Plan**: 파일별 변경 유형 + 규모(S/M/L).
+- **Error Handling**: 시나리오 → 유형(a/b/c) → 처리.
+- **Security Checklist**: 6개 항목 모두 Yes/No/N/A. 빈칸 금지.
+- **Test Plan**: Unit + E2E + AC 매핑.
+- **Open Items**: 없으면 `N/A — 모두 해결`. 미해결 P1 항목 남으면 impl 진입 금지 (사용자에게 경고).
+
+옵셔널 섹션(Overview, Out of Scope, Interfaces / Types, Notes, 작업 순서)은 해당 사항 없으면 헤더째 삭제.
 
 ### Step 4: Post Summary to Jira
 

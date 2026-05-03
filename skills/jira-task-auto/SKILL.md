@@ -82,7 +82,7 @@ Agent({
 
 전 단계 `general-purpose`로 통일한다. review의 self-praise bias 차단은 `jira-task-review` Skill 내부에서 자체적으로 띄우는 `jira-reviewer` subagent가 담당한다 (Step 2, `Reviewer Independence Rule`).
 
-> **회귀 방지 (v0.32.3, MAE-N/A — 인라인 핫픽스)**: 과거 review 단계에서 `subagent_type: jira-integration:jira-reviewer`로 wrapper agent를 먼저 띄우고, 그 안에서 `jira-task-review` Skill이 다시 동일한 `jira-reviewer` subagent를 spawn하는 **2단 nesting**이 발생했다. 동일 작업을 위한 reviewer agent 부팅이 두 번 일어나 review-fix loop과 결합 시 task별 누적 지연이 +20분에 달했다. wrapper는 어차피 orchestration(파일 쓰기 + Jira 게시)만 하고 실제 리뷰 판단은 inner agent가 하므로, wrapper를 `general-purpose`로 바꿔 **single nesting**으로 맞춘다. 페르소나 독립성은 그대로 보장됨 — inner agent가 fresh context.
+> review wrapper를 `jira-integration:jira-reviewer`로 두면 inner reviewer와 2단 nesting이 발생해 부팅이 두 번 든다. wrapper는 `general-purpose`로 두고 실제 리뷰는 inner agent에 맡긴다.
 
 ### 표준 Prompt 형식
 
@@ -118,7 +118,7 @@ Jira task <TASK-ID>의 review 단계를 수행하라. `jira-integration:jira-tas
 주의: 본 wrapper는 이미 격리된 sub-agent 컨텍스트이므로 추가 `Agent` 도구 사용 권한이 없다. `[review-self-mode]` 마커에 따라 Skill의 Step 2를 self-mode(직접 수행)로 진행한다 — gap analysis / lint / code quality 검토를 wrapper agent가 직접 수행. 이미 plan/design/impl과 분리된 fresh context이므로 self-praise bias 우려 없음.
 ```
 
-> **회귀 방지**: `[review-self-mode]` 마커를 누락하면 Skill이 Mode A(Agent delegation)로 돌입했다가 sub-agent 환경에 Agent 도구가 없어 즉시 fail한다. 마커는 prompt 본문 어디에 있어도 되지만 첫 줄에 두는 게 가독성 좋다.
+> `[review-self-mode]` 마커는 필수다. 누락 시 Skill이 Mode A(Agent delegation)로 돌입했다가 sub-agent 환경의 Agent 도구 부재로 fail한다.
 
 ### 단계 간 진행 메시지
 
@@ -138,7 +138,7 @@ review sub-agent 완료 후 `.jira-context.json`을 `Read`로 읽어 `completedS
 
 ### 미통과 (Request Changes) — Scope 분기 + 자동 수정 루프
 
-`"review"`가 `completedSteps`에 없으면 → 품질 게이트 미통과. **fix loop 진입 전** 다음 휴리스틱으로 scope shortfall 여부를 판정한다 (v0.32.3 추가).
+`"review"`가 `completedSteps`에 없으면 → 품질 게이트 미통과. **fix loop 진입 전** 다음 휴리스틱으로 scope shortfall 여부를 판정한다.
 
 #### Scope Shortfall Triage
 
@@ -155,7 +155,7 @@ review sub-agent 완료 후 `.jira-context.json`을 `Read`로 읽어 `completedS
 | matchRate ≥ 70% **그리고** Critical count < 3 | **Trivial fix** | 기존 fix loop 진입 (최대 2회) |
 | 위 두 신호 추출 실패 (parse error) | 기존 동작 보존 | fix loop 진입 (fail-safe) |
 
-**근거**: matchRate가 낮거나 Critical이 많으면 scope 자체가 누락된 상태. fix sub-agent 한 번에 부족분을 다 메우기 어렵고, 2회 fix loop을 돌려도 동일한 review 실패가 반복되며 시간만 소진(MAE-277 사례에서 +20분 누적). 이런 경우 사용자가 의식적으로 추가 작업을 결정해야 한다.
+**근거**: matchRate가 낮거나 Critical이 많으면 scope 자체가 누락된 상태. fix sub-agent 한 번에 부족분을 다 메우기 어렵고, fix loop이 동일하게 실패하며 시간만 소진된다. 이런 경우 사용자가 의식적으로 추가 작업을 결정해야 한다.
 
 #### Scope Shortfall Bail (즉시 중단)
 
@@ -267,26 +267,3 @@ review를 제외한 단계 실패 시 즉시 중단하고 안내:
 - done:  `/jira-task done <TASK-ID>`  — 작업 완료 처리
 ─────────────────────────────────────────
 ```
-
-## Design Rationale: Sub-agent Delegation
-
-본 SKILL은 v0.9.0에 sub-agent 위임을 도입했다가 v0.17.1에 토큰 진단으로 부모-직접 호출로 변경됐고, v0.17.19에서 review만 부분 복원, v0.21.0에서 전 단계 복원된 이력이 있다. 동일 회귀를 막기 위한 설계 근거를 명시한다.
-
-### 왜 sub-agent로 위임하는가
-
-1. **컨텍스트 격리** — 6단계의 raw 산출물(MCP 응답, 코드 본문, 탐색 결과)이 부모에 누적되면 instruction drift 발생. 부모-직접 호출 방식의 가장 큰 비용은 토큰이 아니라 *지시 망각으로 인한 품질 저하*다.
-2. **페르소나 격리** — plan을 짠 인스턴스가 그대로 impl을 하면 합리화 편향이 코드 결정으로 흘러간다. reviewer는 self-praise bias. 같은 종류의 편향이 plan→impl, design→impl, impl→test 모든 인접 단계 사이에 존재.
-3. **모델 차등** — sub-agent의 `model` override를 통해 단계별로 적합한 모델 배정 가능 (haiku/sonnet/opus). 부모-직접 호출 방식에선 단일 모델 강제.
-
-### 토큰 비용 측정 시 주의 (회귀 방지 가이드)
-
-sub-agent 베이스 컨텍스트(시스템 프롬프트, 도구 정의)는 **prompt cache의 1차 대상**이다. 두 번째 호출부터는 cache read price(약 1/10)로 청구된다. raw token만 보고 평가하면 "sub-agent가 더 비싸 보이는" 착시가 발생한다.
-
-회귀 평가 시 다음을 지켜야 한다:
-
-- **raw token이 아닌 청구 token** 기준으로 측정.
-- **단일 단계가 아닌 6단계 풀 사이클** 기준으로 측정 (베이스 컨텍스트는 첫 호출에서만 cache miss).
-- **부모-직접 호출 모드의 컨텍스트 누적 비용**(매 단계 직전까지 누적된 부모 컨텍스트가 다음 단계에서 추가 청구됨)을 함께 측정.
-- **품질 비용**(instruction drift, 페르소나 편향)은 토큰으로 환산되지 않는다. 토큰 수치만으로 격리 가치를 부정하지 말 것.
-
-이 지침은 v0.17.1의 토큰 진단 오류(컨텍스트 누적 + 캐시 효과 누락)를 다시 반복하지 않기 위함이다.

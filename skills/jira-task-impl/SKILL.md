@@ -39,26 +39,16 @@ allowed-tools:
 1. Implementation Plan의 순서를 따름
 2. 기존 코드 컨벤션과 패턴을 준수
 3. Design 문서의 Error Handling, Security Checklist 반영
-4. **구현과 단위테스트를 함께 작성** (아래 Step 2.5 참조)
-5. 각 단계 완료 시 간단한 검증 수행
+4. 각 단계 완료 시 **타입체크/컴파일 등 syntactic 검증만** 수행 (테스트 실행 금지)
 
 Design 문서가 없으면, Jira 이슈 설명과 Acceptance Criteria 기반으로 구현.
 
-### Step 2.5: Write Unit Tests Alongside Implementation
-
-Design 문서의 Test Plan 섹션에 명세된 단위테스트 케이스를 구현과 병행하여 작성한다.
-
-**원칙:**
-- 기능 코드를 작성한 직후 해당 단위테스트를 작성 (구현 → 테스트 → 다음 구현)
-- 프로젝트의 기존 테스트 프레임워크와 패턴을 따름 (vitest, jest, pytest 등)
-- 테스트 파일 위치는 프로젝트 컨벤션을 따름 (`__tests__/`, `*.test.*`, `*.spec.*` 등)
-
-**Test Plan이 없는 경우:**
-- Acceptance Criteria 기반으로 핵심 경로의 단위테스트만 작성
-- 과도한 테스트보다 핵심 로직 검증에 집중
-
-**테스트 프레임워크가 없는 프로젝트:**
-- 단위테스트 작성을 스킵하고 `/jira-task test` 단계에서 처리
+**테스트 작업 금지 (강제):**
+- 본 단계에서 **테스트 코드 작성 금지** — unit/integration/E2E 모두 해당
+- 테스트 실행 금지 (`npm test`, `pytest`, `playwright test` 등)
+- 테스트 파일(`*.test.*`, `*.spec.*`, `__tests__/`, `tests/` 하위 등) 신규 생성/수정 금지
+- 테스트 코드 작성과 실행은 모두 `/jira-task test` 단계의 책임이다
+- 단, 구현 대상 파일 자체가 우연히 테스트 코드인 경우(예: 테스트 유틸리티 자체를 구현하는 task)는 design 문서 Implementation Plan에 명시된 한에서만 허용
 
 ### Step 3: Post Progress to Jira
 
@@ -72,14 +62,13 @@ Design 문서의 Test Plan 섹션에 명세된 단위테스트 케이스를 구�
 ### Changes Made
 - 생성: <신규 파일 목록>
 - 수정: <변경 파일 목록>
-- 테스트 추가: <테스트 파일 목록, 없으면 "없음">
 
 ### Implementation Notes
 - <구현 중 주요 결정 사항>
 - <설계와의 차이점>
 
 ### Next Steps
-- 테스트 실행: `/jira-task test <TASK-ID>`
+- 테스트 작성/실행: `/jira-task test <TASK-ID>`
 - 코드 리뷰: `/jira-task review <TASK-ID>`
 ```
 
@@ -97,7 +86,7 @@ Design 문서의 Test Plan 섹션에 명세된 단위테스트 케이스를 구�
 
 **Progress**: init → start → plan → design → **impl ✓** → test → review → merge → pr → done
 
-**Next**: `/jira-task test <TASK-ID>` — 테스트를 실행합니다
+**Next**: `/jira-task test <TASK-ID>` — 테스트 코드를 작성하고 실행합니다
 ---
 ```
 

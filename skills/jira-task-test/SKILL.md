@@ -54,16 +54,22 @@ Determine available test types:
 - **Unit (Vitest/Jest)**: If `vitest.config.*` or `jest.config.*` exists
 - **Custom**: If `package.json` has a `test` script
 
-### Step 1.5: Check for Existing Tests
+### Step 1.5: Author Tests (impl 단계에서 분리됨)
+
+테스트 코드 작성은 본 스킬의 책임이다. impl 단계는 프로덕션 코드만 다루고 테스트 코드는 작성하지 않는다.
+
+**기존 테스트 확인:**
 
 이 태스크와 관련된 테스트가 이미 있는지 Glob/Grep으로 확인:
 - 테스트 파일에서 TASK-ID 또는 기능 키워드 검색
 - `tests/`, `e2e/`, `__tests__/`, `*.test.*`, `*.spec.*` 패턴 탐색
 
-**관련 테스트가 없으면**: 사용자에게 테스트 생성을 먼저 제안:
-1. Design 문서의 Test Plan 섹션 참조
-2. Jira 이슈의 Acceptance Criteria 참조
-3. Playwright 또는 unit 테스트 파일 생성 (아래 구조 참고)
+**테스트 작성 절차 (기본 동작):**
+
+1. Design 문서의 Test Plan 섹션을 1차 명세로 사용 (Unit + E2E 케이스 + AC 매핑)
+2. Design 문서가 없거나 Test Plan이 비면 Jira 이슈의 Acceptance Criteria를 사용
+3. 누락된 케이스만 신규 작성 (이미 있는 테스트는 보존)
+4. 프레임워크/위치는 프로젝트 컨벤션을 따름 (vitest/jest/pytest, `__tests__/` 또는 `*.test.*` 등)
 
 ```typescript
 import { test, expect } from '@playwright/test';
@@ -75,7 +81,9 @@ test.describe('<Feature Name> - <TASK-ID>', () => {
 });
 ```
 
-사용자가 테스트 생성을 원하면 생성 후 Step 2로 진행. 원치 않으면 바로 Step 2로.
+**스킵 조건 (예외):**
+- 테스트 프레임워크가 프로젝트에 전혀 없음 → 작성 스킵하고 Step 2 폴백 처리
+- 사용자가 명시적으로 "테스트 생성하지 마"라고 지시한 경우
 
 ### Step 2: Run Tests
 
