@@ -146,3 +146,76 @@ test('U7c: upsertWorktree allows explicit cachedIssue=null clear', () => {
   assert.equal(entry.cachedIssue, null);
   assert.equal(entry.noContext, true);
 });
+
+// U_tz_naive: timezone-naive lastFetchedAt → stale로 분류
+test('U_tz_naive: getStaleEntries treats timezone-naive lastFetchedAt as stale', () => {
+  const store = createStore();
+  // 5분 스테일 윈도, 1초 전으로 설정 → 정상이면 fresh여야 하지만 naive string이므로 stale
+  const recentNaive = new Date(Date.now() - 1000).toISOString().replace('Z', ''); // strip Z
+  store.upsertWorktree({
+    path: '/tz-naive',
+    taskId: 'T-tz1',
+    lastFetchedAt: recentNaive,
+  });
+  const stale = store.getStaleEntries(5 * 60 * 1000);
+  assert.ok(stale.some((e) => e.path === '/tz-naive'), 'timezone-naive entry should be stale');
+});
+
+// U_tz_invalid: 임의 문자열 lastFetchedAt → stale로 분류
+test('U_tz_invalid: getStaleEntries treats invalid lastFetchedAt as stale', () => {
+  const store = createStore();
+  store.upsertWorktree({
+    path: '/tz-invalid',
+    taskId: 'T-tz2',
+    lastFetchedAt: 'not-a-date',
+  });
+  const stale = store.getStaleEntries(5 * 60 * 1000);
+  assert.ok(stale.some((e) => e.path === '/tz-invalid'), 'invalid date entry should be stale');
+});
+
+// U_guard_new: fetchedAt이 더 새로운 cachedIssue는 반영된다
+test('U_guard_new: upsertWorktree replaces cachedIssue when incoming fetchedAt is newer', () => {
+  const store = createStore();
+  const T0 = new Date(Date.now() - 2000).toISOString(); // T0 (2초 전)
+  const T1 = new Date(Date.now() - 1000).toISOString(); // T0+1s (1초 전)
+
+  // updateCachedIssue로 T0 박기 (fetchedAt은 issue 객체에 직접 설정)
+  store.upsertWorktree({ path: '/guard', taskId: 'T-g1' });
+  store.upsertWorktree({
+    path: '/guard',
+    cachedIssue: { key: 'T-g1', status: '진행 중', fetchedAt: T0 },
+  });
+
+  // T0+1초의 cachedIssue (status="완료")를 보냄
+  store.upsertWorktree({
+    path: '/guard',
+    cachedIssue: { key: 'T-g1', status: '완료', fetchedAt: T1 },
+  });
+
+  const snap = store.getSnapshot();
+  const entry = snap.find((w) => w.path === '/guard');
+  assert.equal(entry.cachedIssue.status, '완료', 'newer cachedIssue should replace existing');
+});
+
+// U_guard_old: fetchedAt이 오래된 cachedIssue는 기존 값을 보존한다
+test('U_guard_old: upsertWorktree preserves cachedIssue when incoming fetchedAt is older', () => {
+  const store = createStore();
+  const T0 = new Date(Date.now() - 1000).toISOString(); // T0 (1초 전)
+  const Told = new Date(Date.now() - 2000).toISOString(); // T0-1s (2초 전, 더 오래됨)
+
+  store.upsertWorktree({ path: '/guard2', taskId: 'T-g2' });
+  store.upsertWorktree({
+    path: '/guard2',
+    cachedIssue: { key: 'T-g2', status: '진행 중', fetchedAt: T0 },
+  });
+
+  // 더 오래된 fetchedAt의 cachedIssue (status="완료")를 보냄
+  store.upsertWorktree({
+    path: '/guard2',
+    cachedIssue: { key: 'T-g2', status: '완료', fetchedAt: Told },
+  });
+
+  const snap = store.getSnapshot();
+  const entry = snap.find((w) => w.path === '/guard2');
+  assert.equal(entry.cachedIssue.status, '진행 중', 'older cachedIssue should be discarded');
+});

@@ -5,6 +5,24 @@ const { EventEmitter } = require('node:events');
 const DEFAULT_RING_BUFFER_SIZE = 200;
 
 /**
+ * Parse an ISO 8601 string that has an explicit UTC offset (Z or ±HH:MM / ±HHMM).
+ * Returns the numeric UTC timestamp in ms, or NaN if:
+ *   - input is null/undefined/empty
+ *   - string is timezone-naive (no Z / offset)
+ *   - Date.parse fails (Invalid Date)
+ *
+ * @param {string|null|undefined} s
+ * @returns {number}
+ */
+function parseIsoUtcMs(s) {
+  if (!s || typeof s !== 'string') return NaN;
+  // Require explicit UTC marker: Z, +HH:MM, -HH:MM, +HHMM, -HHMM
+  if (!/(?:Z|[+-]\d{2}:?\d{2})$/.test(s)) return NaN;
+  const ms = Date.parse(s);
+  return ms; // NaN if unparseable
+}
+
+/**
  * Simple fixed-capacity ring buffer backed by an Array.
  * Oldest item is evicted when capacity is exceeded.
  */
@@ -75,11 +93,11 @@ function createStore(opts = {}) {
     /**
      * Insert or update a worktree entry. Emits 'worktree.added' or 'worktree.changed'.
      *
-     * cachedIssue 보호: jira-collector(updateCachedIssue)가 owner. 이미 채워진
-     * cachedIssue는 worktree collector(파일에서 읽은 형태)의 update가 덮어쓰지
-     * 못한다. 두 형태가 달라(특히 links 필드 유무) 카드의 blocks/blockedBy가
-     * 사라지는 회귀(2026-05-02)를 막기 위함. cold-start(현재 null)일 때만
-     * 파일의 cachedIssue로 카드를 그릴 수 있게 채워준다.
+     * cachedIssue 보호: fetchedAt 비교 기반.
+     *   - incoming cachedIssue가 null  → 통과 (명시적 clear, U7c).
+     *   - 한쪽이라도 fetchedAt 없음    → 기존 보존 또는 cold-start fill (U7/U7b).
+     *   - 둘 다 있고 incoming이 더 최신  → 교체 (stale-lock 해소).
+     *   - 같거나 오래됨 / NaN         → 기존 보존 (U7 회귀 안전망).
      *
      * @param {Partial<WorktreeState> & { path: string }} update
      */
@@ -87,9 +105,14 @@ function createStore(opts = {}) {
       const isNew = !_map.has(update.path);
       const record = _getOrCreate(update.path);
       const merged = { ...update };
-      if ('cachedIssue' in merged && record.state.cachedIssue && merged.cachedIssue) {
-        // 이미 jira-collector가 채워둔 게 있으면 보존 (links/assignee/issuetype 등 손실 방지).
-        delete merged.cachedIssue;
+      if ('cachedIssue' in merged && merged.cachedIssue !== null && record.state.cachedIssue) {
+        // 둘 다 truthy → fetchedAt 비교
+        const incomingMs = parseIsoUtcMs(merged.cachedIssue.fetchedAt);
+        const existingMs = parseIsoUtcMs(record.state.cachedIssue.fetchedAt);
+        if (!(incomingMs > existingMs)) {
+          // 같거나 오래됨 / NaN → 기존 보존
+          delete merged.cachedIssue;
+        }
       }
       Object.assign(record.state, merged);
       const eventName = isNew ? 'worktree.added' : 'worktree.changed';
@@ -163,7 +186,8 @@ function createStore(opts = {}) {
           results.push(_serialize(record));
           continue;
         }
-        if (new Date(state.lastFetchedAt).getTime() < threshold) {
+        const fetchedMs = parseIsoUtcMs(state.lastFetchedAt);
+        if (isNaN(fetchedMs) || fetchedMs < threshold) {
           results.push(_serialize(record));
         }
       }
