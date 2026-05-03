@@ -109,14 +109,17 @@ Step 1.7의 requirements 산출물 + Step 2의 Jira 컨텍스트를 기반으로
 
 **필수 섹션 작성 가이드 (요점만):**
 
-- **Source Requirements**: requirements doc 경로 + Resolved Open Questions 표 + Resolved [CONFLICT]s 표 + Goal Coverage 표. discover 미수행이면 `N/A — discover 생략` + 옵셔널 `Inline Requirements`로 대체.
-- **Scope > In Scope**: 가능한 한 `*(source: FR-N)*` trace marker 부착. requirements가 있는 경우 강력 권장.
-- **Scope > Out of Scope**: 표 형식 (항목/사유/복귀 예정). bullet list 금지.
-- **Acceptance Criteria > AC ↔ Goal/Scope 매핑**: 모든 AC가 Discover Goal과 In Scope item에 매핑되는지 표로 검증. 매핑 누락이 있으면 Open Items로 이월.
-- **Scope Decisions**: plan이 내린 결정의 근거. 0건일 수 없음 — 변경 없음을 결정한 경우에도 그것 자체를 한 줄 기록. *어떻게 만들지*에 대한 결정은 design으로 미루고 여기 적지 않는다.
-- **Task Breakdown**: 의존/규모(S/M/L)/우선순위(must/nice) 컬럼 채움. 시간 압박 시 어디부터 자를지 보이게.
-- **Risks**: 식별된 위험 없으면 `N/A — 식별된 위험 없음 (검토 완료)` 한 줄. 섹션 누락 금지.
-- **Open Items**: 풀지 못한 결정(P1 Open Questions, [CONFLICT], AC 매핑 누락 등)을 명시적으로 design으로 이월. 없으면 `N/A — 모두 해결`.
+- **Source Requirements**: requirements doc 경로 + 단일 통합 표(`출처 | 항목 | plan에서의 처리`). Open Questions(P1/P2) · [CONFLICT] · Goal Coverage를 한 표에 모은다. discover 미수행이면 `N/A — discover 생략 (출처: <Jira/협의>)` 한 줄.
+- **Scope > In Scope**: 가능한 한 `*(source: FR-N)*` trace marker 부착.
+- **Scope > Out of Scope**: bullet 형식 (`- 항목 — 사유 *(복귀: ...)*`).
+- **Acceptance Criteria**: 각 AC 끝에 `*(covers: Goal X, In Scope item-Y)*`로 매핑 inline. 별도 매핑 표 없음. 매핑 누락이 있으면 Open Items로 이월.
+- **Scope Decisions**: 0건일 수 없음 — "변경 없음" 결정도 한 줄 기록. *어떻게 만들지*는 design으로.
+- **Task Breakdown**: 의존/규모(S/M/L)/우선순위(must/nice) 컬럼 채움.
+- **Risks**: 없으면 `N/A — 식별된 위험 없음 (검토 완료)` 한 줄. 섹션 누락 금지.
+
+**옵셔널 섹션** (해당 없으면 헤더째 삭제):
+- **Open Items**: 풀지 못한 결정을 design으로 이월할 때만.
+- **Edge Cases**: 경계 조건·예외 입력을 별도로 다룰 때만.
 
 ### Step 4: Post Summary to Jira
 

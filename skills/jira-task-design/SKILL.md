@@ -34,11 +34,11 @@ plan 문서가 있는 경우, design의 입력으로 명시적으로 소비할 �
    - `resolved`: design에서 답을 정함
    - `deferred`: impl 또는 후속 단계로 추가 이월 (사유 명시 필수)
    - `out-of-scope`: 본 task 범위 밖으로 결정 — Out of Scope 섹션에도 반영
-2. **Acceptance Criteria**: plan의 모든 AC를 추출. design의 AC↔구현 매핑 표(Plan Inputs 섹션)와 Test Plan의 AC 매핑 표(Test Plan 섹션) 둘 다 채워야 한다 — 전자는 *구현 위치*, 후자는 *검증 방법*.
+2. **Acceptance Criteria**: plan의 모든 AC를 추출. *구현 위치*는 Plan Inputs 통합 표에, *검증 방법*은 Test Plan 표(Unit/E2E 행의 `검증 AC` 컬럼)에 기록한다.
 3. **Source Requirements / Goal Coverage**: plan에 있는 경우 참고. design이 plan의 Goal Coverage를 깨지 않는지 확인 (예: plan에서 만족하기로 한 Goal이 design에서 누락되면 Open Items로 이월).
 4. **Task Breakdown 규모 추정**: plan의 task별 규모(S/M/L)를 design의 Implementation Plan 규모와 대조. 어긋나면 Open Items에 명시.
 
-plan이 없는 경우(`docs/plan/<TASK-ID>.plan.md` 부재): Plan Inputs 섹션은 `N/A — plan 생략 (출처: <Jira issue>)`로 표기하고, Plan Open Items / AC↔구현 매핑 표는 Jira description의 AC 또는 사용자 협의 내용을 기반으로 채운다.
+plan이 없는 경우(`docs/plan/<TASK-ID>.plan.md` 부재): Plan Inputs 섹션은 `N/A — plan 생략 (출처: <Jira issue>)`로 표기하고, 통합 표는 Jira description의 AC 또는 사용자 협의 내용을 기반으로 채운다.
 
 ### Step 2: Analyze Codebase
 
@@ -78,18 +78,21 @@ perl -0777 -pe 's/<!--.*?-->//gs' templates/design.template.md \
 
 치환 시 따라야 할 contract:
 
-- **Plan Inputs**: Step 1.5 결과 — plan doc 경로 + Plan Open Items 처리 표 + AC↔구현 매핑 표. plan 미수행이면 `N/A — plan 생략` 한 줄.
+**필수 섹션:**
+- **Plan Inputs**: Step 1.5 결과 — plan doc 경로 + 단일 통합 표(`출처 | 항목 | design에서의 처리 / 구현 위치`). Open Items 처리 + AC↔구현 매핑을 한 표에 모은다. plan 미수행이면 `N/A — plan 생략` 한 줄.
 - **Architecture**: (1) 신규 vs 수정 컴포넌트, (2) 모듈 의존 방향, (3) 외부 시스템 경계 — 셋 다 명시.
-- **Key Decisions**: *구현 방식* 결정만. 0건 불가 — "변경 없음 — 기존 패턴 유지"도 한 줄 기록. 스코프 결정은 plan으로.
+- **Key Decisions**: *구현 방식* 결정만. 0건 불가 — "기존 패턴 유지"도 한 줄 기록. 스코프 결정은 plan으로.
 - **Data Model**: 시그니처/명세 수준만. 코드 금지. 변경 없으면 `N/A — no data changes`.
-- **Sequence Diagram**: 핵심 호출 흐름 1개. 단순하면 생략하고 `N/A` 한 줄.
 - **Implementation Plan**: 파일별 변경 유형 + 규모(S/M/L).
 - **Error Handling**: 시나리오 → 유형(a/b/c) → 처리.
-- **Security Checklist**: 6개 항목 모두 Yes/No/N/A. 빈칸 금지.
-- **Test Plan**: Unit + E2E + AC 매핑.
-- **Open Items**: 없으면 `N/A — 모두 해결`. 미해결 P1 항목 남으면 impl 진입 금지 (사용자에게 경고).
+- **Test Plan**: Unit + E2E. 각 케이스 행의 `검증 AC` 컬럼으로 AC 매핑 (별도 매핑 표 없음).
 
-옵셔널 섹션(Overview, Out of Scope, Interfaces / Types, Notes, 작업 순서)은 해당 사항 없으면 헤더째 삭제.
+**옵셔널 섹션** (해당 없으면 헤더째 삭제):
+- **Overview**: plan으로 충분하면 생략.
+- **Sequence Diagram**: 핵심 호출 흐름이 표만으로 안 보일 때만.
+- **Security Checklist**: 보안 영향이 있을 때만 표를 펼친다. 영향 없으면 헤더 자체를 삭제하고, Architecture 또는 Notes에 `보안 영향: No — <사유>` 한 줄.
+- **Out of Scope / Interfaces / Types / 작업 순서 / Notes**: 해당 사항 있을 때만.
+- **Open Items**: 미해결 항목이 있을 때만. 미해결 P1이 남으면 impl 진입 금지 (사용자에게 경고).
 
 ### Step 4: Post Summary to Jira
 
