@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MAE-277",
+  "entries": [
+    {
+      "taskId": "MAE-277",
+      "timestamp": "2026-05-03T09:16:24Z",
+      "reviewerVersion": "unknown",
+      "outcome": "pass",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "high",
+          "file": "scripts/dashboard/server.js",
+          "line": 42,
+          "category": "correctness",
+          "message": "workspaces.register(cwd) 후 비정규화 process.cwd()를 workspaceRoots에 사용 — first-run 한정 path 비교 불일치 가능"
+        },
+        {
+          "id": "F-002",
+          "severity": "high",
+          "file": "scripts/dashboard/collectors/worktree.js",
+          "line": 151,
+          "category": "correctness",
+          "message": "existing.workspaceRoot=null entry는 removeWorktree 대상에서 영구 제외 — ghost entry 잔존 가능"
+        },
+        {
+          "id": "F-003",
+          "severity": "high",
+          "file": "scripts/dashboard/collectors/worktree.js",
+          "line": 222,
+          "category": "correctness",
+          "message": "chokidar add 핸들러에서 workspaceRoot가 null로 upsert되어 다음 폴링까지 AC2 약화"
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 3,
+        "medium": 0,
+        "low": 0,
+        "info": 0
+      },
+      "falsePositive": null,
+      "userOverride": null
+    }
+  ]
+}

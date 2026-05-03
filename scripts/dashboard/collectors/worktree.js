@@ -81,9 +81,15 @@ function readJiraContext(worktreePath, logger = null) {
 }
 
 /**
- * Run `git worktree list --porcelain` and build state objects for each worktree.
+ * Run `git worktree list --porcelain` for a single root and build state objects.
+ * Returns the set of seen paths (used for deletion candidate calculation).
+ *
+ * @param {object} store
+ * @param {string} workspaceRoot
+ * @param {object|null} logger
+ * @returns {Set<string>} paths seen for this root
  */
-function collectWorktrees(store, workspaceRoot, logger) {
+function collectWorktreesForRoot(store, workspaceRoot, logger) {
   let stdout;
   try {
     stdout = execSync('git worktree list --porcelain', {
@@ -92,9 +98,9 @@ function collectWorktrees(store, workspaceRoot, logger) {
       timeout: 10_000,
     });
   } catch (err) {
-    logger && logger.error('git-worktree-list.failed', { error: err.message });
+    logger && logger.error('git-worktree-list.failed', { workspaceRoot, error: err.message });
     console.error('[worktree] git worktree list failed:', err.message);
-    return;
+    return new Set();
   }
 
   const worktrees = parseGitWorktreeList(stdout);
@@ -109,6 +115,7 @@ function collectWorktrees(store, workspaceRoot, logger) {
     const state = {
       path: wt.path,
       branch: wt.branch,
+      workspaceRoot,
       taskId: ctx ? ctx.taskId : null,
       cachedIssue: ctx ? ctx.cachedIssue : null,
       lastFetchedAt: ctx ? ctx.lastFetchedAt : null,
@@ -122,10 +129,31 @@ function collectWorktrees(store, workspaceRoot, logger) {
     store.upsertWorktree(state);
   }
 
-  // Remove worktrees that disappeared from the list
+  return seenPaths;
+}
+
+/**
+ * Run `git worktree list --porcelain` for N workspace roots and build state objects.
+ * Only removes entries that belong to one of the given roots and have disappeared.
+ *
+ * @param {object} store
+ * @param {string[]} workspaceRoots
+ * @param {object|null} logger
+ */
+function collectWorktrees(store, workspaceRoots, logger) {
+  const allSeenPaths = new Set();
+
+  for (const root of workspaceRoots) {
+    const seenForRoot = collectWorktreesForRoot(store, root, logger);
+    for (const p of seenForRoot) allSeenPaths.add(p);
+  }
+
+  // Remove worktrees that disappeared — but only those whose workspaceRoot is
+  // one of the roots we just scanned (avoid touching entries from other roots).
+  const rootSet = new Set(workspaceRoots);
   const snapshot = store.getSnapshot();
   for (const existing of snapshot) {
-    if (!seenPaths.has(existing.path)) {
+    if (rootSet.has(existing.workspaceRoot) && !allSeenPaths.has(existing.path)) {
       store.removeWorktree(existing.path);
     }
   }
@@ -134,19 +162,27 @@ function collectWorktrees(store, workspaceRoot, logger) {
 /**
  * Start the worktree collector.
  *
+ * Accepts either a single `workspaceRoot` (string, legacy) or `workspaceRoots` (string[]).
+ * When both are provided, `workspaceRoots` wins.
+ *
  * @param {object} store  Store instance from createStore()
- * @param {{ workspaceRoot: string, pollIntervalMs?: number, logger?: object }} opts
+ * @param {{ workspaceRoots?: string[], workspaceRoot?: string, pollIntervalMs?: number, logger?: object }} opts
  * @returns {{ stop(): void }}
  */
 function startWorktreeCollector(store, opts) {
-  const { workspaceRoot, pollIntervalMs = DEFAULT_POLL_INTERVAL_MS, logger = null } = opts;
+  const { pollIntervalMs = DEFAULT_POLL_INTERVAL_MS, logger = null } = opts;
+
+  // Normalise to array — prefer workspaceRoots[], fall back to single workspaceRoot.
+  const workspaceRoots = opts.workspaceRoots
+    ? opts.workspaceRoots
+    : [opts.workspaceRoot];
 
   // Initial collection
-  collectWorktrees(store, workspaceRoot, logger);
+  collectWorktrees(store, workspaceRoots, logger);
 
   // 30s polling
   const pollTimer = setInterval(() => {
-    collectWorktrees(store, workspaceRoot, logger);
+    collectWorktrees(store, workspaceRoots, logger);
   }, pollIntervalMs);
   pollTimer.unref && pollTimer.unref();
 
@@ -161,13 +197,15 @@ function startWorktreeCollector(store, opts) {
   }
 
   if (chokidar) {
-    // Watch all .jira-context.json files under the parent worktrees directory.
-    // We watch the workspace parent dir for add/unlink of .jira-context.json files.
-    const parentDir = path.dirname(workspaceRoot);
-    const pattern = path.join(parentDir, '*', '.jira-context.json');
+    // Watch .jira-context.json files under the parent dir of each workspace root.
+    // Build an array of patterns (one per root) — chokidar accepts an array.
+    const patterns = workspaceRoots.map((root) => {
+      const parentDir = path.dirname(root);
+      return path.join(parentDir, '*', '.jira-context.json');
+    });
 
     try {
-      watcher = chokidar.watch(pattern, {
+      watcher = chokidar.watch(patterns, {
         ignoreInitial: true,
         depth: 0,
         usePolling: false,
@@ -178,15 +216,16 @@ function startWorktreeCollector(store, opts) {
         const ctx = readJiraContext(worktreePath, logger);
         if (ctx === null) {
           // File may have been removed or is unreadable; re-run full collect
-          collectWorktrees(store, workspaceRoot, logger);
+          collectWorktrees(store, workspaceRoots, logger);
           return;
         }
-        // Get current branch from snapshot
+        // Get current branch and workspaceRoot from snapshot
         const snapshot = store.getSnapshot();
         const existing = snapshot.find((w) => w.path === worktreePath);
         store.upsertWorktree({
           path: worktreePath,
           branch: existing ? existing.branch : null,
+          workspaceRoot: existing ? existing.workspaceRoot : null,
           taskId: ctx.taskId,
           cachedIssue: ctx.cachedIssue,
           lastFetchedAt: ctx.lastFetchedAt,
@@ -207,6 +246,7 @@ function startWorktreeCollector(store, opts) {
         store.upsertWorktree({
           path: worktreePath,
           branch: null,
+          workspaceRoot: null,
           taskId: null,
           cachedIssue: null,
           lastFetchedAt: null,

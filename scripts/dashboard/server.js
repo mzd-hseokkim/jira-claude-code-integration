@@ -11,6 +11,7 @@ const { startJiraCollector } = require('./collectors/jira');
 const { createIngestRouter } = require('./routes/ingest');
 const { createCleanupRouter } = require('./routes/cleanup');
 const { openBrowser } = require('./openBrowser');
+const workspaces = require('./workspaces');
 
 const DEFAULT_PORT = 8765;
 
@@ -22,8 +23,31 @@ const DEFAULT_PORT = 8765;
  */
 async function startServer(opts = {}) {
   const port = opts.port ?? DEFAULT_PORT;
-  const workspaceRoot = opts.workspaceRoot ?? process.cwd();
   const shouldOpenBrowser = opts.openBrowser ?? true;
+
+  // -----------------------------------------------------------------------
+  // Resolve workspace roots
+  // -----------------------------------------------------------------------
+  // AC6: if caller explicitly passes workspaceRoot, use it as-is (ad-hoc mode,
+  //      registry is ignored — backward compatible).
+  // Otherwise: load registry, auto-register cwd if empty.
+  let workspaceRoots;
+  if (opts.workspaceRoot) {
+    workspaceRoots = [opts.workspaceRoot];
+  } else {
+    const { workspaces: registered } = workspaces.loadAndPrune();
+    if (registered.length === 0) {
+      // AC4: empty registry → auto-register cwd
+      workspaces.register(process.cwd());
+      workspaceRoots = [process.cwd()];
+    } else {
+      workspaceRoots = registered.map((e) => e.path);
+    }
+  }
+
+  // The "primary" workspace is used for credentials, log file location, and
+  // the cleanup router (these are single-workspace concerns).
+  const workspaceRoot = opts.workspaceRoot ?? workspaceRoots[0];
   const logFile = path.join(workspaceRoot, 'logs', 'dashboard-server.log');
 
   const logger = createLogger(logFile);
@@ -120,7 +144,7 @@ async function startServer(opts = {}) {
       });
 
   // Start collectors
-  const worktreeCollector = startWorktreeCollector(store, { workspaceRoot, logger });
+  const worktreeCollector = startWorktreeCollector(store, { workspaceRoots, logger });
   // 마지막 jira-collector tick 시점/주기 — snapshot 이벤트에 포함시켜
   // 새 SSE 클라이언트도 즉시 polling 사이클 phase에 맞출 수 있게 한다.
   let lastTickAt = null;
@@ -137,7 +161,7 @@ async function startServer(opts = {}) {
 
   await new Promise((resolve, reject) => {
     httpServer.listen(port, '127.0.0.1', () => {
-      logger.info('server.started', { port, workspaceRoot });
+      logger.info('server.started', { port, workspaceRoots });
       console.log(`[dashboard] server listening on http://127.0.0.1:${port}`);
       console.log(`[dashboard] log file: ${logFile}`);
       if (shouldOpenBrowser) {
