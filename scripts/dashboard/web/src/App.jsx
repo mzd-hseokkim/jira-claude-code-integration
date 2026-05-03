@@ -2,11 +2,32 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { DashboardProvider, useDashboard } from './state/DashboardContext.jsx';
 import { useDashboardStream } from './hooks/useDashboardStream.js';
 import { useIdle } from './hooks/useIdle.js';
+import { useWorkspaces } from './hooks/useWorkspaces.js';
 import ConnectionBanner from './components/ConnectionBanner.jsx';
 import KittBar from './components/KittBar.jsx';
 import WorktreeCard from './components/WorktreeCard.jsx';
+import WorkspaceGroup from './components/WorkspaceGroup.jsx';
 import GraphCanvas from './components/GraphCanvas.jsx';
 import GraphErrorBoundary from './components/GraphErrorBoundary.jsx';
+
+/**
+ * 백슬래시 → 슬래시, trailing slash 제거.
+ * Windows `C:\foo\bar\` → `C:/foo/bar`
+ * @param {string} p
+ * @returns {string}
+ */
+function normalizePath(p) {
+  return p.replace(/\\/g, '/').replace(/\/$/, '');
+}
+
+/**
+ * 경로에서 basename 추출.
+ * @param {string} p  정규화된 경로
+ * @returns {string}
+ */
+function basename(p) {
+  return p.split('/').pop() || p;
+}
 
 /**
  * 마지막 activity ts (없으면 null).
@@ -64,6 +85,7 @@ function Dashboard() {
   useDashboardStream(dispatch);
 
   const isIdle = useIdle(state.lastEventAt);
+  const { workspaces } = useWorkspaces();
 
   const [sortKey, setSortKey] = useState('activity');
   const [sortDir, setSortDir] = useState('desc');
@@ -100,6 +122,60 @@ function Dashboard() {
   const sorted = useMemo(() => {
     return [...filtered].sort(makeSorter(sortKey, sortDir));
   }, [filtered, sortKey, sortDir]);
+
+  // workspace registry path(정규화) 세트 구성.
+  // workspaces가 없으면(fetch 전 / 실패) 자연히 N<=1 분기로 빠짐.
+  const workspaceMap = useMemo(() => {
+    /** @type {Map<string, object>} 정규화 path → WorkspaceEntry */
+    const m = new Map();
+    for (const ws of workspaces) {
+      if (ws.path) m.set(normalizePath(ws.path), ws);
+    }
+    return m;
+  }, [workspaces]);
+
+  // N=2+ 일 때 sorted 카드를 workspace 기준으로 그룹화.
+  // N<=1 이면 null을 반환하여 호출측에서 분기.
+  const groupedFiltered = useMemo(() => {
+    if (workspaceMap.size <= 1) return null;
+    /** @type {Map<string, { workspace: object|null, wts: object[] }>} */
+    const groups = new Map();
+
+    // registry 순서대로 그룹 초기화 (정렬 기준점)
+    for (const [normPath, ws] of workspaceMap.entries()) {
+      groups.set(normPath, { workspace: ws, wts: [] });
+    }
+    // fallback 그룹
+    const UNASSIGNED = '__unassigned__';
+
+    for (const wt of sorted) {
+      const wtRoot = wt.workspaceRoot ? normalizePath(wt.workspaceRoot) : null;
+      if (wtRoot && groups.has(wtRoot)) {
+        groups.get(wtRoot).wts.push(wt);
+      } else {
+        if (!groups.has(UNASSIGNED)) {
+          groups.set(UNASSIGNED, { workspace: null, wts: [] });
+        }
+        groups.get(UNASSIGNED).wts.push(wt);
+      }
+    }
+
+    // 카드 0건 그룹 숨김 (필터 적용 후 빈 그룹)
+    const result = [];
+    for (const [key, group] of groups.entries()) {
+      if (group.wts.length === 0) continue;
+      const normPath = key === UNASSIGNED ? null : key;
+      const label = normPath ? basename(normPath) : '(no workspace)';
+      result.push({ key, label, workspace: group.workspace, wts: group.wts });
+    }
+    // __unassigned__는 항상 마지막
+    result.sort((a, b) => {
+      if (a.key === UNASSIGNED) return 1;
+      if (b.key === UNASSIGNED) return -1;
+      return 0;
+    });
+    return result;
+  }, [workspaceMap, sorted]);
 
   const totalCount = Object.keys(state.worktrees).length;
 
@@ -251,7 +327,7 @@ function Dashboard() {
           <GraphCanvas worktrees={state.worktrees} />
         </GraphErrorBoundary>
       ) : (
-        <main className={`dashboard-grid${isIdle ? ' is-idle' : ''}`}>
+        <main className={`dashboard-grid${isIdle ? ' is-idle' : ''}${groupedFiltered ? ' dashboard-grid--grouped' : ''}`}>
           {sorted.length === 0 ? (
             <div className="dashboard-empty">
               <div className="dashboard-empty__card" role="status">
@@ -274,7 +350,20 @@ function Dashboard() {
                 </p>
               </div>
             </div>
+          ) : groupedFiltered ? (
+            // N=2+ workspace: 그룹 헤더 + 카드
+            groupedFiltered.map(({ key, label, workspace, wts }) => (
+              <WorkspaceGroup
+                key={key}
+                workspace={workspace}
+                label={label}
+                count={wts.length}
+              >
+                {wts.map((wt) => <WorktreeCard key={wt.path} worktree={wt} />)}
+              </WorkspaceGroup>
+            ))
           ) : (
+            // N<=1 workspace: 평면 카드 그리드
             sorted.map((wt) => <WorktreeCard key={wt.path} worktree={wt} />)
           )}
         </main>

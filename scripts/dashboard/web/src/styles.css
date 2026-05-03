@@ -1731,6 +1731,91 @@ body > * { position: relative; z-index: 1; }
   50%      { opacity: 1;   transform: scale(1.15); }
 }
 
+/* ===== Workspace Group ===== */
+.workspace-group {
+  grid-column: 1 / -1;
+  display: contents;
+}
+
+.workspace-group__header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  margin-top: 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.workspace-group__name {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(226, 232, 240, 0.95);
+  letter-spacing: 0.01em;
+}
+
+.workspace-group__meta {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.8);
+}
+
+.workspace-group__sep {
+  opacity: 0.5;
+}
+
+.workspace-group__cards {
+  grid-column: 1 / -1;
+  display: contents;
+}
+
+/* Health badge (8px circle dot) */
+.health-badge {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.health-badge--healthy {
+  background: #22c55e;
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.6);
+}
+
+.health-badge--creds-missing {
+  background: #f59e0b;
+  box-shadow: 0 0 4px rgba(245, 158, 11, 0.6);
+}
+
+.health-badge--no-worktrees {
+  background: #64748b;
+}
+
+.health-badge--unknown {
+  background: #94a3b8;
+}
+
+/* grouped 모드에서 헤더가 grid item처럼 동작하게 */
+.dashboard-grid--grouped {
+  display: block;
+}
+
+.dashboard-grid--grouped .workspace-group {
+  display: block;
+  margin-bottom: 24px;
+}
+
+.dashboard-grid--grouped .workspace-group__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+  padding: 16px 0 0;
+}
+
 /* ===== prefers-reduced-motion ===== */
 @media (prefers-reduced-motion: reduce) {
   .wt-stepper__step--active          { animation: none; }
