@@ -25,15 +25,27 @@ const HOOK_WHITELIST = new Set([
  * @param {string|null} cwd
  * @returns {{ taskId: string|null, worktreePath: string|null }}
  */
+// Windows hooks send cwd with backslashes ("C:\\WORK\\..."), but git worktree
+// list emits POSIX slashes ("C:/WORK/..."). Normalize before comparing.
+function normalizePath(p) {
+  return typeof p === 'string' ? p.replace(/\\/g, '/') : p;
+}
+
 function lookupWorktree(store, cwd) {
   if (!cwd) return { taskId: null, worktreePath: null };
+  const ncwd = normalizePath(cwd);
 
   const snapshot = store.getSnapshot();
+  // longest-prefix wins to handle nested worktrees correctly.
+  let best = null;
   for (const wt of snapshot) {
-    if (wt.path && (cwd === wt.path || cwd.startsWith(wt.path + '/'))) {
-      return { taskId: wt.taskId ?? null, worktreePath: wt.path };
+    if (!wt.path) continue;
+    const npath = normalizePath(wt.path);
+    if (ncwd === npath || ncwd.startsWith(npath + '/')) {
+      if (!best || npath.length > normalizePath(best.path).length) best = wt;
     }
   }
+  if (best) return { taskId: best.taskId ?? null, worktreePath: best.path };
   return { taskId: null, worktreePath: null };
 }
 
