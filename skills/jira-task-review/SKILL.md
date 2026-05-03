@@ -18,11 +18,25 @@ allowed-tools:
 
 ## Reviewer Independence Rule (필수)
 
-코드 리뷰 본 작업(Gap Analysis + Lint & Format + Code Quality Review)은 **반드시 `jira-reviewer` subagent에게 위임한다**. main 세션은 절대 직접 리뷰를 수행하지 않는다.
+코드 리뷰 본 작업(Gap Analysis + Lint & Format + Code Quality Review)은 plan/design/impl을 수행한 컨텍스트와 **분리된 환경**에서 수행되어야 한다 — self-praise / 사각지대 누락 차단 목적.
 
-이유: 본 워크플로에서 main 세션이 plan/design/impl을 수행했을 가능성이 높다. 같은 세션이 자기 코드를 리뷰하면 self-praise / 사각지대 누락이 발생한다. 독립된 subagent + 별도 모델로 분리해 리뷰 신뢰도를 확보한다.
+분리 환경 충족 방식 두 가지 (호출 컨텍스트에 따라 자동 분기):
 
-**모델 강제**: subagent 호출 시 `model: "opus"`를 명시한다. main 세션이 어느 모델이든 review는 항상 Opus로 수행 (높은 추론 품질 + 일관성).
+### Mode A: Subagent Delegation (manual 호출)
+
+**조건**: 호출 prompt에 `[review-self-mode]` 마커가 **없는** 경우 (예: 사용자가 `/jira-task review <TASK-ID>`를 main 세션에서 직접 실행).
+
+**동작**: Step 2에서 `Agent` 도구로 `jira-reviewer` subagent를 띄워 리뷰 작업을 위임. main 세션은 Step 4 이후의 persistence/Jira 게시만 담당.
+
+**모델 강제**: subagent 호출 시 `model: "opus"` 명시.
+
+### Mode B: Self-Mode (이미 격리된 wrapper에서 호출)
+
+**조건**: 호출 prompt에 `[review-self-mode]` 마커가 있는 경우 (예: `jira-task-auto`가 review 단계를 위해 띄운 격리된 wrapper sub-agent에서 본 Skill을 호출). 이 경우 wrapper sub-agent 자체가 plan/design/impl과 분리된 fresh context이므로 추가 nesting 불요.
+
+**동작**: Step 2의 `Agent` 도구 호출을 **생략**하고, wrapper agent가 직접 리뷰 작업(gap analysis + lint + code quality + compile findings)을 수행. 출력 구조는 Mode A의 subagent 반환과 동일.
+
+**제약**: sub-agent는 일반적으로 추가 `Agent` 호출 권한이 없으므로 self-mode를 강제하지 않으면 무조건 실패한다 — `[review-self-mode]` 마커가 없는데 `Agent` 도구가 부재한 환경에서 실행되면 즉시 에러로 중단(fallback 금지).
 
 ## Workflow
 
@@ -45,9 +59,32 @@ git diff --name-only <base-branch>..feature/<TASK-ID>
 - `docs/design/<TASK-ID>.design.md` 존재? (Gap Analysis 가능 여부)
 - `docs/plan/<TASK-ID>.plan.md` 존재? (Acceptance Criteria 참조)
 
-### Step 2: Delegate Review to jira-reviewer Subagent (필수)
+### Step 2: Perform Review (Mode A: delegate / Mode B: self)
 
-**반드시 `Agent` 도구로 `subagent_type: "jira-reviewer"`, `model: "opus"`를 명시하여 호출**한다. main 세션이 직접 Step 2.5 / 3을 수행하는 것을 금지한다.
+호출 prompt에 `[review-self-mode]` 마커가 있는지 확인하여 분기.
+
+#### Mode B (self-mode) — 마커 있음
+
+본 wrapper agent가 이미 격리된 컨텍스트이므로 추가 Agent를 띄우지 말고 다음 작업을 **직접 수행**:
+
+1. **Gap Analysis**: `docs/design/<TASK-ID>.design.md`가 있으면 Implementation Plan 항목별로 실제 구현 여부를 `Glob`/`Grep`으로 확인하고 매칭률 산출. 없으면 스킵.
+2. **Lint & Format Check**: 변경 파일 중 다음 확장자에 대해 lint/format 실행:
+   - Node.js: `.js`/`.ts`/`.jsx`/`.tsx`/`.mjs`/`.cjs` → `npx eslint` / `npx prettier --check`
+   - Python: `.py` → `ruff check` / `ruff format --check` 또는 `flake8`
+   - Java/Kotlin: `.java`/`.kt`/`.kts` → `checkstyle`
+   변경 파일만 대상, 도구 없으면 스킵, 기존 프로젝트 설정 우선. lint 실패가 있어도 리뷰를 중단하지 않고 정보로 포함.
+3. **Code Quality Review**: 변경 파일을 `Read`로 검토 — 보안 취약점(injection/XSS/하드코딩 credentials), 에러 핸들링 누락, 네이밍 일관성, 불필요한 복잡도.
+4. **Compile Findings**: Critical / Warning / Info 3단계로 분류. 파일:라인 참조 포함.
+
+산출물: Mode A의 subagent 반환과 동일한 구조 (결과 / 검토 파일 수 / Gap matchRate / Lint 표 / findings / Positive Notes). 이걸 Step 4에 전달해 `docs/review/<TASK-ID>.review.md`로 저장.
+
+self-mode에서도 Edit/Write로 코드를 직접 수정하지 마라 — 리뷰 자체에 한정. 수정은 별도 단계(예: auto의 review-fix sub-agent).
+
+#### Mode A (delegate) — 마커 없음
+
+**반드시 `Agent` 도구로 `subagent_type: "jira-reviewer"`, `model: "opus"`를 명시하여 호출**한다. main 세션이 직접 위 1-4를 수행하는 것을 금지한다 (self-praise bias 차단).
+
+`Agent` 도구를 사용할 수 없는 환경(sub-agent 컨텍스트 등)이면 즉시 에러로 중단하고 호출자에게 `[review-self-mode]` 마커 누락을 안내한다 — fallback으로 main 세션이 직접 리뷰하지 않는다.
 
 호출 prompt에 다음 컨텍스트를 명시적으로 전달:
 

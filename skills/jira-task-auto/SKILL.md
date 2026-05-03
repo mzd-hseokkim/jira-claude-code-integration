@@ -108,13 +108,17 @@ Jira task <TASK-ID>의 <단계명> 단계를 수행하라.
 산출물 본문(plan/design/test/review 문서 내용 등)을 부모에 그대로 출력하지 마라 — 부모 컨텍스트 오염 방지.
 ```
 
-review 단계 (general-purpose wrapper):
+review 단계 (general-purpose wrapper, **`[review-self-mode]` 마커 필수**):
 
 ```
+[review-self-mode]
+
 Jira task <TASK-ID>의 review 단계를 수행하라. `jira-integration:jira-task-review` Skill을 호출하고, 동일한 *최소 요약* 형식으로 결과만 반환하라. 산출물 본문 미반환.
 
-주의: 본 wrapper는 orchestration(파일 작성·Jira 게시)만 담당한다. 실제 리뷰 판단·gap analysis·lint는 Skill이 내부적으로 띄우는 `jira-reviewer` subagent가 수행하니 이 wrapper에서 추가로 Agent를 띄우지 마라.
+주의: 본 wrapper는 이미 격리된 sub-agent 컨텍스트이므로 추가 `Agent` 도구 사용 권한이 없다. `[review-self-mode]` 마커에 따라 Skill의 Step 2를 self-mode(직접 수행)로 진행한다 — gap analysis / lint / code quality 검토를 wrapper agent가 직접 수행. 이미 plan/design/impl과 분리된 fresh context이므로 self-praise bias 우려 없음.
 ```
+
+> **회귀 방지**: `[review-self-mode]` 마커를 누락하면 Skill이 Mode A(Agent delegation)로 돌입했다가 sub-agent 환경에 Agent 도구가 없어 즉시 fail한다. 마커는 prompt 본문 어디에 있어도 되지만 첫 줄에 두는 게 가독성 좋다.
 
 ### 단계 간 진행 메시지
 
