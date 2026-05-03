@@ -25,13 +25,21 @@ worktree 세션에서 요청받은 경우, 세션을 종료하고 메인 레포�
 이 스킬은 플러그인 내장 스크립트를 사용한다. 스크립트 경로를 찾는 방법:
 
 ```bash
-# 플러그인 스크립트 경로 탐색 (캐시 또는 원본)
-SCRIPT=$(find ~/.claude/plugins -path "*/jira-integration/*/scripts/clean-worktree.py" 2>/dev/null | head -1)
-if [ -z "$SCRIPT" ]; then
-  # 직접 설치된 경우
-  SCRIPT=$(find . -path "*/scripts/clean-worktree.py" 2>/dev/null | head -1)
+# 1) CLAUDE_PLUGIN_ROOT가 있으면 (스킬 실행 컨텍스트의 정확한 버전) 그것을 사용
+# 2) 없으면 cwd 기준 직접 설치 경로
+# 3) 그래도 없으면 캐시에서 최신 semver 버전 선택 (sort -V | tail -1)
+SCRIPT=""
+if [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$CLAUDE_PLUGIN_ROOT/scripts/clean-worktree.py" ]; then
+  SCRIPT="$CLAUDE_PLUGIN_ROOT/scripts/clean-worktree.py"
+elif [ -f "scripts/clean-worktree.py" ]; then
+  SCRIPT="scripts/clean-worktree.py"
+else
+  SCRIPT=$(find ~/.claude/plugins -path "*/jira-integration/*/scripts/clean-worktree.py" 2>/dev/null | sort -V | tail -1)
 fi
+[ -z "$SCRIPT" ] && { echo "clean-worktree.py를 찾을 수 없습니다." >&2; exit 1; }
 ```
+
+**중요**: 절대 `find ... | head -1`로 잡지 말 것 — 파일시스템 순서로 가장 오래된 캐시 버전을 잡아서 stale 스크립트가 실행되는 사고가 있었음.
 
 ## Workflow
 

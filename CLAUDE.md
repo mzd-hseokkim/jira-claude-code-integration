@@ -157,11 +157,13 @@ The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스
 
 - **Jira Attach Script** (plan/design/test/review 공통): Jira 첨부 업로드는 `scripts/jira-attach.sh`(공용)로 처리. 스킬은 사용자 프로젝트(워크트리 포함)에서 실행되므로 cwd에 스크립트가 없다. 호출 직전 아래 한 번으로 경로를 결정하고 환경변수에 담는다.
   ```bash
-  # 1) cwd, 2) repoRoot(.jira-context.json), 3) 플러그인 설치 경로 순으로 탐색
+  # 1) CLAUDE_PLUGIN_ROOT, 2) cwd, 3) repoRoot(.jira-context.json), 4) 플러그인 캐시 최신 버전 순으로 탐색
+  # 캐시 fallback은 반드시 sort -V | tail -1로 최신 semver 선택. find ... | head -1은 stale 버전을 잡으므로 금지.
   JIRA_ATTACH_SH=""
-  for c in "scripts/jira-attach.sh" \
+  for c in "${CLAUDE_PLUGIN_ROOT}/scripts/jira-attach.sh" \
+           "scripts/jira-attach.sh" \
            "$(node -e "try{console.log(require('./.jira-context.json').repoRoot)}catch{}" 2>/dev/null)/scripts/jira-attach.sh" \
-           $(find "$HOME/.claude" -name jira-attach.sh -type f 2>/dev/null | head -1); do
+           "$(find "$HOME/.claude" -name jira-attach.sh -type f 2>/dev/null | sort -V | tail -1)"; do
     [ -n "$c" ] && [ -f "$c" ] && JIRA_ATTACH_SH="$c" && break
   done
   ```
@@ -169,9 +171,10 @@ The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스
 - **Jira Context Update Script** (merge/done 공통): worktree-local + aggregate 두 컨텍스트의 `completedSteps`/`status`/`<step>At`/`cachedIssue` 갱신은 `scripts/jira-context-update.py`(공용)로 처리. Jira Attach Script와 동일한 lookup 패턴으로 경로를 결정한다.
   ```bash
   JIRA_CTX_UPDATE_PY=""
-  for c in "scripts/jira-context-update.py" \
+  for c in "${CLAUDE_PLUGIN_ROOT}/scripts/jira-context-update.py" \
+           "scripts/jira-context-update.py" \
            "$(node -e "try{console.log(require('./.jira-context.json').repoRoot)}catch{}" 2>/dev/null)/scripts/jira-context-update.py" \
-           $(find "$HOME/.claude" -name jira-context-update.py -type f 2>/dev/null | head -1); do
+           "$(find "$HOME/.claude" -name jira-context-update.py -type f 2>/dev/null | sort -V | tail -1)"; do
     [ -n "$c" ] && [ -f "$c" ] && JIRA_CTX_UPDATE_PY="$c" && break
   done
   ```

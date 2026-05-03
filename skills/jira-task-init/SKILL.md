@@ -143,11 +143,13 @@ fi
 REPO_ROOT_ABS="<REPO_ROOT 절대경로>"
 WORKTREE_ABS="<워크트리 절대경로>"
 
-# 스크립트 위치 탐색 (cwd → repoRoot → 플러그인 설치 경로)
+# 스크립트 위치 탐색 (CLAUDE_PLUGIN_ROOT → cwd → repoRoot → 플러그인 캐시 최신 버전)
+# 캐시 fallback은 반드시 sort -V | tail -1로 최신 semver 선택. head -1은 stale 버전을 잡으므로 금지.
 PROPAGATE_SH=""
-for _c in "scripts/propagate-mcp-config.sh" \
+for _c in "${CLAUDE_PLUGIN_ROOT}/scripts/propagate-mcp-config.sh" \
+          "scripts/propagate-mcp-config.sh" \
           "$(node -e "try{console.log(require('./.jira-context.json').repoRoot)}catch{}" 2>/dev/null)/scripts/propagate-mcp-config.sh" \
-          $(find "$HOME/.claude" -name propagate-mcp-config.sh -type f 2>/dev/null | head -1); do
+          "$(find "$HOME/.claude" -name propagate-mcp-config.sh -type f 2>/dev/null | sort -V | tail -1)"; do
   [ -n "$_c" ] && [ -f "$_c" ] && PROPAGATE_SH="$_c" && break
 done
 
