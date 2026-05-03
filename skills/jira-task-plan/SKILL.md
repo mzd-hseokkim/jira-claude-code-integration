@@ -27,10 +27,9 @@ allowed-tools:
 - `jira_get_issue`: `fields="summary,status,description,labels,issuetype,parent,priority,assignee,components"`, `comment_limit=0`
 - `jira_search`: `fields="summary,status,issuetype,priority"`, `limit=20` (description 제외, 결과는 요약 카드 용도)
 
-1. Use `mcp__atlassian__jira_get_issue` to fetch the issue details (위 fields/comment_limit 사용)
-2. **이슈 결과를 `.jira-context.json`의 `cachedIssue`에 저장** (후속 단계에서 재호출 회피용 — `cachedIssue: { key, summary, status, description, issuetype, priority, assignee, parent, labels, components, fetchedAt }`)
-3. If the issue has a parent epic, fetch the epic details too (동일 fields 사용; epic 본문은 description만 추가로 필요하면 별도 호출)
-4. Use `mcp__atlassian__jira_search` with JQL to find related issues.
+1. **Cache-first**: `.jira-context.json`의 `cachedIssue`를 먼저 확인 (CLAUDE.md "Issue Cache" 참고). 다음 필수 필드(`summary`, `description`, `issuetype`, `priority`, `parent`, `labels`)가 모두 있고 `fetchedAt`이 있으면 fetch 생략. 부족하면 `mcp__atlassian__jira_get_issue` 호출(위 fields/comment_limit 사용) 후 `cachedIssue` 갱신 — `fetchedAt`은 반드시 `new Date().toISOString()` (UTC `Z`).
+2. If the issue has a parent epic, fetch the epic details too (동일 fields 사용; epic은 본 task의 cachedIssue에 들어가지 않으므로 매번 fetch — 다만 plan 1회만 수행)
+3. Use `mcp__atlassian__jira_search` with JQL to find related issues.
    **JIRA_DEFAULT_PROJECT가 설정되어 있으면 모든 JQL에 `project = <JIRA_DEFAULT_PROJECT>` 조건을 반드시 포함:**
    - Same epic: `project = <JIRA_DEFAULT_PROJECT> AND "Epic Link" = <epic-key>`
    - Same component: `project = <JIRA_DEFAULT_PROJECT> AND component = <component>`

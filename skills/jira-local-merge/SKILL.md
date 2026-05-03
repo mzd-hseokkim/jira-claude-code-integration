@@ -175,7 +175,8 @@ python3 - "<TASK-ID>" "<worktree>/.jira-context.json" "<repoRoot>/.jira-context.
 import json, datetime, os, sys
 
 task_id, *ctx_files = sys.argv[1], *sys.argv[2:]
-now = datetime.datetime.now().isoformat()
+# UTC ISO 8601 with Z suffix — TZ-naive timestamp는 dashboard reader(MAE-302)가 stale로 처리
+now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 def update_worktree_ctx(ctx, task_id):
     """워크트리 형태: 최상위에 직접 갱신."""
