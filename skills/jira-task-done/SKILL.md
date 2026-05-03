@@ -125,11 +125,71 @@ PYEOF
 
 ### Step 8: Update Context & Completion Summary
 
-기존 `.jira-context.json`을 읽고, 다음 필드를 업데이트하여 저장:
+워크트리의 `.jira-context.json`과 `<repoRoot>/.jira-context.json` **양쪽**을 업데이트한다 (`jira-local-merge`와 동일 패턴). 한쪽만 갱신하면 dashboard collector가 worktree-local 파일만 읽기 때문에 done step이 누락된 채 표시된다.
+
+업데이트할 필드:
 - `completedSteps` 배열에 `"done"` 추가 (중복 방지)
-- `status`를 `"Done"`으로 변경
-- `completedAt`에 현재 ISO 8601 타임스탬프 추가
-- **`cachedIssue.status`도 갱신**: Step 6에서 transition한 결과 status명(예: `"완료"`, `"Done"`)으로 변경하고 `cachedIssue.fetchedAt`도 현재 시각으로 업데이트. 이게 빠지면 dashboard 같은 캐시 소비자가 stale 상태("진행 중")를 계속 보여준다 (cachedIssue가 없는 경우엔 생성하지 않고 skip).
+- `status`를 Step 6에서 transition한 결과 status명(예: `"완료"`, `"Done"`)으로 변경
+- `doneAt`에 현재 ISO 8601 타임스탬프(UTC, Z 접미사) 추가
+- **`cachedIssue.status` / `cachedIssue.fetchedAt`도 갱신**: 위 transition 결과 status명과 현재 시각으로 변경. 이게 빠지면 dashboard 같은 캐시 소비자가 stale 상태("진행 중")를 계속 보여준다 (cachedIssue가 없는 경우엔 생성하지 않고 skip).
+
+**중요**: 두 컨텍스트 파일은 형태가 다르다.
+- **워크트리 컨텍스트** (`{taskId, branch, ...}`): 최상위 필드 갱신
+- **메인 레포 aggregate 컨텍스트** (`{tasks: [...], worktreeBase, ...}`): `tasks` 배열에서 해당 `taskId` 항목만 갱신. 절대 최상위에 워크트리 필드를 쓰지 말 것
+
+```bash
+python3 - "<TASK-ID>" "<final-jira-status>" "<worktreePath>/.jira-context.json" "<repoRoot>/.jira-context.json" << 'PYEOF'
+import json, datetime, os, sys
+
+task_id = sys.argv[1]
+final_status = sys.argv[2]  # 예: "완료" 또는 "Done"
+ctx_files = sys.argv[3:]
+now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+def apply_done(target, task_id, final_status):
+    """target은 worktree 단일 task dict 또는 aggregate의 tasks[i] dict."""
+    steps = target.get("completedSteps", [])
+    if "done" not in steps:
+        steps.append("done")
+    target["completedSteps"] = steps
+    target["status"] = final_status
+    target["doneAt"] = now
+    ci = target.get("cachedIssue")
+    if isinstance(ci, dict):
+        ci["status"] = final_status
+        ci["fetchedAt"] = now
+
+for ctx_file in ctx_files:
+    if not os.path.isfile(ctx_file):
+        print(f"No context file at {ctx_file}, skipping")
+        continue
+    with open(ctx_file, "r", encoding="utf-8") as f:
+        ctx = json.load(f)
+    if isinstance(ctx.get("tasks"), list):
+        # aggregate
+        hit = False
+        for t in ctx["tasks"]:
+            if t.get("taskId") == task_id:
+                apply_done(t, task_id, final_status)
+                hit = True
+                break
+        if hit:
+            print(f"Aggregate context updated for {task_id}: {ctx_file}")
+        else:
+            print(f"No {task_id} entry in aggregate {ctx_file}, skipping")
+            continue
+    else:
+        # worktree
+        apply_done(ctx, task_id, final_status)
+        print(f"Worktree context updated: {ctx_file}")
+    with open(ctx_file, "w", encoding="utf-8") as f:
+        json.dump(ctx, f, indent=2, ensure_ascii=False)
+PYEOF
+```
+
+호출 예: `python3 - "MAE-279" "완료" "C:/.../worktree/MAE-279/.jira-context.json" "C:/.../repo/.jira-context.json" << 'PYEOF' ...`
+
+worktree 경로는 `.jira-context.json`(또는 aggregate `tasks[].worktreePath`)에서 가져온다. worktree 컨텍스트가 부재하면(이미 cleaned 등) 해당 인자만 빼고 메인 레포 컨텍스트만 업데이트한다.
 
 아래 형식으로 완료 요약 출력:
 
