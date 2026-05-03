@@ -130,8 +130,31 @@ function Dashboard() {
     return () => clearInterval(id);
   }, [connState, anchorMs, cycleMs]);
 
+  // 마우스 위치를 CSS 변수로 노출 → 배경 grid에 spotlight glow.
+  // rAF로 throttle해 60fps 이상에서도 layout 압박 없이 부드럽게.
+  useEffect(() => {
+    let pendingX = null, pendingY = null, raf = 0;
+    const flush = () => {
+      raf = 0;
+      if (pendingX == null) return;
+      const root = document.documentElement.style;
+      root.setProperty('--mx', `${pendingX}px`);
+      root.setProperty('--my', `${pendingY}px`);
+    };
+    const onMove = (e) => {
+      pendingX = e.clientX; pendingY = e.clientY;
+      if (!raf) raf = requestAnimationFrame(flush);
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+
   return (
     <>
+      <div className="cursor-glow" aria-hidden="true" />
       <KittBar connection={connState} />
       <ConnectionBanner connection={connState} />
       <header className="dashboard-header">
@@ -230,13 +253,27 @@ function Dashboard() {
       ) : (
         <main className={`dashboard-grid${isIdle ? ' is-idle' : ''}`}>
           {sorted.length === 0 ? (
-            <p className="dashboard-empty">
-              {filter
-                ? `"${filter}" 에 매치되는 worktree가 없습니다.`
-                : connState === 'connected'
-                  ? 'Worktree가 없습니다.'
-                  : '연결을 기다리는 중…'}
-            </p>
+            <div className="dashboard-empty">
+              <div className="dashboard-empty__card" role="status">
+                <div className="dashboard-empty__icon" aria-hidden="true">
+                  {filter ? '🔍' : connState === 'connected' ? '📭' : '⏳'}
+                </div>
+                <p className="dashboard-empty__title">
+                  {filter
+                    ? '검색 결과가 없습니다'
+                    : connState === 'connected'
+                      ? 'Worktree가 없습니다'
+                      : '연결을 기다리는 중'}
+                </p>
+                <p className="dashboard-empty__hint">
+                  {filter
+                    ? <>"<span className="dashboard-empty__query">{filter}</span>" 에 매치되는 항목이 없습니다.</>
+                    : connState === 'connected'
+                      ? <><code>/jira-task init</code> 으로 작업 환경을 세팅하면 여기 카드가 표시됩니다.</>
+                      : 'Dashboard 서버에 연결을 시도하고 있습니다…'}
+                </p>
+              </div>
+            </div>
           ) : (
             sorted.map((wt) => <WorktreeCard key={wt.path} worktree={wt} />)
           )}

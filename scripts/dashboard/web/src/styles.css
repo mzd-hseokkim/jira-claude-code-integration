@@ -430,11 +430,113 @@ body > * { position: relative; z-index: 1; }
   color: #7dd3fc;
 }
 
+/* Empty state — 카드 전체 grid를 가로질러 중앙에 카드 한 장. */
 .dashboard-empty {
   grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: min(60vh, 480px);
+  padding: 40px 20px;
+}
+.dashboard-empty__card {
+  position: relative;
+  max-width: 460px;
+  padding: 36px 44px 32px;
   text-align: center;
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.78) 0%, rgba(15, 23, 42, 0.78) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 16px;
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(56, 189, 248, 0.05) inset,
+    0 0 60px rgba(56, 189, 248, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: dashboard-empty-rise 320ms ease-out;
+}
+.dashboard-empty__card::before {
+  /* 상단 테두리 글로우 라인 */
+  content: "";
+  position: absolute;
+  inset: -1px -1px auto -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(56, 189, 248, 0.6) 50%, transparent 100%);
+  border-radius: 16px 16px 0 0;
+  pointer-events: none;
+}
+.dashboard-empty__icon {
+  font-size: 44px;
+  line-height: 1;
+  margin-bottom: 14px;
+  filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.35));
+}
+.dashboard-empty__title {
+  margin: 0 0 8px;
+  color: #e2e8f0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.dashboard-empty__hint {
+  margin: 0;
   color: #94a3b8;
-  padding: 40px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.dashboard-empty__hint code {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.12);
+  color: #7dd3fc;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+}
+.dashboard-empty__query {
+  color: #f1f5f9;
+  font-weight: 600;
+}
+@keyframes dashboard-empty-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-empty__card { animation: none; }
+}
+
+/* Cursor spotlight — 배경 회로 grid를 마우스 주변에서만 밝게 비춘다.
+   기본 body::before는 매우 옅은 base layer로 두고, 이 layer가 lens 역할.
+   --mx/--my는 App.jsx의 pointermove 핸들러가 px 단위로 갱신. */
+.cursor-glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(125, 211, 252, 0.55) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.55) 1px, transparent 1px);
+  background-size: 48px 48px, 48px 48px;
+  /* 마우스 주변 220px 반경만 보이도록 mask. fallback은 화면 중앙. */
+  --glow-r: 220px;
+  mask-image: radial-gradient(
+    circle var(--glow-r) at var(--mx, 50vw) var(--my, 50vh),
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.6) 35%,
+    rgba(0, 0, 0, 0.15) 70%,
+    transparent 100%
+  );
+  -webkit-mask-image: radial-gradient(
+    circle var(--glow-r) at var(--mx, 50vw) var(--my, 50vh),
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.6) 35%,
+    rgba(0, 0, 0, 0.15) 70%,
+    transparent 100%
+  );
+  /* 부드러운 광원 후광 */
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.25));
+}
+@media (prefers-reduced-motion: reduce) {
+  .cursor-glow { display: none; }
 }
 
 /* ===== Grid (3열 고정, 좁아지면 단계적 축소) ===== */
