@@ -9,8 +9,11 @@ Args:
     step       Workflow step name to append to completedSteps (e.g. "merge", "done").
                Also drives the timestamp field name: "<step>At" (e.g. mergedAt, doneAt).
     status     Value to set as top-level `status` and (if present) `cachedIssue.status`.
-               Pass the Jira-display name in the locale you want shown
-               (e.g. "완료", "Done", "In Review").
+               **Must be a Jira-verified value** — caller is responsible for fetching
+               the post-transition status from Jira (`jira_get_issue` after
+               `jira_transition_issue`) and passing the actual `fields.status.name`.
+               Do NOT pass the transition target name (e.g. "Done") as-is, since the
+               resulting status may differ ("완료", "검토중", etc. depending on workflow).
     ctx-file   One or more .jira-context.json paths. Format auto-detected:
                - Aggregate: {"tasks": [...], ...}  → updates the matching tasks[i] entry.
                - Worktree:  {"taskId": ..., ...}   → updates top-level fields.

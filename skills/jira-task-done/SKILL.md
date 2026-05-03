@@ -86,6 +86,14 @@ Use `mcp__atlassian__jira_get_transitions` to fetch available transitions, then 
 
 **Important**: Do NOT pass a `comment` parameter to `jira_transition_issue`. The `comment` field requires Atlassian Document Format (ADF) JSON — passing plain text will cause an error. Add comments separately using `jira_add_comment`.
 
+### Step 6.5: Verify Transition via Fresh Fetch (SSOT)
+
+Transition 후 즉시 `mcp__atlassian__jira_get_issue`(`fields="status"`, `comment_limit=0`)를 호출해 Jira 측 실제 status 이름을 확보한다. 이 값이 `.jira-context.json`의 `cachedIssue.status`로 들어가는 **유일한 진실 원천**이다.
+
+- Step 6에서 어떤 transition을 시도했든, 결과 status는 이 fetch로만 결정한다 (워크플로 설정에 따라 "In Review"가 아니라 "검토중", "Done"이 아니라 "완료" 등으로 떨어질 수 있음).
+- Fetch가 실패하면 (네트워크/auth 등) Step 8에서 사용자에게 알리고 `cachedIssue` 갱신은 스킵 — stale 상태를 거짓 갱신으로 덮지 않는다 (collector가 다음 cycle에서 정정).
+- 이 값은 Step 8의 `<final-jira-status>` 인자로 그대로 전달한다. **transition 시도값(예: "Done")을 그대로 쓰지 않는다.**
+
 ### Step 7: Cleanup MCP Config from Worktree Entry
 
 `.jira-context.json`의 `worktreePath`를 읽어 `~/.claude.json`에서 해당 경로의 `mcpServers`를 제거한다.
@@ -135,7 +143,7 @@ python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> done "<final-jira-status>" \
     "<repoRoot>/.jira-context.json"
 ```
 
-- `<final-jira-status>`: Step 6에서 transition한 결과 status명 (예: `"완료"`, `"Done"`)
+- `<final-jira-status>`: **Step 6.5에서 fresh fetch로 확보한 Jira 실제 status명** (예: `"완료"`, `"Done"`). transition 시도값을 그대로 쓰지 말 것 — Jira workflow에 따라 다른 이름으로 떨어질 수 있음.
 - worktree 경로는 aggregate의 `tasks[].worktreePath`에서 조회. worktree 컨텍스트가 부재하면(이미 cleaned 등) 해당 인자만 빼고 호출 — 스크립트가 missing 파일을 자동 skip
 
 스크립트는 다음을 일괄 처리한다:

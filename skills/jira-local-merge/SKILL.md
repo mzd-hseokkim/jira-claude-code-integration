@@ -141,6 +141,13 @@ merge 충돌 발생 시 사용자에게 알리고 중단. 충돌 해결 후 재�
 
 **주의**: `jira_transition_issue`에 `comment` 파라미터를 절대 사용하지 말 것. `comment` 필드는 Atlassian Document Format(ADF) JSON을 요구하므로 일반 텍스트를 넣으면 오류가 발생한다. 코멘트는 반드시 별도로 `jira_add_comment`를 호출하여 추가한다.
 
+### Step 6.5: Verify Transition via Fresh Fetch (SSOT)
+
+Transition 후 즉시 `mcp__atlassian__jira_get_issue`(`fields="status"`, `comment_limit=0`)를 호출해 Jira 측 실제 status 이름을 확보한다. 이 값을 Step 8의 `<final-jira-status>` 인자로 전달한다.
+
+- Workflow 설정에 따라 transition 시도값과 결과 status 이름이 다를 수 있음 ("In Review" → "검토중" 등). transition 시도값을 그대로 쓰지 말 것.
+- Fetch가 실패하면 사용자에게 알리고 `cachedIssue` 갱신은 스킵 — collector가 다음 cycle에서 정정.
+
 ### Step 7: Cleanup Instructions
 
 현재 Claude Code가 워크트리 디렉토리에서 실행 중이므로 워크트리를 직접 삭제할 수 없다.
@@ -163,14 +170,16 @@ merge 충돌 발생 시 사용자에게 알리고 중단. 충돌 해결 후 재�
 워크트리의 `.jira-context.json`과 `<repoRoot>/.jira-context.json` 양쪽을 공용 스크립트로 갱신한다 (스크립트 위치는 프로젝트 CLAUDE.md의 "Jira Context Update Script" 섹션 참고).
 
 ```bash
-python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> merge "In Review" \
+python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> merge "<final-jira-status>" \
     "<worktree>/.jira-context.json" \
     "<repoRoot>/.jira-context.json"
 ```
 
+- `<final-jira-status>`: **Step 6.5에서 fresh fetch로 확보한 Jira 실제 status명** (예: `"In Review"`, `"검토중"`). transition 시도값을 그대로 쓰지 말 것.
+
 스크립트는 다음을 일괄 처리한다:
 - `completedSteps`에 `"merge"` 추가 (중복 방지)
-- `status`를 `"In Review"`로 set
+- `status`를 `<final-jira-status>`로 set
 - `mergedAt`에 현재 UTC ISO 8601 (Z suffix) 기록 — TZ-naive timestamp는 dashboard reader가 stale로 처리하므로 Z 접미사 필수
 - `cachedIssue.status` / `cachedIssue.fetchedAt`도 함께 갱신 (cachedIssue가 있을 때만)
 - aggregate vs worktree 형식 자동 감지 (aggregate는 `tasks[]`에서 해당 `taskId` 항목만 갱신)
