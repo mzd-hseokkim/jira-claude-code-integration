@@ -48,7 +48,9 @@ async function startServer(opts = {}) {
 
   // The "primary" workspace is used for credentials, log file location, and
   // the cleanup router (these are single-workspace concerns).
-  const workspaceRoot = opts.workspaceRoot ?? workspaceRoots[0];
+  // dashboard 명령은 항상 부모 workspace의 cwd에서 실행되므로 cwd를 우선 사용.
+  // workspaceRoots[0]은 registry 등록 순서에 의존해 stale worktree가 잡힐 수 있음.
+  const workspaceRoot = opts.workspaceRoot ?? process.cwd();
   const logFile = path.join(workspaceRoot, 'logs', 'dashboard-server.log');
 
   const logger = createLogger(logFile);
