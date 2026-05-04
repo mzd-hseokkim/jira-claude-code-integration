@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MAE-305",
+  "entries": [
+    {
+      "taskId": "MAE-305",
+      "timestamp": "2026-05-04T04:54:16Z",
+      "reviewerVersion": "1d9febb94c75",
+      "outcome": "pass",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "high",
+          "file": "scripts/cleanup-worktree-mcp.py",
+          "line": 31,
+          "category": "error-handling",
+          "message": "open() without try; intentional per issue (original parity)"
+        },
+        {
+          "id": "F-002",
+          "severity": "high",
+          "file": "skills/jira-task-review/SKILL.md",
+          "line": 155,
+          "category": "defensive",
+          "message": "lookup result not guarded against empty string"
+        },
+        {
+          "id": "F-003",
+          "severity": "info",
+          "file": "scripts/cleanup-worktree-mcp.py",
+          "line": 19,
+          "category": "portability",
+          "message": "norm() handles backslash for Windows; original parity"
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 2,
+        "medium": 0,
+        "low": 0,
+        "info": 1
+      },
+      "falsePositive": null,
+      "userOverride": null
+    }
+  ]
+}
