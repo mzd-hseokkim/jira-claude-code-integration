@@ -119,8 +119,48 @@ export function addPhantomNodes(nodes, edges) {
 }
 
 /**
+ * Build a content key for selectGraphData cache.
+ * Key encodes: sorted node ids + display fields (status/summary/assignee/issuetype/phantom)
+ * + sorted edge ids. JSON.stringify is avoided for performance.
+ *
+ * @param {Record<string, object>} worktrees
+ * @returns {string}
+ */
+function buildGraphCacheKey(worktrees) {
+  const parts = [];
+  for (const [, wt] of Object.entries(worktrees).sort(([a], [b]) => a.localeCompare(b))) {
+    const issue = wt?.cachedIssue;
+    if (!issue?.key) continue;
+    parts.push(`${issue.key}|${issue.status ?? ''}|${issue.summary ?? ''}|${issue.assignee ?? ''}|${issue.issuetype ?? ''}`);
+    // links/blocks edges
+    const blocks = issue.links?.blocks ?? [];
+    for (const entry of blocks) {
+      const targetKey = typeof entry === 'string' ? entry : entry?.key;
+      if (targetKey) parts.push(`b:${issue.key}->${targetKey}`);
+    }
+    // hierarchy edges
+    if (issue.parent?.key) {
+      parts.push(`p:${issue.key}->${issue.parent.key}`);
+    }
+  }
+  return parts.join(';');
+}
+
+// Module-level 1-slot cache for selectGraphData.
+let _graphCacheKey = null;
+let _graphCacheResult = null;
+
+/** Reset the selectGraphData cache. Intended for tests only. */
+export function __resetGraphCache() {
+  _graphCacheKey = null;
+  _graphCacheResult = null;
+}
+
+/**
  * Main selector: converts worktrees state to { nodes, edges } graph model.
  * Result is deterministically sorted by id.
+ *
+ * Returns the same reference when the content key is unchanged (1-slot memoization).
  *
  * @param {Record<string, object> | null | undefined} worktrees
  * @returns {{ nodes: Array, edges: Array }}
@@ -128,6 +168,11 @@ export function addPhantomNodes(nodes, edges) {
 export function selectGraphData(worktrees) {
   if (!worktrees || typeof worktrees !== 'object') {
     return { nodes: [], edges: [] };
+  }
+
+  const key = buildGraphCacheKey(worktrees);
+  if (key === _graphCacheKey && _graphCacheResult !== null) {
+    return _graphCacheResult;
   }
 
   const realNodes = buildNodes(worktrees);
@@ -146,5 +191,8 @@ export function selectGraphData(worktrees) {
     return a.type.localeCompare(b.type);
   });
 
-  return { nodes: allNodes, edges: allEdges };
+  const result = { nodes: allNodes, edges: allEdges };
+  _graphCacheKey = key;
+  _graphCacheResult = result;
+  return result;
 }

@@ -18,6 +18,27 @@ import { findIsolatedNodes, findCycleEdges } from './graph/analysis.js';
 const nodeTypes = { graphNode: GraphNode };
 
 /**
+ * id 기반 노드 merge: 기존 노드의 position을 보존하고 data만 교체한다.
+ *
+ * - 기존 id: position 유지, data는 next의 값으로 교체 (dimmed/isolated 등 즉시 반영)
+ * - 신규 id: next 노드 그대로 추가 (mapToFlow 초기 좌표, simulation이 정착)
+ * - 사라진 id: 결과에서 제거
+ *
+ * @param {import('@xyflow/react').Node[]} prev
+ * @param {import('@xyflow/react').Node[]} next
+ * @returns {import('@xyflow/react').Node[]}
+ */
+export function mergeNodesById(prev, next) {
+  const prevMap = new Map(prev.map(n => [n.id, n]));
+  return next.map(nextNode => {
+    const prevNode = prevMap.get(nextNode.id);
+    if (!prevNode) return nextNode; // 신규 id → mapToFlow 초기 좌표 사용
+    // 기존 id → position 유지, data는 신규 값으로 교체
+    return { ...nextNode, position: prevNode.position };
+  });
+}
+
+/**
  * React Flow 기반 그래프 캔버스.
  * worktrees: Record<path, WorktreeState> 객체를 받아 노드/엣지를 자동 배치한다.
  *
@@ -69,12 +90,18 @@ function GraphCanvasInner({ worktrees }) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  // initialNodes/initialEdges가 바뀌면 React Flow 상태도 reset.
-  // (useNodesState/useEdgesState는 초기값만 사용하므로 명시적 reset 필요)
+  // initialNodes/initialEdges가 바뀌면 React Flow 상태도 갱신.
+  // (useNodesState/useEdgesState는 초기값만 사용하므로 명시적 갱신 필요)
+  //
+  // setNodes는 id 기반 merge 정책으로 기존 노드의 position을 보존한다:
+  //   - 기존 id → position 유지, data는 신규 값으로 교체 (dimmed/isolated 등 즉시 반영)
+  //   - 신규 id → mapToFlow 초기 좌표 그대로 추가 (simulation이 이후 정착)
+  //   - 사라진 id → 제거
+  // setEdges는 좌표가 없으므로 단순 교체 유지.
   const newNodesKey = initialNodes.map(n => `${n.id}:${n.data?.dimmed ? 'd' : 'n'}:${n.data?.isolated ? 'i' : '_'}`).join(',');
   const newEdgesKey = initialEdges.map(e => `${e.id}:${e.data?.dimmed ? 'd' : 'n'}:${e.data?.cycle ? 'c' : '_'}`).join(',');
   useEffect(() => {
-    setNodes(initialNodes);
+    setNodes(prev => mergeNodesById(prev, initialNodes));
     setEdges(initialEdges);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newNodesKey, newEdgesKey]);
