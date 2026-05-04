@@ -166,15 +166,18 @@ Use `mcp__atlassian__jira_add_comment` to post the test summary:
 전체 리포트: docs/test/<TASK-ID>.test-report.md
 ```
 
-테스트 리포트와 실패 스크린샷을 공용 스크립트로 첨부 업로드 (스크립트 위치는 프로젝트 CLAUDE.md의 "Jira Attach Script" 섹션 참고):
+테스트 리포트와 실패 스크린샷을 공용 스크립트로 첨부 업로드. 스크립트 경로 결정은 `Read skills/_shared/script-lookup.md` 후 lookup 블록 실행:
 
 ```bash
+SCRIPT_NAME="jira-attach.sh" OUT_VAR="JIRA_ATTACH_SH"
+# Read skills/_shared/script-lookup.md and execute its lookup block here
+
 # 리포트
-bash "$JIRA_ATTACH_SH" <TASK-ID> docs/test/<TASK-ID>.test-report.md
+[ -n "$JIRA_ATTACH_SH" ] && bash "$JIRA_ATTACH_SH" <TASK-ID> docs/test/<TASK-ID>.test-report.md
 
 # Playwright 실패 스크린샷 (있을 때만)
 shots=$(find test-results/ playwright-report/ -name "*.png" -type f 2>/dev/null)
-[ -n "$shots" ] && bash "$JIRA_ATTACH_SH" <TASK-ID> $shots
+[ -n "$JIRA_ATTACH_SH" ] && [ -n "$shots" ] && bash "$JIRA_ATTACH_SH" <TASK-ID> $shots
 ```
 
 각 호출의 출력은 `HTTP <code>: <file>` 형식. 200이 아니면 업로드 실패 — 로컬 경로를 안내하고 계속 진행한다.

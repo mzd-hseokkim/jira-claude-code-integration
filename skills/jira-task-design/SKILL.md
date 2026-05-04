@@ -117,10 +117,12 @@ Use `mcp__atlassian__jira_add_comment` to post:
 
 ### Step 4.5: Attach Design Document to Jira
 
-생성한 `docs/design/<TASK-ID>.design.md`를 공용 스크립트로 첨부 업로드 (스크립트 위치는 프로젝트 CLAUDE.md의 "Jira Attach Script" 섹션 참고):
+생성한 `docs/design/<TASK-ID>.design.md`를 공용 스크립트로 첨부 업로드. 스크립트 경로 결정은 `Read skills/_shared/script-lookup.md` 후 lookup 블록 실행:
 
 ```bash
-bash "$JIRA_ATTACH_SH" <TASK-ID> docs/design/<TASK-ID>.design.md
+SCRIPT_NAME="jira-attach.sh" OUT_VAR="JIRA_ATTACH_SH"
+# Read skills/_shared/script-lookup.md and execute its lookup block here
+[ -n "$JIRA_ATTACH_SH" ] && bash "$JIRA_ATTACH_SH" <TASK-ID> docs/design/<TASK-ID>.design.md
 ```
 
 출력은 `HTTP 200: <file>` (성공) / 그 외면 실패. 실패 시 로컬 파일 경로 안내 후 계속 진행.

@@ -89,28 +89,25 @@ Step 4에서 저장한 review 결과를 `docs/review-log/` 로그에 append한�
 > **선행 조건**: Step 3에서 받은 subagent 결과를 `SUBAGENT_RESULT_JSON` 변수(JSON 문자열)에 보관해야 한다.
 > subagent 반환값 구조: `{ result: "Approve"|"Request Changes"|"Needs Discussion", findings: [{severity, file, line, category, message}, ...], ... }`
 
-스크립트 위치는 프로젝트 CLAUDE.md "Jira Attach Script"와 동일한 lookup 패턴으로 결정한다 (`CLAUDE_PLUGIN_ROOT` → cwd → repoRoot → 플러그인 캐시 최신 semver).
+스크립트 경로 결정은 `Read skills/_shared/script-lookup.md` 후 lookup 블록 실행:
 
 ```bash
-APPEND_LOG_SH=""
-for c in "${CLAUDE_PLUGIN_ROOT}/scripts/append-review-log-wrapper.sh" \
-         "scripts/append-review-log-wrapper.sh" \
-         "$(node -e "try{console.log(require('./.jira-context.json').repoRoot)}catch{}" 2>/dev/null)/scripts/append-review-log-wrapper.sh" \
-         "$(find "$HOME/.claude" -name append-review-log-wrapper.sh -type f 2>/dev/null | sort -V | tail -1)"; do
-  [ -n "$c" ] && [ -f "$c" ] && APPEND_LOG_SH="$c" && break
-done
+SCRIPT_NAME="append-review-log-wrapper.sh" OUT_VAR="APPEND_LOG_SH"
+# Read skills/_shared/script-lookup.md and execute its lookup block here
 
 set +e
-SUBAGENT_RESULT_JSON="$SUBAGENT_RESULT_JSON" bash "$APPEND_LOG_SH" "<TASK-ID>"
+[ -n "$APPEND_LOG_SH" ] && SUBAGENT_RESULT_JSON="$SUBAGENT_RESULT_JSON" bash "$APPEND_LOG_SH" "<TASK-ID>"
 set -e
 ```
 
 ### Step 4.5: Attach Review Report to Jira
 
-저장한 `docs/review/<TASK-ID>.review.md`를 공용 스크립트로 첨부 업로드 (스크립트 위치는 프로젝트 CLAUDE.md "Jira Attach Script" 섹션 참고):
+저장한 `docs/review/<TASK-ID>.review.md`를 공용 스크립트로 첨부 업로드. 스크립트 경로 결정은 `Read skills/_shared/script-lookup.md` 후 lookup 블록 실행:
 
 ```bash
-bash "$JIRA_ATTACH_SH" <TASK-ID> docs/review/<TASK-ID>.review.md
+SCRIPT_NAME="jira-attach.sh" OUT_VAR="JIRA_ATTACH_SH"
+# Read skills/_shared/script-lookup.md and execute its lookup block here
+[ -n "$JIRA_ATTACH_SH" ] && bash "$JIRA_ATTACH_SH" <TASK-ID> docs/review/<TASK-ID>.review.md
 ```
 
 출력은 `HTTP 200: <file>` (성공) / 그 외면 실패. 실패 시 로컬 파일 경로 안내 후 계속 진행.

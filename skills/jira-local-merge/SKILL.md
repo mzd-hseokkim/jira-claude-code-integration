@@ -167,9 +167,11 @@ Transition 후 즉시 `mcp__atlassian__jira_get_issue`(`fields="status"`, `comme
 
 ### Step 8: Update Context & Completion Summary
 
-워크트리의 `.jira-context.json`과 `<repoRoot>/.jira-context.json` 양쪽을 공용 스크립트로 갱신한다 (스크립트 위치는 프로젝트 CLAUDE.md의 "Jira Context Update Script" 섹션 참고).
+워크트리의 `.jira-context.json`과 `<repoRoot>/.jira-context.json` 양쪽을 공용 스크립트로 갱신한다. 스크립트 경로 결정은 `Read skills/_shared/script-lookup.md` 후 lookup 블록 실행:
 
 ```bash
+SCRIPT_NAME="jira-context-update.py" OUT_VAR="JIRA_CTX_UPDATE_PY"
+# Read skills/_shared/script-lookup.md and execute its lookup block here
 python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> merge "<final-jira-status>" \
     "<worktree>/.jira-context.json" \
     "<repoRoot>/.jira-context.json"
