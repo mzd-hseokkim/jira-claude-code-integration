@@ -69,8 +69,9 @@ export function useForceLayout(initialNodes, edges, setNodes, opts = {}) {
       .force('charge', forceManyBody().strength(-900).distanceMax(600))
       .force('center', forceCenter(0, 0))
       .force('collide', forceCollide(80))
-      // 계층 y-pinning: depth가 정의된 노드는 그 y로 끌림. 미정의는 0.
-      .force('y', forceY().y(d => targetY[d.id] ?? 0).strength(d => targetY[d.id] != null ? 0.18 : 0))
+      // 계층 y-pinning: depth가 정의된 노드는 그 y로 강하게 끌림 (위→아래 정렬 명확화).
+      // strength 0.6 = link/charge force보다 우세 → 부모는 위, 자식은 아래로 확실히 배치.
+      .force('y', forceY().y(d => targetY[d.id] ?? 0).strength(d => targetY[d.id] != null ? 0.6 : 0))
       .alphaDecay(0.04)
       .alphaMin(0.02);
 
@@ -205,7 +206,7 @@ function computeHierarchyTargetY(d3Nodes, edges) {
   const avg = depths.reduce((a,b) => a+b, 0) / depths.length;
   const out = {};
   for (const [id, d] of Object.entries(depth)) {
-    out[id] = (d - avg) * 200;
+    out[id] = (d - avg) * 240;
   }
   return out;
 }
