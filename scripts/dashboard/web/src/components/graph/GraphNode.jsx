@@ -20,14 +20,18 @@ export default function GraphNode({ data }) {
   const compactKey = (data?.id) ?? String(fullLabel).split(/\s+/)[0];
   return (
     <div className={className} title={fullLabel}>
-      <Handle type="target" position={Position.Top} />
+      {/* 위쪽 핸들: parent/epic 엣지가 사용 (자식 → 부모 방향, 위로 나감/위로 들어옴) */}
+      <Handle id="t-top" type="target" position={Position.Top} />
+      <Handle id="s-top" type="source" position={Position.Top} />
       <div className="graph-node__label">
         {compactKey}
       </div>
       {data?.status && !isPhantom && (
         <div className="graph-node__status">{data.status}</div>
       )}
-      <Handle type="source" position={Position.Bottom} />
+      {/* 아래쪽 핸들: blocks 엣지가 사용 (blocker → blocked 방향, 아래로 나감/아래로 들어옴) */}
+      <Handle id="s-bottom" type="source" position={Position.Bottom} />
+      <Handle id="t-bottom" type="target" position={Position.Bottom} />
     </div>
   );
 }

@@ -92,10 +92,18 @@ export function mapToFlow(graphData, options = {}) {
     const dimmed = !isMatched(e.source) || !isMatched(e.target);
     const cycle = isCycle(e.id);
     const stroke = EDGE_STROKE[e.type] ?? '#94a3b8';
+    // 핸들 분리:
+    //  - parent/epic: source=자식 → target=부모. 자식의 top에서 나와 부모의 bottom으로 들어감.
+    //  - blocks:      source=blocker → target=blocked. blocker의 bottom에서 나와 blocked의 top으로 들어감.
+    const isHier = (e.type === 'parent' || e.type === 'epic');
+    const sourceHandle = isHier ? 's-top' : 's-bottom';
+    const targetHandle = isHier ? 't-bottom' : 't-top';
     return {
       id: e.id,
       source: e.source,
       target: e.target,
+      sourceHandle,
+      targetHandle,
       type: e.type,
       className: dimmed ? 'marching-ants graph-edge--dimmed' : 'marching-ants',
       data: { ...(e.data ?? {}), dimmed, cycle },
