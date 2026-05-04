@@ -99,35 +99,18 @@ Transition 후 즉시 `mcp__atlassian__jira_get_issue`(`fields="status"`, `comme
 `.jira-context.json`의 `worktreePath`를 읽어 `~/.claude.json`에서 해당 경로의 `mcpServers`를 제거한다.
 entry 전체는 삭제하지 않고 `mcpServers` 키만 제거하여 Claude Code의 다른 메타데이터는 보존한다.
 
+스크립트 위치는 프로젝트 CLAUDE.md "Jira Attach Script"와 동일한 lookup 패턴으로 결정한다.
+
 ```bash
-python - "<worktreePath from .jira-context.json>" << 'PYEOF'
-import json, os, sys
+CLEANUP_MCP_PY=""
+for c in "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup-worktree-mcp.py" \
+         "scripts/cleanup-worktree-mcp.py" \
+         "$(node -e "try{console.log(require('./.jira-context.json').repoRoot)}catch{}" 2>/dev/null)/scripts/cleanup-worktree-mcp.py" \
+         "$(find "$HOME/.claude" -name cleanup-worktree-mcp.py -type f 2>/dev/null | sort -V | tail -1)"; do
+  [ -n "$c" ] && [ -f "$c" ] && CLEANUP_MCP_PY="$c" && break
+done
 
-worktree_path = sys.argv[1]
-claude_json_path = os.path.expanduser("~/.claude.json")
-with open(claude_json_path, "r", encoding="utf-8") as f:
-    data = json.load(f)
-
-def norm(p):
-    return p.replace("\\", "/").rstrip("/")
-
-wt = norm(worktree_path)
-projects = data.get("projects", {})
-
-matched_key = None
-for k in list(projects.keys()):
-    if norm(k) == wt:
-        matched_key = k
-        break
-
-if matched_key and isinstance(projects[matched_key], dict):
-    projects[matched_key].pop("mcpServers", None)
-    with open(claude_json_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-    print(f"MCP config removed from {wt}")
-else:
-    print(f"No entry found for {wt}, skipping")
-PYEOF
+python3 "$CLEANUP_MCP_PY" "<worktreePath from .jira-context.json>"
 ```
 
 - `.jira-context.json`에 `worktreePath`가 없으면 스킵
