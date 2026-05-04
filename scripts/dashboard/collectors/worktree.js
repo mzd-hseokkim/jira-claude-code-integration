@@ -120,8 +120,6 @@ function collectWorktreesForRoot(store, workspaceRoot, logger) {
       branch: wt.branch,
       workspaceRoot,
       taskId: ctx ? ctx.taskId : null,
-      cachedIssue: ctx ? ctx.cachedIssue : null,
-      lastFetchedAt: ctx ? ctx.lastFetchedAt : null,
       noContext: ctx === null,
       completedSteps: ctx ? ctx.completedSteps : [],
       summary: ctx ? ctx.summary : null,
@@ -129,6 +127,13 @@ function collectWorktreesForRoot(store, workspaceRoot, logger) {
       status: ctx ? ctx.status : null,
       epic: ctx ? ctx.epic : null,
     };
+    // cachedIssue/lastFetchedAt: jira-collector가 단독 owner. 파일에 값이
+    // 있을 때만 cold-start fill용으로 전달 (store U7b 가드가 처리). 파일에
+    // 없으면 키 자체를 보내지 않아 jira-collector가 채운 메모리 캐시를 보존.
+    if (ctx && ctx.cachedIssue) {
+      state.cachedIssue = ctx.cachedIssue;
+      state.lastFetchedAt = ctx.lastFetchedAt;
+    }
     store.upsertWorktree(state);
   }
 
@@ -228,20 +233,23 @@ function startWorktreeCollector(store, opts) {
         // Get current branch and workspaceRoot from snapshot
         const snapshot = store.getSnapshot();
         const existing = snapshot.find((w) => w.path === worktreePath);
-        store.upsertWorktree({
+        const update = {
           path: worktreePath,
           branch: existing ? existing.branch : null,
           workspaceRoot: existing ? existing.workspaceRoot : null,
           taskId: ctx.taskId,
-          cachedIssue: ctx.cachedIssue,
-          lastFetchedAt: ctx.lastFetchedAt,
           noContext: false,
           completedSteps: ctx.completedSteps,
           summary: ctx.summary,
           priority: ctx.priority,
           status: ctx.status,
           epic: ctx.epic,
-        });
+        };
+        if (ctx.cachedIssue) {
+          update.cachedIssue = ctx.cachedIssue;
+          update.lastFetchedAt = ctx.lastFetchedAt;
+        }
+        store.upsertWorktree(update);
         wtLog && wtLog.info('worktree.context-changed', { path: worktreePath });
       };
 

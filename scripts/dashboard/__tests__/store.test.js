@@ -147,6 +147,35 @@ test('U7c: upsertWorktree allows explicit cachedIssue=null clear', () => {
   assert.equal(entry.noContext, true);
 });
 
+// U7d: worktree collector가 cachedIssue 키 자체를 보내지 않으면 jira-collector가
+// 채운 메모리 캐시(links/parent 포함)는 그대로 보존되어야 한다. (실측 회귀:
+// 30초 폴마다 cachedIssue가 null로 덮어쓰여 그래프 뷰의 관계 데이터가 사라지던 버그)
+test('U7d: upsertWorktree preserves cachedIssue when key absent in update', () => {
+  const store = createStore();
+  // jira-collector가 live 데이터 박음
+  store.updateCachedIssue('/wt4', {
+    key: 'T-5', summary: 'live', status: '진행 중',
+    links: { blocks: [{ key: 'T-6' }], blockedBy: [] },
+    parent: { key: 'EPIC-1' },
+    fetchedAt: new Date().toISOString(),
+  });
+  // worktree-collector가 cachedIssue 키 없이 메타만 갱신 (정상 30초 폴)
+  store.upsertWorktree({
+    path: '/wt4',
+    taskId: 'T-5',
+    branch: 'feature/T-5',
+    summary: 'meta-only',
+    status: '진행 중',
+    noContext: false,
+  });
+  const snap = store.getSnapshot();
+  const entry = snap.find((w) => w.path === '/wt4');
+  assert.ok(entry.cachedIssue, 'cachedIssue must survive');
+  assert.deepEqual(entry.cachedIssue.links, { blocks: [{ key: 'T-6' }], blockedBy: [] });
+  assert.equal(entry.cachedIssue.parent.key, 'EPIC-1');
+  assert.equal(entry.branch, 'feature/T-5'); // 메타는 갱신됨
+});
+
 // U_tz_naive: timezone-naive lastFetchedAt → stale로 분류
 test('U_tz_naive: getStaleEntries treats timezone-naive lastFetchedAt as stale', () => {
   const store = createStore();
