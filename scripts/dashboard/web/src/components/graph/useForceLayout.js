@@ -153,42 +153,53 @@ export function useForceLayout(initialNodes, edges, setNodes, opts = {}) {
  * @returns {Record<string, number>} id → target y (없으면 미정의)
  */
 function computeHierarchyTargetY(d3Nodes, edges) {
-  // hierarchy edges만 추출. source=자식, target=부모.
+  // 두 종류의 hierarchy를 함께 사용해 depth를 결정한다:
+  //  - parent/epic: source=자식, target=부모. 자식이 부모 아래.
+  //  - blocks:      source=blocker, target=blocked. blocked가 blocker 아래.
+  // BFS는 "위 노드"에서 "아래 노드"로 진행. 두 트리에서 도출된 depth 중 큰 값을 채택해
+  // sibling 사이에 blocks 의존이 있으면 같은 y에 머무르지 않고 분리되게 한다.
   const hier = edges.filter(e => e.type === 'parent' || e.type === 'epic');
-  if (hier.length === 0) return {};
+  const blocks = edges.filter(e => e.type === 'blocks');
+  if (hier.length === 0 && blocks.length === 0) return {};
 
-  // 부모 → 자식들 map (BFS는 부모에서 자식으로 내려감).
-  const childrenOf = new Map();
-  // 부모로 들어오는 엣지 카운트(자식인지 판별 — 즉 본인이 다른 노드의 자식이면 카운트).
-  const isChild = new Set();
+  // "위 → 아래" 인접 리스트 (방향: 부모/blocker → 자식/blocked).
+  const downstreamOf = new Map();
+  const hasIncoming = new Set();
   for (const e of hier) {
-    isChild.add(e.source);  // source = 자식
-    if (!childrenOf.has(e.target)) childrenOf.set(e.target, []);
-    childrenOf.get(e.target).push(e.source);
+    // parent/epic: target=부모(위), source=자식(아래)
+    if (!downstreamOf.has(e.target)) downstreamOf.set(e.target, []);
+    downstreamOf.get(e.target).push(e.source);
+    hasIncoming.add(e.source);
+  }
+  for (const e of blocks) {
+    // blocks: source=blocker(위), target=blocked(아래)
+    if (!downstreamOf.has(e.source)) downstreamOf.set(e.source, []);
+    downstreamOf.get(e.source).push(e.target);
+    hasIncoming.add(e.target);
   }
 
   const allIds = d3Nodes.map(n => n.id);
-  // 루트 후보: 부모(target) 위치에는 등장하는데 자식(source)으로는 등장 안 하는 노드.
-  // 또는 hierarchy edge에 전혀 등장 안 하는 노드도 그냥 depth 0에서 시작.
-  const targets = new Set(hier.map(e => e.target));
-  const roots = allIds.filter(id => targets.has(id) && !isChild.has(id));
+  // 루트: downstream 엣지를 내보내지만 incoming은 받지 않는 노드들.
+  const roots = allIds.filter(id => downstreamOf.has(id) && !hasIncoming.has(id));
 
   const depth = {};
   const queue = [];
   for (const r of roots) { depth[r] = 0; queue.push(r); }
 
+  // BFS — 더 깊은 depth를 우선 채택 (max). 두 트리 결합 시 sibling 분리 효과.
   while (queue.length) {
     const cur = queue.shift();
-    const kids = childrenOf.get(cur) ?? [];
-    for (const k of kids) {
-      if (k in depth) continue; // 이미 더 가까운 부모로 부여됨
-      depth[k] = depth[cur] + 1;
-      queue.push(k);
+    const downs = downstreamOf.get(cur) ?? [];
+    for (const d of downs) {
+      const next = depth[cur] + 1;
+      if (depth[d] == null || next > depth[d]) {
+        depth[d] = next;
+        queue.push(d);
+      }
     }
   }
 
-  // y 좌표로 변환 (depth 0 = y -200 정도 위, depth 1 = 0, 2 = +200, ...).
-  // 평균 depth를 0에 맞춰 캔버스 중앙에 펼치도록 조정.
+  // y 좌표로 변환. 평균을 0에 맞춰 캔버스 중앙에 펼친다.
   const depths = Object.values(depth);
   if (depths.length === 0) return {};
   const avg = depths.reduce((a,b) => a+b, 0) / depths.length;
