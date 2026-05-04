@@ -66,6 +66,7 @@ const HOOK_WHITELIST = new Set([
   'SubagentStop',
   'Notification',
   'SessionStart',
+  'SessionEnd',
   'Stop',
 ]);
 
