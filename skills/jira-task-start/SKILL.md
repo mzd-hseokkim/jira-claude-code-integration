@@ -136,7 +136,26 @@ Use `mcp__atlassian__jira_add_comment` with:
 
 워크트리 디렉토리와 원본 레포 양쪽에 동일한 patch 적용. **모든 timestamp는 `new Date().toISOString()` UTC `Z` 형식**.
 
-### Step 7: Completion Summary
+### Step 7: PDCA 권고
+
+Completion Summary 직전에 다음 형식의 권고 블록을 출력한다. 이슈 요약·설명·타입·범위를 바탕으로 LLM이 판단한다 — 별도 휴리스틱 표나 분류기를 사용하지 않는다.
+
+- **판단 대상**: `plan`, `design`, `test` 세 단계만. `impl`/`review`/`merge`/`done`은 항상 필수이므로 판단 대상에서 제외.
+- **판단 근거**: 작업 성격(신규 기능 / 리팩토링 / 버그픽스 / 문서·설정 변경), 변경 범위, 리스크.
+- **저장하지 않는다**: `.jira-context.json`이나 다른 곳에 기록하지 않는다. 한 세션 안에서만 의미를 가지며, 통신은 응답 텍스트로 끝낸다.
+- **사용자 오버라이드**: 사용자가 다음 턴에 자연어("design은 넣어줘")로 알려주면 그대로 따른다. 별도 플래그·저장 없음.
+
+출력 형식 예:
+
+```
+🔍 PDCA 권고
+- 필수: plan, impl, review, merge
+- 스킵 가능: design, test (사유: SKILL.md 텍스트 추가뿐, 동작 변경 없음)
+```
+
+스킵 가능 단계가 없으면 "스킵 가능: 없음"으로 출력. 권고는 본 응답 1회만 노출하고, 후속 단계가 자동으로 다시 출력하지 않는다.
+
+### Step 8: Completion Summary
 
 아래 형식으로 완료 요약 출력:
 
@@ -151,8 +170,6 @@ Use `mcp__atlassian__jira_add_comment` with:
 
 **Progress**: init → **start ✓** → plan → design → impl → test → review → merge → pr → done
 
-**Next**: `/jira-task plan <TASK-ID>` — 기획 문서를 작성합니다
+**Next**: `/jira-task plan <TASK-ID>` — 기획 문서를 작성합니다 (Step 7의 권고에 따라 다른 단계로 바로 갈 수도 있음)
 ---
 ```
-
-Plan이 불필요한 간단한 작업이면 `/jira-task impl <TASK-ID>`로 바로 구현 가능함을 안내.
