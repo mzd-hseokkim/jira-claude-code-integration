@@ -155,30 +155,10 @@ The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스
   2. cache miss(없거나 다른 이슈)면 스킬 본래의 fields/comment_limit으로 fetch. fetch 후 결과를 `cachedIssue`에 갱신.
   3. 사용자가 단계를 직접 다시 돌릴 때 최신 상태가 필요하면 `.jira-context.json`에서 `cachedIssue`를 수동 삭제하면 된다.
 
-- **Jira Attach Script** (plan/design/test/review 공통): Jira 첨부 업로드는 `scripts/jira-attach.sh`(공용)로 처리. 스킬은 사용자 프로젝트(워크트리 포함)에서 실행되므로 cwd에 스크립트가 없다. 호출 직전 아래 한 번으로 경로를 결정하고 환경변수에 담는다.
-  ```bash
-  # 1) CLAUDE_PLUGIN_ROOT, 2) cwd, 3) repoRoot(.jira-context.json), 4) 플러그인 캐시 최신 버전 순으로 탐색
-  # 캐시 fallback은 반드시 sort -V | tail -1로 최신 semver 선택. find ... | head -1은 stale 버전을 잡으므로 금지.
-  JIRA_ATTACH_SH=""
-  for c in "${CLAUDE_PLUGIN_ROOT}/scripts/jira-attach.sh" \
-           "scripts/jira-attach.sh" \
-           "$(node -e "try{console.log(require('./.jira-context.json').repoRoot)}catch{}" 2>/dev/null)/scripts/jira-attach.sh" \
-           "$(find "$HOME/.claude" -name jira-attach.sh -type f 2>/dev/null | sort -V | tail -1)"; do
-    [ -n "$c" ] && [ -f "$c" ] && JIRA_ATTACH_SH="$c" && break
-  done
-  ```
-  찾지 못하면 사용자에게 안내하고 첨부 업로드는 스킵, 워크플로는 계속 진행.
-- **Jira Context Update Script** (merge/done 공통): worktree-local + aggregate 두 컨텍스트의 `completedSteps`/`status`/`<step>At`/`cachedIssue` 갱신은 `scripts/jira-context-update.py`(공용)로 처리. Jira Attach Script와 동일한 lookup 패턴으로 경로를 결정한다.
-  ```bash
-  JIRA_CTX_UPDATE_PY=""
-  for c in "${CLAUDE_PLUGIN_ROOT}/scripts/jira-context-update.py" \
-           "scripts/jira-context-update.py" \
-           "$(node -e "try{console.log(require('./.jira-context.json').repoRoot)}catch{}" 2>/dev/null)/scripts/jira-context-update.py" \
-           "$(find "$HOME/.claude" -name jira-context-update.py -type f 2>/dev/null | sort -V | tail -1)"; do
-    [ -n "$c" ] && [ -f "$c" ] && JIRA_CTX_UPDATE_PY="$c" && break
-  done
-  ```
-  사용법: `python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> <step> <status> <ctx-file> [<ctx-file>...]` — aggregate vs worktree 형식은 자동 감지. missing 파일은 자동 skip.
+- **공용 스크립트 lookup** (모든 스킬 공통): 사용자 프로젝트(워크트리 포함)의 cwd에서는 플러그인 `scripts/`가 직접 보이지 않으므로, 호출 직전 lookup으로 절대 경로를 결정한다. lookup 패턴 단일 출처는 `skills/_shared/script-lookup.md`. 각 스킬은 호출 직전 `Read skills/_shared/script-lookup.md` 후 `SCRIPT_NAME` / `OUT_VAR`를 셋업하고 lookup 블록을 실행한다.
+  - `scripts/jira-attach.sh` (plan/design/test/review 공통): Jira 첨부 업로드. 사용 변수 `JIRA_ATTACH_SH`. 찾지 못하면 첨부는 스킵, 워크플로는 계속 진행.
+  - `scripts/jira-context-update.py` (merge/done 공통): worktree-local + aggregate 두 `.jira-context.json`의 `completedSteps`/`status`/`<step>At`/`cachedIssue` 갱신. 사용 변수 `JIRA_CTX_UPDATE_PY`. 호출: `python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> <step> <status> <ctx-file> [<ctx-file>...]` — aggregate vs worktree 형식 자동 감지, missing 파일 자동 skip.
+  - 기타: `scripts/propagate-mcp-config.sh`(init), `scripts/append-review-log-wrapper.sh`(review), `scripts/cleanup-worktree-mcp.py`(done) 도 동일 패턴 사용.
 - When posting comments to Jira, use markdown format.
 - Always fetch issue details before transitioning status.
 - Use `jira_get_transitions`로 전환 목록 조회 후 `jira_transition_issue`에 **transitionId**를 전달.

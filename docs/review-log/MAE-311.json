@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MAE-311",
+  "entries": [
+    {
+      "taskId": "MAE-311",
+      "timestamp": "2026-05-04T05:38:17Z",
+      "reviewerVersion": "064144f1f227",
+      "outcome": "pass",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "info",
+          "file": "skills/_shared/script-lookup.md",
+          "line": 23,
+          "category": "style",
+          "message": "redundant guard, retained for find empty case"
+        },
+        {
+          "id": "F-002",
+          "severity": "info",
+          "file": "skills/_shared/script-lookup.md",
+          "line": 25,
+          "category": "portability",
+          "message": "printf -v is bash-only; all callers are bash"
+        },
+        {
+          "id": "F-003",
+          "severity": "info",
+          "file": "skills/jira-task-review/SKILL.md",
+          "line": 99,
+          "category": "style",
+          "message": "set +e/-e becomes noop when guard skips"
+        },
+        {
+          "id": "F-004",
+          "severity": "info",
+          "file": "CLAUDE.md",
+          "line": 158,
+          "category": "docs",
+          "message": "script list duplication acceptable"
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 4
+      },
+      "falsePositive": null,
+      "userOverride": null
+    }
+  ]
+}

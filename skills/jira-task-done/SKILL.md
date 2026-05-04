@@ -99,18 +99,12 @@ Transition 후 즉시 `mcp__atlassian__jira_get_issue`(`fields="status"`, `comme
 `.jira-context.json`의 `worktreePath`를 읽어 `~/.claude.json`에서 해당 경로의 `mcpServers`를 제거한다.
 entry 전체는 삭제하지 않고 `mcpServers` 키만 제거하여 Claude Code의 다른 메타데이터는 보존한다.
 
-스크립트 위치는 프로젝트 CLAUDE.md "Jira Attach Script"와 동일한 lookup 패턴으로 결정한다.
+스크립트 경로 결정은 `Read skills/_shared/script-lookup.md` 후 lookup 블록 실행:
 
 ```bash
-CLEANUP_MCP_PY=""
-for c in "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup-worktree-mcp.py" \
-         "scripts/cleanup-worktree-mcp.py" \
-         "$(node -e "try{console.log(require('./.jira-context.json').repoRoot)}catch{}" 2>/dev/null)/scripts/cleanup-worktree-mcp.py" \
-         "$(find "$HOME/.claude" -name cleanup-worktree-mcp.py -type f 2>/dev/null | sort -V | tail -1)"; do
-  [ -n "$c" ] && [ -f "$c" ] && CLEANUP_MCP_PY="$c" && break
-done
-
-python3 "$CLEANUP_MCP_PY" "<worktreePath from .jira-context.json>"
+SCRIPT_NAME="cleanup-worktree-mcp.py" OUT_VAR="CLEANUP_MCP_PY"
+# Read skills/_shared/script-lookup.md and execute its lookup block here
+[ -n "$CLEANUP_MCP_PY" ] && python3 "$CLEANUP_MCP_PY" "<worktreePath from .jira-context.json>"
 ```
 
 - `.jira-context.json`에 `worktreePath`가 없으면 스킵
@@ -118,9 +112,11 @@ python3 "$CLEANUP_MCP_PY" "<worktreePath from .jira-context.json>"
 
 ### Step 8: Update Context & Completion Summary
 
-워크트리의 `.jira-context.json`과 `<repoRoot>/.jira-context.json` **양쪽**을 공용 스크립트로 갱신한다 (스크립트 위치는 프로젝트 CLAUDE.md의 "Jira Context Update Script" 섹션 참고). 한쪽만 갱신하면 dashboard collector가 worktree-local 파일만 읽기 때문에 done step이 누락된 채 표시된다.
+워크트리의 `.jira-context.json`과 `<repoRoot>/.jira-context.json` **양쪽**을 공용 스크립트로 갱신한다. 한쪽만 갱신하면 dashboard collector가 worktree-local 파일만 읽기 때문에 done step이 누락된 채 표시된다. 스크립트 경로 결정은 `Read skills/_shared/script-lookup.md` 후 lookup 블록 실행:
 
 ```bash
+SCRIPT_NAME="jira-context-update.py" OUT_VAR="JIRA_CTX_UPDATE_PY"
+# Read skills/_shared/script-lookup.md and execute its lookup block here
 python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> done "<final-jira-status>" \
     "<worktreePath>/.jira-context.json" \
     "<repoRoot>/.jira-context.json"
