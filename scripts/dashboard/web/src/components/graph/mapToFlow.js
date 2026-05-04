@@ -9,7 +9,30 @@ const EDGE_STROKE = {
 };
 
 /**
+ * Build a cache key for mapToFlow.
+ * Key: graphData reference identity (object identity) + sorted matchedKeys join +
+ *      sorted isolatedSet join + sorted cycleEdgeSet join.
+ */
+function buildMapToFlowCacheKey(graphData, matchedKeys, isolatedSet, cycleEdgeSet) {
+  const gKey = graphData; // reference — same object means same content (selector already memoized)
+  const mKey = matchedKeys === null ? 'null' : [...matchedKeys].sort().join(',');
+  const iKey = isolatedSet === null ? 'null' : [...isolatedSet].sort().join(',');
+  const cKey = cycleEdgeSet === null ? 'null' : [...cycleEdgeSet].sort().join(',');
+  return { gKey, mKey, iKey, cKey };
+}
+
+// Module-level 1-slot cache for mapToFlow.
+let _mapCache = null; // { gKey, mKey, iKey, cKey, result }
+
+/** Reset the mapToFlow cache. Intended for tests only. */
+export function __resetMapToFlowCache() {
+  _mapCache = null;
+}
+
+/**
  * selectGraphData 결과를 React Flow Node/Edge 배열로 변환.
+ *
+ * Returns the same reference when inputs (by content key) are unchanged (1-slot memoization).
  *
  * @param {{ nodes: Array, edges: Array }} graphData
  * @param {{ matchedKeys?: Set<string> | null, isolatedSet?: Set<string> | null, cycleEdgeSet?: Set<string> | null }} [options]
@@ -19,8 +42,23 @@ const EDGE_STROKE = {
  *   cycleEdgeSet → 해당 엣지 id에 data.cycle = true (MAE-267)
  * @returns {{ flowNodes: import('@xyflow/react').Node[], flowEdges: import('@xyflow/react').Edge[] }}
  */
-export function mapToFlow({ nodes, edges }, options = {}) {
+export function mapToFlow(graphData, options = {}) {
+  const { nodes, edges } = graphData;
   const { matchedKeys = null, isolatedSet = null, cycleEdgeSet = null } = options;
+
+  // 1-slot cache check
+  // graphData 참조는 selectGraphData의 1-슬롯 캐시로 안정화되어 있으므로 identity 비교가 정확.
+  const ck = buildMapToFlowCacheKey(graphData, matchedKeys, isolatedSet, cycleEdgeSet);
+  if (
+    _mapCache !== null &&
+    _mapCache.gKey === ck.gKey &&
+    _mapCache.mKey === ck.mKey &&
+    _mapCache.iKey === ck.iKey &&
+    _mapCache.cKey === ck.cKey
+  ) {
+    return _mapCache.result;
+  }
+
   const isMatched = (key) => matchedKeys === null || matchedKeys.has(key);
   const isIsolated = (key) => isolatedSet !== null && isolatedSet.has(key);
   const isCycle = (id) => cycleEdgeSet !== null && cycleEdgeSet.has(id);
@@ -72,5 +110,7 @@ export function mapToFlow({ nodes, edges }, options = {}) {
     };
   });
 
-  return { flowNodes, flowEdges };
+  const result = { flowNodes, flowEdges };
+  _mapCache = { gKey: ck.gKey, mKey: ck.mKey, iKey: ck.iKey, cKey: ck.cKey, result };
+  return result;
 }

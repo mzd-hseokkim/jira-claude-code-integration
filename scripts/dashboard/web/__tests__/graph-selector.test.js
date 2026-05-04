@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   buildNodes,
   buildBlocksEdges,
   buildHierarchyEdges,
   addPhantomNodes,
   selectGraphData,
+  __resetGraphCache,
 } from '../src/selectors/graph.js';
 
 // ---------------------------------------------------------------------------
@@ -205,6 +206,10 @@ describe('addPhantomNodes', () => {
 // ---------------------------------------------------------------------------
 
 describe('selectGraphData', () => {
+  beforeEach(() => {
+    __resetGraphCache();
+  });
+
   // U13: null/undefined guard
   it('U13: null → empty result', () => {
     expect(selectGraphData(null)).toEqual({ nodes: [], edges: [] });
@@ -275,6 +280,10 @@ describe('selectGraphData', () => {
 // 2026-05-02 회귀: selector가 string 배열로 가정해 객체를 그대로 target으로 박아
 // localeCompare 에러 → ErrorBoundary fallback 발동.
 describe('selectGraphData — links.blocks가 객체 배열인 경우 (real collector 출력)', () => {
+  beforeEach(() => {
+    __resetGraphCache();
+  });
+
   it('객체 형태의 links.blocks에서 .key를 추출해 edge로 변환한다', () => {
     const worktrees = {
       '/a': {

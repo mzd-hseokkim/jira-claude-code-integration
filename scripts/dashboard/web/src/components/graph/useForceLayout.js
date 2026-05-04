@@ -30,6 +30,9 @@ export function useForceLayout(initialNodes, edges, setNodes, opts = {}) {
   useEffect(() => {
     if (initialNodes.length === 0) return;
 
+    // dev 모드에서 simulation 재초기화 횟수를 콘솔에 출력. 회귀 감지용.
+    if (import.meta.env.DEV) console.debug('[useForceLayout] re-init', { nodeCount: initialNodes.length, edgeCount: edges.length });
+
     // d3가 mutate할 복사본 생성. pinnedRef에 좌표가 있으면 fx/fy로 고정.
     const pinned = pinnedRef?.current ?? {};
     const d3Nodes = initialNodes.map(n => {
