@@ -84,15 +84,11 @@ Use `mcp__atlassian__jira_get_transitions` to fetch available transitions, then 
 - If "In Review" is not available, try "Done"
 - If both fail, inform the user of available transitions
 
-**Important**: Do NOT pass a `comment` parameter to `jira_transition_issue`. The `comment` field requires Atlassian Document Format (ADF) JSON — passing plain text will cause an error. Add comments separately using `jira_add_comment`.
+**ADF comment 경고 및 호출 패턴**: `Read skills/_shared/transition-verify.md` 의 "ADF Comment 경고" 섹션 준수.
 
 ### Step 6.5: Verify Transition via Fresh Fetch (SSOT)
 
-Transition 후 즉시 `mcp__atlassian__jira_get_issue`(`fields="status"`, `comment_limit=0`)를 호출해 Jira 측 실제 status 이름을 확보한다. 이 값이 `.jira-context.json`의 `cachedIssue.status`로 들어가는 **유일한 진실 원천**이다.
-
-- Step 6에서 어떤 transition을 시도했든, 결과 status는 이 fetch로만 결정한다 (워크플로 설정에 따라 "In Review"가 아니라 "검토중", "Done"이 아니라 "완료" 등으로 떨어질 수 있음).
-- Fetch가 실패하면 (네트워크/auth 등) Step 8에서 사용자에게 알리고 `cachedIssue` 갱신은 스킵 — stale 상태를 거짓 갱신으로 덮지 않는다 (collector가 다음 cycle에서 정정).
-- 이 값은 Step 8의 `<final-jira-status>` 인자로 그대로 전달한다. **transition 시도값(예: "Done")을 그대로 쓰지 않는다.**
+`Read skills/_shared/transition-verify.md` — fresh fetch 절차, `<final-jira-status>` 결정 규칙, fetch 실패 정책을 그대로 따른다. 결과 status를 Step 8의 `<final-jira-status>` 인자로 전달.
 
 ### Step 7: Cleanup MCP Config from Worktree Entry
 

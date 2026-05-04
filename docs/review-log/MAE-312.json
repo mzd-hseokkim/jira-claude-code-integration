@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MAE-312",
+  "entries": [
+    {
+      "taskId": "MAE-312",
+      "timestamp": "2026-05-04T05:53:27Z",
+      "reviewerVersion": "546a7b6f72ea",
+      "outcome": "pass",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "info",
+          "file": "skills/jira-local-merge/SKILL.md",
+          "line": 142,
+          "category": "doc-redundancy",
+          "message": "Step 6와 Step 6.5가 같은 _shared 파일을 두 번 가리킴 — 통합 검토 (out of scope)"
+        },
+        {
+          "id": "F-002",
+          "severity": "info",
+          "file": "skills/_shared/transition-verify.md",
+          "line": 32,
+          "category": "doc-clarity",
+          "message": "cachedIssue.fetchedAt 실제 write 주체(jira-context-update.py)를 한 줄로 명시하면 더 명확 (out of scope)"
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 2
+      },
+      "falsePositive": null,
+      "userOverride": null
+    }
+  ]
+}

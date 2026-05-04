@@ -139,14 +139,11 @@ merge 충돌 발생 시 사용자에게 알리고 중단. 충돌 해결 후 재�
 - "In Review"가 없으면 가능한 전환 목록을 사용자에게 안내하고 선택 요청
 - Done으로 전환하지 않는다 (PR 생성 후 `jira-task done`에서 처리)
 
-**주의**: `jira_transition_issue`에 `comment` 파라미터를 절대 사용하지 말 것. `comment` 필드는 Atlassian Document Format(ADF) JSON을 요구하므로 일반 텍스트를 넣으면 오류가 발생한다. 코멘트는 반드시 별도로 `jira_add_comment`를 호출하여 추가한다.
+**ADF comment 경고 및 호출 패턴**: `Read skills/_shared/transition-verify.md` 의 "ADF Comment 경고" 섹션 준수.
 
 ### Step 6.5: Verify Transition via Fresh Fetch (SSOT)
 
-Transition 후 즉시 `mcp__atlassian__jira_get_issue`(`fields="status"`, `comment_limit=0`)를 호출해 Jira 측 실제 status 이름을 확보한다. 이 값을 Step 8의 `<final-jira-status>` 인자로 전달한다.
-
-- Workflow 설정에 따라 transition 시도값과 결과 status 이름이 다를 수 있음 ("In Review" → "검토중" 등). transition 시도값을 그대로 쓰지 말 것.
-- Fetch가 실패하면 사용자에게 알리고 `cachedIssue` 갱신은 스킵 — collector가 다음 cycle에서 정정.
+`Read skills/_shared/transition-verify.md` — fresh fetch 절차, `<final-jira-status>` 결정 규칙, fetch 실패 정책을 그대로 따른다. 결과 status를 Step 8의 `<final-jira-status>` 인자로 전달.
 
 ### Step 7: Cleanup Instructions
 
