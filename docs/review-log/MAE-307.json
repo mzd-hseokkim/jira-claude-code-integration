@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MAE-307",
+  "entries": [
+    {
+      "taskId": "MAE-307",
+      "timestamp": "2026-05-04T05:00:05Z",
+      "reviewerVersion": "f05e98ecb8c1",
+      "outcome": "pass",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "info",
+          "file": "skills/jira-task-review/SKILL.md",
+          "line": 21,
+          "category": "lazy-load path",
+          "message": "refs 경로가 repo-relative. 플러그인 cache 실행 컨텍스트에서 cwd 기준 해석 가능성 확인 권장."
+        },
+        {
+          "id": "F-002",
+          "severity": "info",
+          "file": "skills/jira-task-auto/SKILL.md",
+          "line": 85,
+          "category": "extraction ROI",
+          "message": "단일 인용 1줄을 refs로 빼는 ROI는 낮음. 본문 표(L74-81)에 이미 동일 의도 명시되어 있어 의미 손실은 없음."
+        },
+        {
+          "id": "F-003",
+          "severity": "info",
+          "file": "skills/jira-task-auto/SKILL.md",
+          "line": 158,
+          "category": "lazy-load locality",
+          "message": "분기 표와 근거가 분리됨. lazy-load 호출자가 한 hop 더 필요. 표 자체로 의도 전달 충분하면 무문제."
+        },
+        {
+          "id": "F-004",
+          "severity": "info",
+          "file": "skills/jira-task-review/refs/reviewer-mode.md",
+          "line": 27,
+          "category": "mild duplication",
+          "message": "Mode A 헤더가 SKILL.md Step 2 구조와 중복. refs 단독 문서로는 자연스러움."
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 4
+      },
+      "falsePositive": null,
+      "userOverride": null
+    }
+  ]
+}
