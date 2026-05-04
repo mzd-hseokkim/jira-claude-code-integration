@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MAE-308",
+  "entries": [
+    {
+      "taskId": "MAE-308",
+      "timestamp": "2026-05-04T06:13:56Z",
+      "reviewerVersion": "064144f1f227",
+      "outcome": "pass",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "info",
+          "file": "docs/test/MAE-308.test-report.md",
+          "line": 52,
+          "category": "docs",
+          "message": "placeholder 'SKILL.md L? 의 lookup 블록' 남음 — 라인 번호 채우거나 제거 권장"
+        },
+        {
+          "id": "F-002",
+          "severity": "info",
+          "file": "docs/test/MAE-308.test-report.md",
+          "line": 41,
+          "category": "docs",
+          "message": "본문 '6개 영향 스킬'과 표 '7개 영향 스킬' 라벨 불일치 — 독자 혼선 가능성"
+        },
+        {
+          "id": "F-003",
+          "severity": "info",
+          "file": "docs/plan/MAE-308.plan.md",
+          "line": 67,
+          "category": "docs",
+          "message": "Scope Decision #5의 'design 생략'과 AC-2의 design 검증 사이에 한 줄 부연 추가 권장"
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 3
+      },
+      "falsePositive": null,
+      "userOverride": null
+    }
+  ]
+}
