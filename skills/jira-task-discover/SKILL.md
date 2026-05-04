@@ -165,7 +165,28 @@ Step 4 합성 산출물(FR / Edge Cases / Out of Scope / Open Questions)을 사�
 
 ### Step 5: Issue Breakdown Section
 
-**진입 조건:** Step 4.5 confirm을 통과(`proceed`)한 합성 결과를 입력으로 받아 본 단계를 실행한다. Step 4에서 생성한 문서의 **마지막 섹션**으로 다음 트리를 추가한다. **Jira 이슈를 만들지 않는다 — 문서에만 기록한다.**
+**진입 조건:** Step 4.5 confirm을 통과(`proceed`)한 합성 결과를 입력으로 받아 본 단계를 실행한다. Step 4에서 생성한 문서의 **마지막 섹션**으로 분해 제안을 추가한다. **Jira 이슈를 만들지 않는다 — 문서에만 기록한다.**
+
+분해 형식은 입력 규모에 맞게 LLM이 판단한다. 항상 트리를 강제하지 않는다.
+
+- **단일 PR 범위 / 단일 버그 수정 / 변경 파일 수 작음** → 작업 1건 형식 (Epic·Story·Sub-task 생략)
+- **여러 영역에 걸쳐 병렬 작업이 가능 / FR이 다층** → Epic + Story + Sub-task 트리 형식
+
+판단 신호 예: Functional Requirements 개수, Goals 개수, Codebase Context의 파일 면적, "버그/수정/단일" vs "도입/구축/리뉴얼" 같은 topic 어감. 절대 규칙은 두지 않는다 — 합성 결과를 보고 적절한 형식을 고른다.
+
+**Single 작업 형식:**
+
+```markdown
+## Proposed Issue Breakdown
+
+단일 작업으로 한 PR 범위. Epic/Story/Sub-task 트리 대신 작업 1건으로 등록한다.
+
+- **작업**: <한 줄 요약>
+  - 범위: <변경 파일/모듈 한 줄>
+  - 검증: <측정 가능한 완료 기준 한 줄>
+```
+
+**Tree 형식:**
 
 ```markdown
 ## Proposed Issue Breakdown
@@ -178,11 +199,10 @@ Step 4 합성 산출물(FR / Edge Cases / Out of Scope / Open Questions)을 사�
     - Sub-task 2.1: <서브태스크 요약>
 ```
 
-규칙:
-- 에픽 1개 + 스토리 N개 (보통 2-5) + 스토리당 서브태스크 1-5개
+공통 규칙:
 - 각 항목은 명사구 또는 동사구 한 줄 요약
 - 우선순위·의존성 추정은 선택. 명시할 수 있으면 `(blocks: ...)` 등으로 표기
-- 사용자가 다음 단계에서 `/jira-task create --from-requirements <경로>`로 이 트리를 그대로 Jira에 등록할 수 있도록 작성
+- Tree 형식 산출물은 `/jira-task create --from-requirements <경로>`로 Jira 일괄 등록 가능. Single 형식은 현재 import 파서가 받지 않으므로 `/jira-task create <자연어 힌트>` (default 모드)로 등록 — Step 6 Next 안내에 형식별 권장 명령을 출력한다.
 
 ### Step 6: Completion Summary
 
@@ -195,11 +215,13 @@ Step 4 합성 산출물(FR / Edge Cases / Out of Scope / Open Questions)을 사�
 - 요구사항 문서 생성: `docs/requirements/<slug>.requirements.md`
 - 모드: default | lite | from | lite+from
 - 코드베이스 컨텍스트: <발췌 파일 N개> (또는 "관련 영역 미발견")
-- 이슈 분해 제안: 에픽 1 + 스토리 N + 서브태스크 M
+- 이슈 분해 제안: <Tree면 "에픽 1 + 스토리 N + 서브태스크 M" / Single이면 "단일 작업 1건">
 
 **Progress**: **discover ✓** → create → init → start → plan → design → impl → test → review → merge → pr → done
 
-**Next**: `/jira-task create --from-requirements docs/requirements/<slug>.requirements.md` — 이 분석서로 Jira 이슈를 등록합니다
+**Next**:
+- Tree 형식: `/jira-task create --from-requirements docs/requirements/<slug>.requirements.md` — 이 분석서로 Jira 이슈를 일괄 등록합니다
+- Single 형식: `/jira-task create <한 줄 힌트>` — 분석서를 참고로 Jira 작업 1건을 등록합니다 (import 파서가 Single을 아직 못 받음)
 ---
 ```
 
