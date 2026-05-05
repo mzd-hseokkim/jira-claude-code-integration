@@ -2032,6 +2032,10 @@ body > * { position: relative; z-index: 1; }
 .session-card .activity-panel__row dd {
   color: rgba(243, 244, 246, 0.92);
 }
+/* dd 밝은 텍스트 override가 blocked 뱃지 dark text를 덮지 않도록 복구 */
+.session-card .activity-panel__row dd.activity-panel__value--blocked {
+  color: var(--color-status-blocked-text);
+}
 .session-card .activity-panel__prompt {
   color: rgba(221, 214, 254, 0.9);
 }
