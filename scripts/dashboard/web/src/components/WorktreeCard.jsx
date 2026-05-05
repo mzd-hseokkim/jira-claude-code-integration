@@ -180,6 +180,14 @@ export default function WorktreeCard({ worktree }) {
 
   return (
     <div className={cardClass}>
+      {isBlocked && (
+        <span
+          className="wt-card__blocked-corner"
+          title={openBlockers.map(b => `${b.key} · ${b.status ?? ''}`).join('\n')}
+        >
+          BLOCKED
+        </span>
+      )}
       {/* === 1단: 헤더 (taskId + type + meta + status badge) === */}
       <header className="wt-card__header">
         <span className="wt-card__task-id">
@@ -189,14 +197,6 @@ export default function WorktreeCard({ worktree }) {
         {noContext && <span className="wt-card__no-context-badge" title={path}>no jira</span>}
         {isAwaiting && <span className="wt-card__awaiting-badge">⏵ 응답 대기</span>}
         {isStale && <span className="wt-card__stale-badge">stale</span>}
-        {isBlocked && (
-          <span
-            className="wt-card__blocked-badge"
-            title={openBlockers.map(b => `${b.key} · ${b.status ?? ''}`).join('\n')}
-          >
-            ⛔ blocked × {openBlockers.length}
-          </span>
-        )}
         <span className="wt-card__header-spacer" />
         {toolCount > 0 && (
           <span className="wt-card__tool-count" title={`이번 세션 도구 호출 ${toolCount}회`}>

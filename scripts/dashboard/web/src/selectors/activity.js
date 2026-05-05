@@ -47,16 +47,23 @@ export function pickLatestPrompt(activity, fallbackEvent) {
  */
 export function pickCurrentTool(activity) {
   if (!Array.isArray(activity)) return null;
-  // Walk from newest to oldest. Track whether a PostToolUse closed each tool.
+  // Walk newest→oldest. Track PostToolUse closures.
+  // 사용자 인터럽트(UserPromptSubmit) 또는 turn 종료(Stop/SessionEnd)가
+  // PreToolUse보다 나중에 일어났다면 그 도구 호출은 취소된 것으로 간주.
+  // (취소된 호출엔 PostToolUse 훅이 안 떨어져 영원히 in-flight로 보이는 문제 방지)
   const closedTools = new Set();
+  let sawTerminator = false;
   for (let i = activity.length - 1; i >= 0; i--) {
     const ev = activity[i];
-    if (ev?.type === 'PostToolUse') {
+    const t = ev?.type;
+    if (t === 'PostToolUse') {
       const name = ev.data?.payload?.tool_name;
       if (name) closedTools.add(name);
-    } else if (ev?.type === 'PreToolUse') {
+    } else if (t === 'UserPromptSubmit' || t === 'Stop' || t === 'SessionEnd') {
+      sawTerminator = true;
+    } else if (t === 'PreToolUse') {
       const name = ev.data?.payload?.tool_name;
-      if (name && !closedTools.has(name)) {
+      if (name && !closedTools.has(name) && !sawTerminator) {
         return { name, startedAt: ev.ts };
       }
     }

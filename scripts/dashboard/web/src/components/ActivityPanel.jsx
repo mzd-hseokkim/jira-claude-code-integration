@@ -4,7 +4,6 @@ import {
   pickLatestResponse,
   pickCurrentTool,
   pickActiveSubagent,
-  pickBlockedFlag,
 } from '../selectors/activity.js';
 
 const EMPTY = '—';
@@ -20,13 +19,11 @@ export default function ActivityPanel({ activity = [], fallback = null }) {
   const latestResponse = pickLatestResponse(activity, fallback?.lastStopEvent);
   const currentTool = pickCurrentTool(activity);
   const hasSubagent = pickActiveSubagent(activity);
-  const isBlocked = pickBlockedFlag(activity);
 
   const toolName = currentTool?.name ?? EMPTY;
   const promptText = latestPrompt?.text ?? EMPTY;
   const responseText = latestResponse?.text ?? EMPTY;
   const subagentValue = hasSubagent ? 'active' : EMPTY;
-  const blockedValue = isBlocked ? '⚠ blocked' : EMPTY;
 
   return (
     <div className="activity-panel">
@@ -72,15 +69,6 @@ export default function ActivityPanel({ activity = [], fallback = null }) {
                 </span>
               )
               : subagentValue}
-          </dd>
-        </div>
-        <div className="activity-panel__row">
-          <dt>Blocked</dt>
-          <dd
-            key={blockedValue}
-            className={isBlocked ? 'activity-panel__value--blocked' : undefined}
-          >
-            {blockedValue}
           </dd>
         </div>
       </dl>

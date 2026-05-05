@@ -1672,7 +1672,11 @@ body > * { position: relative; z-index: 1; }
   border-left: 3px solid #dc2626;
 }
 
-.wt-card__blocked-badge {
+.wt-card__blocked-corner {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
   font-size: 10px;
   font-weight: 700;
   color: #7f1d1d;
@@ -1680,7 +1684,8 @@ body > * { position: relative; z-index: 1; }
   border: 1px solid #f87171;
   padding: 2px 7px;
   border-radius: 4px;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
+  pointer-events: auto;
 }
 
 /* ===== Issue links (blocks / blocked by) ===== */
