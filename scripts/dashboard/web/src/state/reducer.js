@@ -5,7 +5,8 @@
  *   {
  *     connection: 'never-connected' | 'connected' | 'disconnected',
  *     lastConnectedAt: string | null,   // ISO8601
- *     worktrees: { [path: string]: WorktreeState }
+ *     worktrees: { [path: string]: WorktreeState },
+ *     sessions: { [sessionId: string]: SessionState }
  *   }
  *
  * Action types:
@@ -13,6 +14,9 @@
  *   WORKTREE_ADDED        — new worktree detected
  *   WORKTREE_CHANGED      — worktree state updated
  *   WORKTREE_REMOVED      — worktree removed
+ *   SESSION_ADDED         — new session detected
+ *   SESSION_CHANGED       — session state updated
+ *   SESSION_REMOVED       — session ended/removed
  *   CONNECTION_LOST       — SSE stream disconnected mid-session
  *   CONNECTION_FAILED_INITIAL — first connection attempt failed
  *   LIVE_EVENT            — any live SSE event received; updates lastEventAt
@@ -22,6 +26,7 @@ export const initialState = {
   connection: 'never-connected',
   lastConnectedAt: null,
   worktrees: {},
+  sessions: {},
   lastEventAt: null,
   // jira-collector polling cycle 기준점 (서버 시계 → 클라이언트 시계 보정값)
   pollCycleAnchorMs: null, // 클라이언트 Date.now() 기준 사이클 시작점
@@ -40,6 +45,10 @@ export function reducer(state, action) {
       for (const wt of action.worktrees ?? []) {
         worktrees[wt.path] = wt;
       }
+      const sessions = {};
+      for (const s of action.sessions ?? []) {
+        sessions[s.sessionId] = s;
+      }
       // 서버가 보낸 lastTickAt(서버 epoch ms)을 클라이언트 시계로 변환.
       // 서버↔클라이언트 시계 오차 = clientNow - serverNowMs.
       let pollCycleAnchorMs = state.pollCycleAnchorMs;
@@ -54,6 +63,7 @@ export function reducer(state, action) {
         connection: 'connected',
         lastConnectedAt: new Date().toISOString(),
         worktrees,
+        sessions,
         pollCycleAnchorMs,
         pollCycleTickMs,
       };
@@ -86,6 +96,25 @@ export function reducer(state, action) {
       return {
         ...state,
         worktrees: rest,
+      };
+    }
+
+    case 'SESSION_ADDED':
+    case 'SESSION_CHANGED': {
+      return {
+        ...state,
+        sessions: {
+          ...state.sessions,
+          [action.sessionId]: action.state,
+        },
+      };
+    }
+
+    case 'SESSION_REMOVED': {
+      const { [action.sessionId]: _removedSession, ...restSessions } = state.sessions;
+      return {
+        ...state,
+        sessions: restSessions,
       };
     }
 

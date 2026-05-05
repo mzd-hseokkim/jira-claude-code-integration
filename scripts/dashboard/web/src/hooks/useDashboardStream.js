@@ -46,6 +46,7 @@ export function useDashboardStream(dispatch) {
           dispatch({
             type: 'SNAPSHOT',
             worktrees: data.worktrees ?? [],
+            sessions: data.sessions ?? [],
             lastTickAt: data.lastTickAt ?? null,
             tickMs: data.tickMs ?? null,
             serverNowMs: data.serverNowMs ?? null,
@@ -88,6 +89,30 @@ export function useDashboardStream(dispatch) {
         try {
           const data = JSON.parse(e.data);
           dispatch({ type: 'WORKTREE_REMOVED', path: data.path });
+          dispatch({ type: 'LIVE_EVENT', at: Date.now() });
+        } catch {}
+      });
+
+      es.addEventListener('session.added', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          dispatch({ type: 'SESSION_ADDED', sessionId: data.sessionId, state: data.state });
+          dispatch({ type: 'LIVE_EVENT', at: Date.now() });
+        } catch {}
+      });
+
+      es.addEventListener('session.changed', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          dispatch({ type: 'SESSION_CHANGED', sessionId: data.sessionId, state: data.state });
+          dispatch({ type: 'LIVE_EVENT', at: Date.now() });
+        } catch {}
+      });
+
+      es.addEventListener('session.removed', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          dispatch({ type: 'SESSION_REMOVED', sessionId: data.sessionId });
           dispatch({ type: 'LIVE_EVENT', at: Date.now() });
         } catch {}
       });

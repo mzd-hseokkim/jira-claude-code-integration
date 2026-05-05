@@ -9,15 +9,29 @@ import WorktreeCard from './components/WorktreeCard.jsx';
 import WorkspaceGroup from './components/WorkspaceGroup.jsx';
 import GraphCanvas from './components/GraphCanvas.jsx';
 import GraphErrorBoundary from './components/GraphErrorBoundary.jsx';
+import SessionCard from './components/SessionCard.jsx';
 
 /**
- * 백슬래시 → 슬래시, trailing slash 제거.
- * Windows `C:\foo\bar\` → `C:/foo/bar`
+ * 백슬래시 → 슬래시 (trailing slash는 그대로 — 백엔드 normalizePath와 동일 규칙).
  * @param {string} p
  * @returns {string}
  */
 function normalizePath(p) {
-  return p.replace(/\\/g, '/').replace(/\/$/, '');
+  return p.replace(/\\/g, '/');
+}
+
+/**
+ * session cwd가 등록된 worktree 경로 하위인지 판단.
+ * 백엔드 lookupWorktree 규칙 미러링: `\\`→`/` 치환만 적용.
+ * @param {string|null} cwd
+ * @param {string} wtPath
+ * @returns {boolean}
+ */
+function sessionMatchesWorktree(cwd, wtPath) {
+  if (!cwd) return false;
+  const normCwd = normalizePath(cwd);
+  const normWt = normalizePath(wtPath);
+  return normCwd === normWt || normCwd.startsWith(normWt + '/');
 }
 
 /**
@@ -176,6 +190,20 @@ function Dashboard() {
     });
     return result;
   }, [workspaceMap, sorted]);
+
+  // worktree path 세트 — sessionMatchesWorktree 방어 필터에 사용
+  const worktreePaths = useMemo(() => Object.keys(state.worktrees), [state.worktrees]);
+
+  // sessions: worktree에 속하는 세션 제외, lastActiveAt 내림차순 정렬
+  const visibleSessions = useMemo(() => {
+    return Object.values(state.sessions)
+      .filter((s) => !worktreePaths.some((wtPath) => sessionMatchesWorktree(s.cwd, wtPath)))
+      .sort((a, b) => {
+        const ta = a.lastActiveAt ? Date.parse(a.lastActiveAt) : 0;
+        const tb = b.lastActiveAt ? Date.parse(b.lastActiveAt) : 0;
+        return tb - ta;
+      });
+  }, [state.sessions, worktreePaths]);
 
   const totalCount = Object.keys(state.worktrees).length;
 
@@ -367,6 +395,19 @@ function Dashboard() {
             sorted.map((wt) => <WorktreeCard key={wt.path} worktree={wt} />)
           )}
         </main>
+      )}
+      {visibleSessions.length > 0 && (
+        <section className="sessions-section" aria-label="Claude Sessions">
+          <div className="sessions-section__header">
+            <span className="sessions-section__title">Claude Sessions</span>
+            <span className="sessions-section__count">{visibleSessions.length}</span>
+          </div>
+          <div className="sessions-section__grid">
+            {visibleSessions.map((s) => (
+              <SessionCard key={s.sessionId} session={s} />
+            ))}
+          </div>
+        </section>
       )}
       <footer className="dashboard-footer">
         <span className="dashboard-footer__brand">jira-integration plugin</span>
