@@ -1,215 +1,59 @@
 # CLAUDE.md
 
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+이 저장소는 Jira와 Claude Code 워크플로를 연동하는 **Claude Code 플러그인**(`jira-integration`)이다. 이 문서는 플러그인 자체를 **개발/유지보수**할 때 필요한 컨벤션을 다룬다. 최종 사용자 문서는 `README.md` 참고.
 
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+## 작업 원칙
 
-## 1. Think Before Coding
+- **Surgical Changes**: 요청과 직접 관련된 라인만 수정. 인접 코드 "개선"/포맷팅 변경 금지. 본인의 변경으로 생긴 orphan import/변수만 정리하고, 기존 dead code는 건드리지 않는다.
+- **Simplicity First**: 요청되지 않은 추상화/설정 옵션/방어 코드 추가 금지. 스킬은 prompt 마크다운이므로 분량이 곧 토큰 비용이다.
+- **버전 동기화**: 스킬/훅/스크립트/설정이 바뀌면 `.claude-plugin/plugin.json`의 `version`도 반드시 함께 올린다 (안 올리면 마켓플레이스 업데이트가 감지 안 됨).
 
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
+## Repository Layout
 
-Before implementing:
+- `skills/` — `/jira-task` SKILL.md 프롬프트 (단계별 1개)
+- `commands/` — 슬래시 커맨드 정의
+- `agents/` — 서브에이전트 정의 (예: jira-reviewer)
+- `hooks/` — phase-gate 훅 + 동기화 스크립트 (`hooks/hooks.json` 자동 로드)
+- `scripts/` — 공용 헬퍼 (`jira-attach.sh`, `jira-context-update.py`, dashboard 서버 등)
+- `templates/` — 문서 템플릿 (plan/design/test-report/report)
+- `tests/` — 플러그인 테스트
+- `docs/` — 내부 문서 (`mcp-atlassian-tools.md`, requirements/plan/design/test 산출물)
 
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
+빌드/테스트 스크립트는 `package.json`의 scripts 참고.
 
-## 2. Simplicity First
+## MCP Server: atlassian (mcp-atlassian)
 
-**Minimum code that solves the problem. Nothing speculative.**
+`atlassian` MCP 서버가 Jira Cloud 도구를 제공한다 (tool prefix `mcp__atlassian__`). **전체 도구 레퍼런스: `docs/mcp-atlassian-tools.md`** — 새 도구를 쓰기 전에 거기를 먼저 본다.
 
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
+**첨부 업로드는 mcp-atlassian이 미지원** → REST 직접 호출:
+`POST $JIRA_URL/rest/api/3/issue/<KEY>/attachments` (Basic Auth + `X-Atlassian-Token: no-check`).
+자격증명 조회 순서: 환경변수 → `.mcp.json` → `~/.claude.json` → `.claude/settings.local.json` → `~/.claude/settings.json`.
 
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+## Skill Authoring Conventions
 
-## 3. Surgical Changes
+- **Language Rule**: 모든 `/jira-task` 스킬 출력은 한국어. 사용자 응답·생성 문서·Jira 코멘트 본문 모두. 예외: 코드/변수명/브랜치명/파일명/명령어는 영어. Jira 코멘트의 섹션 제목(##, ###)은 영어, 내용은 한국어.
 
-**Touch only what you must. Clean up only your own mess.**
+- **Markdown for Jira comments**: Jira 코멘트는 마크다운으로 작성.
 
-When editing existing code:
+- **Cache-First Fetch** (design/impl/test/review/done): 호출 직전 `.jira-context.json`의 `cachedIssue`를 먼저 확인.
+  1. `cachedIssue.key === <TASK-ID>`면 그 값 사용 → `jira_get_issue` 호출 **생략**.
+  2. miss면 본래 fields/comment_limit으로 fetch 후 `cachedIssue` 갱신.
+  3. 강제 새로고침은 사용자가 `cachedIssue`를 수동 삭제.
 
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
+- **공용 스크립트 lookup**: 워크트리 cwd에서는 플러그인 `scripts/`가 직접 보이지 않으므로 호출 직전 lookup으로 절대 경로를 결정한다. 단일 출처: `skills/_shared/script-lookup.md`. 각 스킬은 호출 직전 그 파일을 Read한 뒤 `SCRIPT_NAME` / `OUT_VAR`를 셋업하고 lookup 블록을 실행.
+  - `jira-attach.sh` (plan/design/test/review): Jira 첨부 업로드. 못 찾으면 첨부만 스킵, 워크플로 진행.
+  - `jira-context-update.py` (merge/done): worktree-local + aggregate `.jira-context.json` 두 개의 `completedSteps`/`status`/`<step>At`/`cachedIssue` 갱신.
+    호출: `python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> <step> <status> <ctx-file> [<ctx-file>...]`.
+  - 그 외: `propagate-mcp-config.sh`(init), `append-review-log-wrapper.sh`(review), `cleanup-worktree-mcp.py`(done).
 
-When your changes create orphans:
+- **상태 전환 전 항상 이슈 상세 fetch** (`jira_get_transitions` → `jira_transition_issue`에 transitionId 전달).
 
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
+- **Context 파일**: 활성 작업 컨텍스트는 `.jira-context.json`(gitignored). 브랜치 패턴 `feature/<TASK-ID>`, 워크트리 위치 `../<project>_worktree/<TASK-ID>`.
 
-The test: Every changed line should trace directly to the user's request.
+- **Progress 추적**: 각 스킬은 완료 시 `.jira-context.json`의 `completedSteps`에 자기 단계를 추가(중복 방지). 유효 단계: `discover`, `create`, `init`, `start`, `plan`, `design`, `impl`, `test`, `review`, `merge`, `pr`, `done`. `done`은 추가로 `status`를 `"Done"`으로 변경. Completion Summary의 Progress `✓`는 `completedSteps`에서 생성.
 
-## 4. Goal-Driven Execution
+- **Design 문서에 코드 스니펫 금지** (토큰 낭비).
 
-**Define success criteria. Loop until verified.**
+## JIRA_DEFAULT_PROJECT Scoping Rule
 
-Transform tasks into verifiable goals:
-
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
-
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
-
----
-
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
-
----
-
-## Jira Integration Plugin
-
-This project is a Claude Code plugin that integrates Jira with the software development workflow.
-
-### PDCA Documents
-
-`/jira-task` 워크플로에서 생성하는 문서:
-
-- Requirements: `docs/requirements/<slug>.requirements.md` (discover 단계 산출물)
-- Plan: `docs/plan/<TASK-ID>.plan.md`
-- Design: `docs/design/<TASK-ID>.design.md`
-- Test Report: `docs/test/<TASK-ID>.test-report.md`
-
-### MCP Server: atlassian (mcp-atlassian)~~~~
-
-The `atlassian` MCP server provides Jira Cloud tools. 전체 도구 레퍼런스: `docs/mcp-atlassian-tools.md`
-
-스킬에서 주로 사용하는 도구:
-
-**Issue Management:**
-
-- `jira_get_issue` - 이슈 상세 조회
-- `jira_search` - JQL로 이슈 검색 (구 `jira_search_issues`)
-- `jira_create_issue` - 새 이슈 생성
-- `jira_update_issue` - 이슈 필드 수정 (담당자 변경 포함)
-- `jira_transition_issue` - 상태 전환 (transitionId 사용, `jira_get_transitions`로 조회)
-- `jira_get_transitions` - 가능한 상태 전환 목록 조회
-
-**Comments & Attachments:**
-
-- `jira_add_comment` - 이슈에 코멘트 추가
-- `jira_download_attachments` - 첨부파일 다운로드
-- 첨부파일 **업로드**는 Jira REST API 직접 호출로 처리:
-  `POST $JIRA_URL/rest/api/3/issue/<KEY>/attachments` (Basic Auth + X-Atlassian-Token: no-check)
-  자격증명 조회 순서: 환경변수 → `.mcp.json` (project) → `~/.claude.json` (top-level + projects[path]) → `.claude/settings.local.json` → `~/.claude/settings.json`
-
-**Sprint & Agile:**
-
-- `jira_get_agile_boards` - 보드 목록 조회 (구 `jira_get_boards`)
-- `jira_get_sprints_from_board` - 보드의 스프린트 목록 조회 (boardId 필요, 구 `jira_get_sprints`)
-- `jira_get_sprint_issues` - 스프린트 이슈 조회
-- `jira_get_board_issues` - 보드 이슈 조회
-- `jira_create_sprint` - 스프린트 생성
-- `jira_update_sprint` - 스프린트 수정
-
-**User & Project:**
-
-- `jira_get_user_profile` - 현재 사용자 정보 및 인증 확인 (구 `jira_whoami`, `jira_auth_status`)
-- `jira_get_all_projects` - 프로젝트 목록 조회
-- `jira_get_project_issues` - 프로젝트 이슈 조회
-
-**Issue Linking:**
-
-- `jira_create_issue_link` - 이슈 간 링크 생성
-- `jira_link_to_epic` - 에픽 연결
-
-### Workflow Commands
-
-- `/jira` - Help and connection status
-- `/jira setup` - Interactive setup wizard for Jira MCP server registration
-- `/jira-task discover [주제 | --lite | --from <파일>]` - Discover requirements from a free-form topic and write a structured requirements document
-- `/jira-task create [자연어 힌트 | --from-requirements <파일>]` - Interactively create a new Jira issue (and optional sub-tasks)
-- `/jira-task init [N | ISSUE-KEY | 설명]` - Fetch tasks and create worktrees (count, sub-task analysis, or natural language)
-- `/jira-task auto <ID>` - Auto-execute full workflow (start → plan → design → impl → test → review)
-- `/jira-task start <ID>` - Start working on a task (fetch, branch, transition)
-- `/jira-task plan <ID>` - Generate planning document
-- `/jira-task design <ID>` - Generate design document
-- `/jira-task impl <ID>` - Implement based on design document
-- `/jira-task test <ID>` - Run tests (Playwright E2E, unit) and report to Jira
-- `/jira-task review <ID>` - Code review with Jira reporting
-- `/jira-task merge <ID>` - [worktree에서] 로컬 병합 후 worktree 세션 종료
-- `/jira-task pr <ID>` - [메인 레포에서] Create pull request and link to Jira
-- `/jira-task done <ID>` - Complete task (transition, report)
-- `/jira-task clean <ID> [ID ...] | --all | --list` - [메인 레포에서] Worktree와 branch 정리
-- `/jira-task report` - Sprint progress report
-
-### Conventions
-
-- **Language Rule (모든 `/jira-task` 스킬 공통)**: 이 플러그인의 모든 스킬에서 생성되는 출력은 한국어로 작성한다. 사용자 응답, 생성 문서, Jira 코멘트 내용 모두 대상이다. 예외: 코드, 변수명, 브랜치명, 파일명, 명령어는 영어 유지. Jira 코멘트의 섹션 제목(##, ###)은 영어, 내용은 한국어.
-- **Issue Cache (Cache-First Fetch)** (design/impl/test/review/done 공통): 후속 단계는 `.jira-context.json`의 `cachedIssue`(plan에서 저장)를 우선 사용한다. 호출 직전:
-  1. `.jira-context.json`을 Read해서 `cachedIssue`가 있고 `cachedIssue.key === <TASK-ID>`면 그 값을 사용. **`mcp__atlassian__jira_get_issue` 호출 생략.**
-  2. cache miss(없거나 다른 이슈)면 스킬 본래의 fields/comment_limit으로 fetch. fetch 후 결과를 `cachedIssue`에 갱신.
-  3. 사용자가 단계를 직접 다시 돌릴 때 최신 상태가 필요하면 `.jira-context.json`에서 `cachedIssue`를 수동 삭제하면 된다.
-
-- **공용 스크립트 lookup** (모든 스킬 공통): 사용자 프로젝트(워크트리 포함)의 cwd에서는 플러그인 `scripts/`가 직접 보이지 않으므로, 호출 직전 lookup으로 절대 경로를 결정한다. lookup 패턴 단일 출처는 `skills/_shared/script-lookup.md`. 각 스킬은 호출 직전 `Read skills/_shared/script-lookup.md` 후 `SCRIPT_NAME` / `OUT_VAR`를 셋업하고 lookup 블록을 실행한다.
-  - `scripts/jira-attach.sh` (plan/design/test/review 공통): Jira 첨부 업로드. 사용 변수 `JIRA_ATTACH_SH`. 찾지 못하면 첨부는 스킵, 워크플로는 계속 진행.
-  - `scripts/jira-context-update.py` (merge/done 공통): worktree-local + aggregate 두 `.jira-context.json`의 `completedSteps`/`status`/`<step>At`/`cachedIssue` 갱신. 사용 변수 `JIRA_CTX_UPDATE_PY`. 호출: `python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> <step> <status> <ctx-file> [<ctx-file>...]` — aggregate vs worktree 형식 자동 감지, missing 파일 자동 skip.
-  - 기타: `scripts/propagate-mcp-config.sh`(init), `scripts/append-review-log-wrapper.sh`(review), `scripts/cleanup-worktree-mcp.py`(done) 도 동일 패턴 사용.
-- When posting comments to Jira, use markdown format.
-- Always fetch issue details before transitioning status.
-- Use `jira_get_transitions`로 전환 목록 조회 후 `jira_transition_issue`에 **transitionId**를 전달.
-- `jira_get_sprints_from_board`는 `boardId`가 필요하므로 먼저 `jira_get_agile_boards`로 보드 ID를 조회해야 한다.
-- Store active task context in `.jira-context.json` (gitignored).
-- Git branches follow pattern: `feature/<TASK-ID>`
-- Worktrees are created in the parent directory: `../<project>_worktree/<TASK-ID>`
-- 프로젝트 내용(스킬, 훅, 설정 등)이 변경되면 `.claude-plugin/plugin.json`의 `version`도 반드시 함께 증가시킬 것.
-
-### JIRA_DEFAULT_PROJECT Scoping Rule
-
-`JIRA_DEFAULT_PROJECT` 환경변수가 설정되어 있으면, **모든 JQL 쿼리에 `project = <JIRA_DEFAULT_PROJECT>` 조건을 반드시 포함**해야 한다.
-
-- 스프린트 기반 조회에서도 `project = <JIRA_DEFAULT_PROJECT> AND sprint = ...` 형태로 프로젝트를 한정
-- 관련 이슈, 에픽 하위 이슈 등 검색 시에도 항상 프로젝트 조건 포함
-- 이 규칙은 init, plan, report 등 JQL을 사용하는 모든 스킬에 적용
-
-### Workflow Progress Tracking
-
-각 `/jira-task` 스킬은 완료 시 `.jira-context.json`의 `completedSteps` 배열에 자신의 단계를 추가해야 한다:
-
-```json
-{
-  "taskId": "PROJ-123",
-  "completedSteps": ["init", "start", "plan"]
-}
-```
-
-유효한 단계: `discover`, `create`, `init`, `start`, `plan`, `design`, `impl`, `test`, `review`, `merge`, `pr`, `done`
-
-규칙:
-
-- 스킬 완료 시 `.jira-context.json`을 읽고, `completedSteps`에 현재 단계를 추가 (중복 방지)
-- Completion Summary 출력 시, `completedSteps`를 기반으로 Progress 라인의 `✓` 표시를 생성
-- `done` 단계 완료 시 `status`를 `"Done"`으로 변경
-
-### Environment Variables
-
-**MCP 서버 등록 시 (`claude mcp add -e ...`):**
-
-| 변수 | 필수 | 설명 |
-|------|------|------|
-| `JIRA_URL` | Yes | Jira Cloud URL |
-| `JIRA_USERNAME` | Yes | Atlassian 계정 이메일 |
-| `JIRA_API_TOKEN` | Yes | API 토큰 |
-| `JIRA_PROJECTS_FILTER` | No | MCP 서버 접근 프로젝트 화이트리스트 (mcp-atlassian 공식 변수, 예: `PROJ` 또는 `PROJ,DEV`) |
-
-**이 플러그인 전용 규칙 (CLAUDE.md 또는 `.jira-context.json`에 명시):**
-
-| 변수 | 설명 |
-|------|------|
-| `JIRA_DEFAULT_PROJECT` | 스킬이 JQL 쿼리 구성 시 사용하는 기본 프로젝트 키. mcp-atlassian이 인식하지 않는 플러그인 자체 규칙. |
-
-Set MCP env vars in `.claude/settings.local.json` (project-level, default) or `~/.claude/settings.json` (global).
+`JIRA_DEFAULT_PROJECT` 환경변수가 설정되어 있으면 **모든 JQL에 `project = <JIRA_DEFAULT_PROJECT>` 조건을 반드시 포함**. 스프린트/에픽 하위/관련 이슈 검색 등 예외 없음. init/plan/report 등 JQL 쓰는 모든 스킬에 적용 (mcp-atlassian의 `JIRA_PROJECTS_FILTER`와 별개의 플러그인 자체 규칙).
