@@ -123,21 +123,15 @@ Step 1.7의 requirements 산출물 + Step 2의 Jira 컨텍스트를 기반으로
 
 ### Step 4: Post Summary to Jira
 
-Use `mcp__atlassian__jira_add_comment` to post a brief summary:
+`mcp__atlassian__jira_add_comment`로 핵심만 두 줄 요약하여 게시한다. 상세 내용은 첨부 문서를 참조하도록 안내:
 
 ```
 ## Planning Document Created
 
-이슈에 대한 기획 문서가 생성되었습니다.
+- 목표: <plan의 Goals/Acceptance Criteria 1줄 요약>
+- 범위: <In Scope 핵심 항목 1줄 요약>
 
-**주요 내용:**
-- 목표: <1줄 요약>
-- 범위: <간단한 범위>
-- 의존성: <목록>
-- 위험 요소: <주요 위험>
-- 예상 하위 작업 수: <개수>
-
-문서 경로: docs/plan/<TASK-ID>.plan.md
+상세 내용은 첨부된 `<TASK-ID>.plan.md`를 참고하세요.
 ```
 
 ### Step 4.5: Attach Plan Document to Jira

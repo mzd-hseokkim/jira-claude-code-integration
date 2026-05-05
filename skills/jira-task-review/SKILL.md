@@ -114,14 +114,19 @@ SCRIPT_NAME="jira-attach.sh" OUT_VAR="JIRA_ATTACH_SH"
 
 ### Step 5: Post Review to Jira
 
-`mcp__atlassian__jira_add_comment`로 리뷰 요약 게시. 본문 끝에 reviewer 정보를 명시:
+`mcp__atlassian__jira_add_comment`로 핵심만 두 줄 요약하여 게시한다. 상세 findings/Gap Analysis는 첨부 문서를 참조하도록 안내. 본문 끝의 reviewer 서명은 review-log 분석(Phase 1.4)에서 reviewer 식별에 사용되므로 반드시 유지:
 
 ```
+## Code Review Complete
+
+- 결과: <Approve | Request Changes | Needs Discussion> (설계-구현 매칭률 <N>%)
+- 주요 findings: <Critical/Warning 1건 요약, 없으면 "없음">
+
+상세 내용은 첨부된 `<TASK-ID>.review.md`를 참고하세요.
+
 ---
 Reviewed by jira-reviewer subagent (model: opus)
 ```
-
-이 서명은 향후 review-log 분석(Phase 1.4)에서 reviewer 식별에 사용된다.
 
 ### Step 6: Completion Summary
 

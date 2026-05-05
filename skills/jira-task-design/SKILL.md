@@ -96,23 +96,15 @@ perl -0777 -pe 's/<!--.*?-->//gs' templates/design.template.md \
 
 ### Step 4: Post Summary to Jira
 
-Use `mcp__atlassian__jira_add_comment` to post:
+`mcp__atlassian__jira_add_comment`로 핵심만 두 줄 요약하여 게시한다. 상세 내용은 첨부 문서를 참조하도록 안내:
 
 ```
 ## Design Document Created
 
-이슈에 대한 기술 설계 문서가 생성되었습니다.
+- 핵심 설계: <Key Decisions 1줄 요약>
+- 영향 범위: <수정/신규 파일 범위 1줄 요약>
 
-**아키텍처:**
-- <주요 아키텍처 결정 사항>
-
-**수정 파일:**
-- <주요 파일 목록>
-
-**테스트 전략:**
-- <간단한 테스트 방식>
-
-문서 경로: docs/design/<TASK-ID>.design.md
+상세 내용은 첨부된 `<TASK-ID>.design.md`를 참고하세요.
 ```
 
 ### Step 4.5: Attach Design Document to Jira
