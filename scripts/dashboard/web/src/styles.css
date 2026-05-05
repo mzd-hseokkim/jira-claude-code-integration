@@ -436,7 +436,10 @@ body > * { position: relative; z-index: 1; }
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: min(60vh, 480px);
+  /* header(sticky ~70px) + footer(fixed ~36px) + main padding을 제외한
+     viewport 세로 중앙에 빈 카드를 배치. main 자체에 위/아래 padding이 있어
+     여기서 calc로 정확히 잡지 않아도 시각적 중앙에 가깝게 정렬된다. */
+  min-height: calc(100dvh - 180px);
   padding: 40px 20px;
 }
 .dashboard-empty__card {

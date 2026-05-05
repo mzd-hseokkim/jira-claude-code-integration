@@ -105,6 +105,16 @@ function Dashboard() {
   const [sortDir, setSortDir] = useState('desc');
   const [filter, setFilter] = useState('');
   const [viewMode, setViewMode] = useState('cards');
+  const [pluginVersion, setPluginVersion] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/health')
+      .then((r) => r.ok ? r.json() : null)
+      .then((j) => { if (!cancelled && j && j.version) setPluginVersion(j.version); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   function handleSortClick(key) {
     if (key === sortKey) {
@@ -412,7 +422,9 @@ function Dashboard() {
         </div>
       )}
       <footer className="dashboard-footer">
-        <span className="dashboard-footer__brand">jira-integration plugin</span>
+        <span className="dashboard-footer__brand">
+          jira-integration-plugin{pluginVersion && `@${pluginVersion}`}
+        </span>
         <span className="dashboard-footer__sep">·</span>
         <span className="dashboard-footer__bind">127.0.0.1:8765</span>
       </footer>

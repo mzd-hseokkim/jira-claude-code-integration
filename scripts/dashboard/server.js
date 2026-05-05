@@ -16,6 +16,18 @@ const workspaces = require('./workspaces');
 
 const DEFAULT_PORT = 8765;
 
+let cachedPluginVersion = null;
+function getPluginVersion() {
+  if (cachedPluginVersion !== null) return cachedPluginVersion;
+  try {
+    const pkg = require('../../.claude-plugin/plugin.json');
+    cachedPluginVersion = pkg.version || '';
+  } catch {
+    cachedPluginVersion = '';
+  }
+  return cachedPluginVersion;
+}
+
 /**
  * Start the dashboard backend server.
  *
@@ -112,7 +124,7 @@ async function startServer(opts = {}) {
     const express = require('express');
     app = express();
     app.get('/events', handleSSE);
-    app.get('/health', (_req, res) => res.json({ ok: true }));
+    app.get('/health', (_req, res) => res.json({ ok: true, version: getPluginVersion() }));
     app.use('/ingest', createIngestRouter(store, logger, workspaces));
     app.use('/cleanup', createCleanupRouter(store, logger, workspaceRoot));
     app.use('/workspaces', createWorkspacesRouter(store, logger, {
@@ -162,7 +174,7 @@ async function startServer(opts = {}) {
         if (req.url === '/events') return handleSSE(req, res);
         if (req.url === '/health') {
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ ok: true }));
+          res.end(JSON.stringify({ ok: true, version: getPluginVersion() }));
           return;
         }
         res.writeHead(404);
