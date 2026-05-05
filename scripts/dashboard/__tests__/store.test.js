@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { createStore } = require('../store');
+const { createStore, startSessionSweep } = require('../store');
 
 // U1: ring buffer evict
 test('U1: ring buffer evicts oldest entry when full', () => {
@@ -343,4 +343,106 @@ test('U_guard_old: upsertWorktree preserves cachedIssue when incoming fetchedAt 
   const snap = store.getSnapshot();
   const entry = snap.find((w) => w.path === '/guard2');
   assert.equal(entry.cachedIssue.status, '진행 중', 'older cachedIssue should be discarded');
+});
+
+// ─── MAE-332: session entry TTL sweep ───────────────────────────────────────
+
+// SW1: sweep removes entry whose lastActiveAt is older than ttlMs
+test('SW1: sweep removes entry past TTL', () => {
+  const store = createStore();
+  const now = 10_000_000;
+  // 6분 전 lastActiveAt → 5분 TTL 초과
+  const stale = new Date(now - 6 * 60 * 1000).toISOString();
+  const fresh = new Date(now - 1 * 60 * 1000).toISOString();
+  store.upsertSession({ sessionId: 'old', lastActiveAt: stale });
+  store.upsertSession({ sessionId: 'new', lastActiveAt: fresh });
+
+  const sweeper = startSessionSweep(store, {
+    ttlMs: 5 * 60 * 1000,
+    intervalMs: 1_000_000, // 사실상 자동 발화 X — 수동 sweep만 검증
+    now: () => now,
+  });
+  try {
+    const removed = sweeper.sweep();
+    assert.deepEqual(removed, ['old']);
+    const remaining = store.getSessionsSnapshot().map((s) => s.sessionId);
+    assert.deepEqual(remaining, ['new']);
+  } finally {
+    sweeper.stop();
+  }
+});
+
+// SW2: missing/invalid lastActiveAt is also treated as stale
+test('SW2: sweep removes entries with missing/invalid lastActiveAt', () => {
+  const store = createStore();
+  store.upsertSession({ sessionId: 'no-ts' }); // lastActiveAt = null
+  store.upsertSession({ sessionId: 'naive', lastActiveAt: '2026-05-04T01:00:00' }); // naive (no Z)
+  store.upsertSession({ sessionId: 'ok', lastActiveAt: new Date().toISOString() });
+
+  const sweeper = startSessionSweep(store, { intervalMs: 1_000_000 });
+  try {
+    const removed = sweeper.sweep().sort();
+    assert.deepEqual(removed, ['naive', 'no-ts']);
+    const remaining = store.getSessionsSnapshot().map((s) => s.sessionId);
+    assert.deepEqual(remaining, ['ok']);
+  } finally {
+    sweeper.stop();
+  }
+});
+
+// SW3: entry refreshed within TTL survives a later sweep (lastActiveAt 갱신 검증)
+test('SW3: refreshed session survives sweep (lastActiveAt update extends TTL)', () => {
+  const store = createStore();
+  const t0 = 10_000_000;
+  const t1 = t0 + 4 * 60 * 1000; // 4분 후 PreToolUse 발화
+  const t2 = t1 + 4 * 60 * 1000; // 첫 sweep 시점 (t0+8min, 갱신 후 4분 경과)
+
+  store.upsertSession({ sessionId: 's', lastActiveAt: new Date(t0).toISOString() });
+  // 4분 후 partial update (ingest의 lastActiveAt 갱신 흉내)
+  store.upsertSession({ sessionId: 's', lastActiveAt: new Date(t1).toISOString() });
+
+  const sweeper = startSessionSweep(store, {
+    ttlMs: 5 * 60 * 1000,
+    intervalMs: 1_000_000,
+    now: () => t2,
+  });
+  try {
+    assert.deepEqual(sweeper.sweep(), []);
+    assert.equal(store.getSessionsSnapshot().length, 1);
+  } finally {
+    sweeper.stop();
+  }
+});
+
+// SW4: independent TTL per session (동시 N개)
+test('SW4: each session has independent TTL', () => {
+  const store = createStore();
+  const now = 10_000_000;
+  store.upsertSession({ sessionId: 'a', lastActiveAt: new Date(now - 6 * 60 * 1000).toISOString() });
+  store.upsertSession({ sessionId: 'b', lastActiveAt: new Date(now - 4 * 60 * 1000).toISOString() });
+  store.upsertSession({ sessionId: 'c', lastActiveAt: new Date(now - 7 * 60 * 1000).toISOString() });
+
+  const sweeper = startSessionSweep(store, {
+    ttlMs: 5 * 60 * 1000,
+    intervalMs: 1_000_000,
+    now: () => now,
+  });
+  try {
+    const removed = sweeper.sweep().sort();
+    assert.deepEqual(removed, ['a', 'c']);
+    assert.deepEqual(store.getSessionsSnapshot().map((s) => s.sessionId), ['b']);
+  } finally {
+    sweeper.stop();
+  }
+});
+
+// SW5: timer is unref'd (does not keep process alive) and stop() clears it
+test('SW5: setInterval handle is unref\'d and stop() clears it', () => {
+  const store = createStore();
+  const sweeper = startSessionSweep(store, { intervalMs: 30_000 });
+  // 직접 timer handle 검증은 어려우므로 stop() 호출이 throw 없이 동작하는지만 확인.
+  // unref()는 startSessionSweep 내부에서 typeof 체크로 호출되므로 syntactic 회귀만 막는다.
+  assert.doesNotThrow(() => sweeper.stop());
+  // 두 번 호출도 안전해야 한다 (clearInterval은 idempotent)
+  assert.doesNotThrow(() => sweeper.stop());
 });

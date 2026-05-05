@@ -284,4 +284,52 @@ function createStore(opts = {}) {
   };
 }
 
-module.exports = { createStore };
+const DEFAULT_SESSION_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const DEFAULT_SESSION_SWEEP_INTERVAL_MS = 30 * 1000; // 30 seconds
+
+/**
+ * Start a periodic sweeper that removes session entries whose lastActiveAt is
+ * older than ttlMs. Protects against zombie cards when SessionEnd is missed
+ * (Ctrl+C, kill, crash).
+ *
+ * The timer is unref()'d so it does not keep the process alive.
+ *
+ * @param {ReturnType<typeof createStore>} store
+ * @param {{ ttlMs?: number, intervalMs?: number, logger?: object, now?: () => number }} [opts]
+ * @returns {{ stop: () => void, sweep: () => string[] }}
+ */
+function startSessionSweep(store, opts = {}) {
+  const ttlMs = opts.ttlMs ?? DEFAULT_SESSION_TTL_MS;
+  const intervalMs = opts.intervalMs ?? DEFAULT_SESSION_SWEEP_INTERVAL_MS;
+  const logger = opts.logger || null;
+  const now = opts.now || Date.now;
+
+  function sweep() {
+    const cutoff = now() - ttlMs;
+    const removed = [];
+    for (const s of store.getSessionsSnapshot()) {
+      const lastMs = parseIsoUtcMs(s.lastActiveAt);
+      // entries with no lastActiveAt or unparseable timestamp are also stale.
+      if (isNaN(lastMs) || lastMs < cutoff) {
+        store.removeSession(s.sessionId);
+        removed.push(s.sessionId);
+      }
+    }
+    if (removed.length && logger && typeof logger.info === 'function') {
+      logger.info('session-sweep.removed', { count: removed.length, sessionIds: removed });
+    }
+    return removed;
+  }
+
+  const handle = setInterval(sweep, intervalMs);
+  if (typeof handle.unref === 'function') handle.unref();
+
+  return {
+    stop() {
+      clearInterval(handle);
+    },
+    sweep,
+  };
+}
+
+module.exports = { createStore, startSessionSweep };

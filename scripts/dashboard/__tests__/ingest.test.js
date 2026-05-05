@@ -561,3 +561,46 @@ test('SU4: worktree mapped → never goes to session path, even if session_id pr
   const wt = store.getSnapshot().find((w) => w.path === '/wt/MAE-X');
   assert.equal(wt.activity.length, 1);
 });
+
+// ─── MAE-332: SessionEnd 즉시 제거 ──────────────────────────────────────────
+
+// SE1: SessionStart로 등록된 entry가 SessionEnd 수신 시 즉시 삭제된다
+test('SE1: SessionEnd → session entry immediately removed', async () => {
+  const { createStore } = require('../store');
+  const store = createStore();
+  const router = createIngestRouter(store);
+  const express = require('express');
+  const app = express();
+  app.use('/ingest', router);
+  const sid = 'sess-end-1';
+
+  await post(app, '/ingest?hook=SessionStart', {
+    cwd: '/tmp/x', session_id: sid, source: 'startup',
+  });
+  assert.equal(store.getSessionsSnapshot().length, 1);
+
+  const { status, body } = await post(app, '/ingest?hook=SessionEnd', {
+    cwd: '/tmp/x', session_id: sid,
+  });
+
+  assert.equal(status, 200);
+  assert.equal(body.label, 'session');
+  assert.equal(body.sessionId, sid);
+  assert.equal(store.getSessionsSnapshot().length, 0, 'session entry should be gone');
+});
+
+// SE2: SessionEnd로 unknown session_id가 와도 안전 (no-op, 200)
+test('SE2: SessionEnd with unknown session_id → no-op, still 200', async () => {
+  const { createStore } = require('../store');
+  const store = createStore();
+  const router = createIngestRouter(store);
+  const express = require('express');
+  const app = express();
+  app.use('/ingest', router);
+
+  const { status } = await post(app, '/ingest?hook=SessionEnd', {
+    cwd: '/tmp/y', session_id: 'never-existed',
+  });
+  assert.equal(status, 200);
+  assert.equal(store.getSessionsSnapshot().length, 0);
+});
