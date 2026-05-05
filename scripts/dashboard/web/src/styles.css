@@ -1522,6 +1522,30 @@ body > * { position: relative; z-index: 1; }
   font-weight: 600;
 }
 
+/* 활성 뱃지: lastActiveAt이 5분 이내일 때 헤더에 표시. */
+.wt-card__active-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #047857;
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+  padding: 1px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.wt-card__active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
 /* 정리 버튼 (FAB): stale 카드 우하단에 floating. worktree + branch 제거. */
 .wt-card__cleanup-fab {
   position: absolute;
@@ -1835,5 +1859,6 @@ body > * { position: relative; z-index: 1; }
   .wt-card--busy                     { animation: none; }
   .wt-card--awaiting                 { animation: none; }
   .activity-panel__pulse-dot         { animation: none; }
+  .wt-card__active-dot               { animation: none; }
   .kitt-bar__scanner                 { animation: none; left: 50%; }
 }
