@@ -26,7 +26,7 @@ vi.mock('../src/hooks/useWorkspaces.js', () => ({
 let mockWorktrees = {};
 vi.mock('../src/state/DashboardContext.jsx', () => {
   const { createContext, useContext } = require('react');
-  const Ctx = createContext({ state: { connection: 'connected', lastConnectedAt: null, worktrees: {}, lastEventAt: null, pollCycleAnchorMs: null, pollCycleTickMs: null }, dispatch: () => {} });
+  const Ctx = createContext({ state: { connection: 'connected', lastConnectedAt: null, worktrees: {}, sessions: {}, lastEventAt: null, pollCycleAnchorMs: null, pollCycleTickMs: null }, dispatch: () => {} });
   return {
     DashboardProvider: ({ children }) => {
       const { createElement } = require('react');
@@ -36,6 +36,7 @@ vi.mock('../src/state/DashboardContext.jsx', () => {
             connection: 'connected',
             lastConnectedAt: null,
             worktrees: mockWorktrees,
+            sessions: {},
             lastEventAt: null,
             pollCycleAnchorMs: null,
             pollCycleTickMs: null,
@@ -75,6 +76,7 @@ function resetModules() {
               connection: 'connected',
               lastConnectedAt: null,
               worktrees: mockWorktrees,
+              sessions: {},
               lastEventAt: null,
               pollCycleAnchorMs: null,
               pollCycleTickMs: null,

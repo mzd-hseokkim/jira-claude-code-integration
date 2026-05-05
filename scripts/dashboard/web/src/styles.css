@@ -1862,3 +1862,114 @@ body > * { position: relative; z-index: 1; }
   .wt-card__active-dot               { animation: none; }
   .kitt-bar__scanner                 { animation: none; left: 50%; }
 }
+
+/* ===== Claude Sessions Section ===== */
+
+.sessions-section {
+  padding: 0 20px 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.sessions-section__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(167, 139, 250, 0.25);
+}
+
+.sessions-section__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(167, 139, 250, 0.85);
+}
+
+.sessions-section__count {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(139, 92, 246, 0.7);
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+
+.sessions-section__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+/* ===== SessionCard ===== */
+
+.session-card {
+  background: linear-gradient(
+    135deg,
+    rgba(167, 139, 250, 0.10) 0%,
+    rgba(109, 40, 217, 0.07) 100%
+  );
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 12px;
+  padding: 14px 16px 12px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow:
+    0 0 0 1px rgba(167, 139, 250, 0.08) inset,
+    0 4px 16px rgba(109, 40, 217, 0.12);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.session-card:hover {
+  border-color: rgba(139, 92, 246, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(167, 139, 250, 0.12) inset,
+    0 6px 24px rgba(109, 40, 217, 0.18);
+}
+
+.session-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  min-width: 0;
+}
+
+.session-card__cwd {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(221, 214, 254, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.session-card__source-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 8px;
+  background: rgba(139, 92, 246, 0.20);
+  border: 1px solid rgba(139, 92, 246, 0.40);
+  color: rgba(196, 181, 253, 0.9);
+}
+
+.session-card__source-badge--startup  { background: rgba(109, 40, 217, 0.22); }
+.session-card__source-badge--resume   { background: rgba(124, 58, 237, 0.18); }
+.session-card__source-badge--continue { background: rgba(139, 92, 246, 0.15); }
+
+.session-card__sid {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+  color: rgba(167, 139, 250, 0.55);
+  letter-spacing: 0.05em;
+}
