@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MAE-331",
+  "entries": [
+    {
+      "taskId": "MAE-331",
+      "timestamp": "2026-05-05T00:04:54Z",
+      "reviewerVersion": "064144f1f227",
+      "outcome": "pass",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "high",
+          "file": "scripts/dashboard/routes/ingest.js",
+          "line": 188,
+          "category": "observability",
+          "message": "no-context warn key가 cwd-missing과 session-id-missing을 구분하지 않음"
+        },
+        {
+          "id": "F-002",
+          "severity": "info",
+          "file": "scripts/dashboard/routes/ingest.js",
+          "line": 114,
+          "category": "deadcode",
+          "message": "workspacesModule 인자 dead code (Decision #5에 따라 의도적 보존)"
+        },
+        {
+          "id": "F-003",
+          "severity": "info",
+          "file": "scripts/dashboard/store.js",
+          "line": 253,
+          "category": "docs",
+          "message": "pushSessionActivity가 설계 명세의 warn을 silent로 구현 (의도적이나 명세 동기화 필요)"
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 1,
+        "medium": 0,
+        "low": 0,
+        "info": 2
+      },
+      "falsePositive": null,
+      "userOverride": null
+    }
+  ]
+}

@@ -60,6 +60,8 @@ function createStore(opts = {}) {
 
   /** @type {Map<string, { state: object, activity: RingBuffer }>} */
   const _map = new Map();
+  /** @type {Map<string, { state: object, activity: RingBuffer }>} */
+  const _sessions = new Map();
   const _emitter = new EventEmitter();
 
   function _getOrCreate(wPath) {
@@ -90,6 +92,22 @@ function createStore(opts = {}) {
     const { state, activity } = record;
     const acts = truncateActivity ? activity.toArray().slice(-50) : activity.toArray();
     return { ...state, activity: acts };
+  }
+
+  function _getOrCreateSession(sessionId) {
+    if (!_sessions.has(sessionId)) {
+      _sessions.set(sessionId, {
+        state: {
+          sessionId,
+          cwd: null,
+          source: null,
+          startedAt: null,
+          lastActiveAt: null,
+        },
+        activity: new RingBuffer(ringBufferSize),
+      });
+    }
+    return _sessions.get(sessionId);
   }
 
   return {
@@ -198,8 +216,58 @@ function createStore(opts = {}) {
     },
 
     /**
+     * Insert or update a session entry. Keyed by sessionId (not cwd).
+     * Partial updates: only provided fields are written; existing fields preserved.
+     * Emits 'session.added' on first insert, 'session.changed' on update.
+     *
+     * @param {{ sessionId: string, cwd?: string, source?: string, startedAt?: string, lastActiveAt?: string }} update
+     */
+    upsertSession(update) {
+      if (!update || typeof update.sessionId !== 'string' || !update.sessionId) return;
+      const isNew = !_sessions.has(update.sessionId);
+      const record = _getOrCreateSession(update.sessionId);
+      // sessionId는 키 — 덮어쓰지 않음. 그 외 제공된 필드만 머지.
+      for (const k of ['cwd', 'source', 'startedAt', 'lastActiveAt']) {
+        if (k in update && update[k] !== undefined) record.state[k] = update[k];
+      }
+      const eventName = isNew ? 'session.added' : 'session.changed';
+      _emitter.emit(eventName, { sessionId: update.sessionId, state: _serialize(record) });
+    },
+
+    /**
+     * Remove a session entry. Emits 'session.removed'. No-op if not found.
+     * @param {string} sessionId
+     */
+    removeSession(sessionId) {
+      if (!_sessions.has(sessionId)) return;
+      _sessions.delete(sessionId);
+      _emitter.emit('session.removed', { sessionId });
+    },
+
+    /**
+     * Push an activity event into the session's ring buffer.
+     * Auto-creates the session entry if missing (no warn — caller decides).
+     * @param {string} sessionId
+     * @param {{ ts: string, type: string, data: object }} ev
+     */
+    pushSessionActivity(sessionId, ev) {
+      if (!sessionId) return;
+      const record = _getOrCreateSession(sessionId);
+      record.activity.push(ev);
+      _emitter.emit('session.changed', { sessionId, state: _serialize(record) });
+    },
+
+    /**
+     * Return all current session states (activity truncated to 50).
+     * @returns {object[]}
+     */
+    getSessionsSnapshot() {
+      return Array.from(_sessions.values()).map((r) => _serialize(r, { truncateActivity: true }));
+    },
+
+    /**
      * Subscribe to store events.
-     * @param {'worktree.changed'|'worktree.added'|'worktree.removed'} event
+     * @param {'worktree.changed'|'worktree.added'|'worktree.removed'|'session.added'|'session.changed'|'session.removed'} event
      * @param {Function} listener
      */
     on(event, listener) {

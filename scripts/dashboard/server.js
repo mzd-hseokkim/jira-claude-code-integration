@@ -88,6 +88,18 @@ async function startServer(opts = {}) {
     broadcast('worktree.removed', { path: wPath, ts: new Date().toISOString() });
   });
 
+  store.on('session.added', ({ sessionId, state }) => {
+    logger.info('store.session-added', { sessionId });
+    broadcast('session.added', { sessionId, state, ts: new Date().toISOString() });
+  });
+  store.on('session.changed', ({ sessionId, state }) => {
+    broadcast('session.changed', { sessionId, state, ts: new Date().toISOString() });
+  });
+  store.on('session.removed', ({ sessionId }) => {
+    logger.info('store.session-removed', { sessionId });
+    broadcast('session.removed', { sessionId, ts: new Date().toISOString() });
+  });
+
   // jira-collector tick state — declared early so the /workspaces route can
   // capture it via getter closure before the collector is started below.
   let lastTickAt = null;
@@ -128,8 +140,10 @@ async function startServer(opts = {}) {
     // Send initial snapshot — 신규 클라이언트가 즉시 polling cycle phase에
     // 맞출 수 있도록 lastTickAt/tickMs/serverNowMs 포함.
     const snapshot = store.getSnapshot();
+    const sessions = store.getSessionsSnapshot();
     res.write(`event: snapshot\ndata: ${JSON.stringify({
       worktrees: snapshot,
+      sessions,
       ts: new Date().toISOString(),
       lastTickAt,
       tickMs: lastTickMs,

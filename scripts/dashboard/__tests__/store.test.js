@@ -226,6 +226,102 @@ test('U_guard_new: upsertWorktree replaces cachedIssue when incoming fetchedAt i
   assert.equal(entry.cachedIssue.status, '완료', 'newer cachedIssue should replace existing');
 });
 
+// ─── MAE-331: session entry API ─────────────────────────────────────────────
+
+test('SU1: upsertSession new → emits session.added, snapshot has 1', (t, done) => {
+  const store = createStore();
+  store.on('session.added', ({ sessionId }) => {
+    assert.equal(sessionId, 's1');
+    const snap = store.getSessionsSnapshot();
+    assert.equal(snap.length, 1);
+    assert.equal(snap[0].sessionId, 's1');
+    assert.equal(snap[0].cwd, '/tmp/x');
+    assert.equal(snap[0].source, 'startup');
+    done();
+  });
+  store.upsertSession({
+    sessionId: 's1', cwd: '/tmp/x', source: 'startup',
+    startedAt: '2026-05-04T00:00:00Z', lastActiveAt: '2026-05-04T00:00:00Z',
+  });
+});
+
+test('SU2: upsertSession partial update preserves existing fields', () => {
+  const store = createStore();
+  store.upsertSession({
+    sessionId: 's2', cwd: '/tmp/y', source: 'resume',
+    startedAt: '2026-05-04T01:00:00Z', lastActiveAt: '2026-05-04T01:00:00Z',
+  });
+  store.upsertSession({ sessionId: 's2', lastActiveAt: '2026-05-04T01:05:00Z' });
+  const snap = store.getSessionsSnapshot();
+  assert.equal(snap.length, 1);
+  assert.equal(snap[0].cwd, '/tmp/y', 'cwd preserved');
+  assert.equal(snap[0].source, 'resume', 'source preserved');
+  assert.equal(snap[0].startedAt, '2026-05-04T01:00:00Z', 'startedAt preserved');
+  assert.equal(snap[0].lastActiveAt, '2026-05-04T01:05:00Z', 'lastActiveAt updated');
+});
+
+test('SU2b: upsertSession existing → emits session.changed (not added)', (t, done) => {
+  const store = createStore();
+  store.upsertSession({ sessionId: 's2b', cwd: '/a' });
+  store.on('session.added', () => assert.fail('should not re-add'));
+  store.on('session.changed', ({ sessionId }) => {
+    assert.equal(sessionId, 's2b');
+    done();
+  });
+  store.upsertSession({ sessionId: 's2b', lastActiveAt: '2026-05-04T02:00:00Z' });
+});
+
+test('SU3: removeSession existing → emits session.removed, snapshot empty', (t, done) => {
+  const store = createStore();
+  store.upsertSession({ sessionId: 's3', cwd: '/a' });
+  store.on('session.removed', ({ sessionId }) => {
+    assert.equal(sessionId, 's3');
+    assert.equal(store.getSessionsSnapshot().length, 0);
+    done();
+  });
+  store.removeSession('s3');
+});
+
+test('SU4: removeSession unknown → no-op, no event', () => {
+  const store = createStore();
+  let emitted = false;
+  store.on('session.removed', () => { emitted = true; });
+  store.removeSession('nope');
+  assert.equal(emitted, false);
+});
+
+test('SU5: pushSessionActivity beyond ring size truncates and snapshot caps at 50', () => {
+  const store = createStore({ ringBufferSize: 3 });
+  store.upsertSession({ sessionId: 's5', cwd: '/a' });
+  store.pushSessionActivity('s5', { ts: '1', type: 'x', data: {} });
+  store.pushSessionActivity('s5', { ts: '2', type: 'x', data: {} });
+  store.pushSessionActivity('s5', { ts: '3', type: 'x', data: {} });
+  store.pushSessionActivity('s5', { ts: '4', type: 'x', data: {} }); // evicts ts=1
+  const snap = store.getSessionsSnapshot();
+  assert.equal(snap.length, 1);
+  assert.equal(snap[0].activity.length, 3);
+  assert.equal(snap[0].activity[0].ts, '2', 'oldest evicted');
+});
+
+test('SU6: getSnapshot does not include sessions (worktree-only, backward compat)', () => {
+  const store = createStore();
+  store.upsertWorktree({ path: '/wt', taskId: 'T-1' });
+  store.upsertSession({ sessionId: 's6', cwd: '/tmp/z' });
+  const wts = store.getSnapshot();
+  assert.equal(wts.length, 1);
+  assert.equal(wts[0].path, '/wt');
+  // sessions are exposed only via getSessionsSnapshot
+  assert.equal(store.getSessionsSnapshot().length, 1);
+});
+
+test('SU7: upsertSession ignores invalid input (no sessionId)', () => {
+  const store = createStore();
+  store.upsertSession({ cwd: '/a' });
+  store.upsertSession(null);
+  store.upsertSession({ sessionId: '' });
+  assert.equal(store.getSessionsSnapshot().length, 0);
+});
+
 // U_guard_old: fetchedAt이 오래된 cachedIssue는 기존 값을 보존한다
 test('U_guard_old: upsertWorktree preserves cachedIssue when incoming fetchedAt is older', () => {
   const store = createStore();

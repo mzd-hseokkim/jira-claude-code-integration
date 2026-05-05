@@ -127,6 +127,7 @@ function createIngestRouter(store, logger = null, workspacesModule = null) {
 
     let taskId = null;
     let worktreePath = null;
+    let sessionId = null;
     let label = 'no-context';
 
     try {
@@ -134,29 +135,18 @@ function createIngestRouter(store, logger = null, workspacesModule = null) {
       taskId = mapped.taskId;
       worktreePath = mapped.worktreePath;
 
-      // auto-register on miss: if no worktree matched and workspacesModule is wired,
-      // try to find git root and register as new workspace.
-      if (!worktreePath && cwd && workspacesModule) {
-        const gitRoot = findGitRoot(cwd, { logger });
-        if (gitRoot) {
-          if (shouldRejectAutoRegister(gitRoot)) {
-            logger && logger.info('ingest.auto-register-rejected', { cwd, gitRoot });
-          } else {
-            try {
-              workspacesModule.register(gitRoot);
-              logger && logger.info('ingest.auto-registered', { cwd, gitRoot });
-              // Re-lookup after registration
-              const remapped = lookupWorktree(store, cwd);
-              taskId = remapped.taskId;
-              worktreePath = remapped.worktreePath;
-            } catch (regErr) {
-              logger && logger.warn('ingest.auto-register-failed', { cwd, gitRoot, err: regErr.message });
-            }
-          }
+      if (worktreePath) {
+        label = 'mapped';
+      } else {
+        // worktree miss: session_id 기반 session entry 경로.
+        // auto-register는 의도적으로 제거됨 (MAE-331) — 임시 cwd가 워크스페이스로
+        // 등록되는 부작용을 막기 위함.
+        const rawSid = typeof payload.session_id === 'string' ? payload.session_id : null;
+        if (rawSid) {
+          sessionId = rawSid;
+          label = 'session';
         }
       }
-
-      label = worktreePath ? 'mapped' : 'no-context';
     } catch (err) {
       // Error Handling: worktreeMap.lookup throw → log + no-context (design §Error Handling row 7)
       logger && logger.warn('ingest.lookup-error', { err: err.message, cwd });
@@ -173,23 +163,40 @@ function createIngestRouter(store, logger = null, workspacesModule = null) {
       cwd,
       taskId,
       worktreePath,
+      sessionId,
       label,
       payload,
     };
 
-    // Push into the store. Use worktreePath as the key if mapped; otherwise use
-    // the actual cwd from payload so the card shows real directory info. Fall
-    // back to synthetic "__no-context__" only if cwd is also missing.
-    const storeKey = worktreePath ?? cwd ?? '__no-context__';
-    store.pushActivity(storeKey, { ts: receivedAt, type: hookName, data: event });
+    if (label === 'mapped') {
+      store.pushActivity(worktreePath, { ts: receivedAt, type: hookName, data: event });
+    } else if (label === 'session') {
+      // SessionStart → 신규 등록 또는 startedAt/cwd/source 갱신.
+      // 그 외 lifecycle hook → lastActiveAt만 partial update.
+      if (hookName === 'SessionStart') {
+        store.upsertSession({
+          sessionId,
+          cwd,
+          source: typeof payload.source === 'string' ? payload.source : null,
+          startedAt: receivedAt,
+          lastActiveAt: receivedAt,
+        });
+      } else {
+        store.upsertSession({ sessionId, lastActiveAt: receivedAt });
+      }
+      store.pushSessionActivity(sessionId, { ts: receivedAt, type: hookName, data: event });
+    } else {
+      // no-context: cwd도 없거나 session_id도 없는 hook. drop + log.
+      logger && logger.warn('ingest.session-id-missing', { cwd, hookName });
+    }
 
     const ingestLog = label === 'mapped' && worktreePath && logger && typeof logger.child === 'function'
       ? logger.child({ workspace: worktreePath })
       : logger;
-    ingestLog && ingestLog.info('ingest.received', { ingestId, hookName, cwd, label, taskId });
+    ingestLog && ingestLog.info('ingest.received', { ingestId, hookName, cwd, label, taskId, sessionId });
 
     // Always respond 200 — forwarder ignores the body, but include it for debugging.
-    res.json({ ok: true, ingestId, taskId, label });
+    res.json({ ok: true, ingestId, taskId, sessionId, label });
   });
 
   return router;
