@@ -355,59 +355,61 @@ function Dashboard() {
           <GraphCanvas worktrees={state.worktrees} />
         </GraphErrorBoundary>
       ) : (
-        <main className={`dashboard-grid${isIdle ? ' is-idle' : ''}${groupedFiltered ? ' dashboard-grid--grouped' : ''}`}>
-          {sorted.length === 0 ? (
-            <div className="dashboard-empty">
-              <div className="dashboard-empty__card" role="status">
-                <div className="dashboard-empty__icon" aria-hidden="true">
-                  {filter ? '🔍' : connState === 'connected' ? '📭' : '⏳'}
+        <div className={`dashboard-body${visibleSessions.length > 0 ? ' dashboard-body--with-sessions' : ''}`}>
+          <main className={`dashboard-grid${isIdle ? ' is-idle' : ''}${groupedFiltered ? ' dashboard-grid--grouped' : ''}`}>
+            {sorted.length === 0 ? (
+              <div className="dashboard-empty">
+                <div className="dashboard-empty__card" role="status">
+                  <div className="dashboard-empty__icon" aria-hidden="true">
+                    {filter ? '🔍' : connState === 'connected' ? '📭' : '⏳'}
+                  </div>
+                  <p className="dashboard-empty__title">
+                    {filter
+                      ? '검색 결과가 없습니다'
+                      : connState === 'connected'
+                        ? 'Worktree가 없습니다'
+                        : '연결을 기다리는 중'}
+                  </p>
+                  <p className="dashboard-empty__hint">
+                    {filter
+                      ? <>"<span className="dashboard-empty__query">{filter}</span>" 에 매치되는 항목이 없습니다.</>
+                      : connState === 'connected'
+                        ? <><code>/jira-task init</code> 으로 작업 환경을 세팅하면 여기 카드가 표시됩니다.</>
+                        : 'Dashboard 서버에 연결을 시도하고 있습니다…'}
+                  </p>
                 </div>
-                <p className="dashboard-empty__title">
-                  {filter
-                    ? '검색 결과가 없습니다'
-                    : connState === 'connected'
-                      ? 'Worktree가 없습니다'
-                      : '연결을 기다리는 중'}
-                </p>
-                <p className="dashboard-empty__hint">
-                  {filter
-                    ? <>"<span className="dashboard-empty__query">{filter}</span>" 에 매치되는 항목이 없습니다.</>
-                    : connState === 'connected'
-                      ? <><code>/jira-task init</code> 으로 작업 환경을 세팅하면 여기 카드가 표시됩니다.</>
-                      : 'Dashboard 서버에 연결을 시도하고 있습니다…'}
-                </p>
               </div>
-            </div>
-          ) : groupedFiltered ? (
-            // N=2+ workspace: 그룹 헤더 + 카드
-            groupedFiltered.map(({ key, label, workspace, wts }) => (
-              <WorkspaceGroup
-                key={key}
-                workspace={workspace}
-                label={label}
-                count={wts.length}
-              >
-                {wts.map((wt) => <WorktreeCard key={wt.path} worktree={wt} />)}
-              </WorkspaceGroup>
-            ))
-          ) : (
-            // N<=1 workspace: 평면 카드 그리드
-            sorted.map((wt) => <WorktreeCard key={wt.path} worktree={wt} />)
+            ) : groupedFiltered ? (
+              // N=2+ workspace: 그룹 헤더 + 카드
+              groupedFiltered.map(({ key, label, workspace, wts }) => (
+                <WorkspaceGroup
+                  key={key}
+                  workspace={workspace}
+                  label={label}
+                  count={wts.length}
+                >
+                  {wts.map((wt) => <WorktreeCard key={wt.path} worktree={wt} />)}
+                </WorkspaceGroup>
+              ))
+            ) : (
+              // N<=1 workspace: 평면 카드 그리드
+              sorted.map((wt) => <WorktreeCard key={wt.path} worktree={wt} />)
+            )}
+          </main>
+          {visibleSessions.length > 0 && (
+            <aside className="sessions-section" aria-label="Claude Sessions">
+              <div className="sessions-section__header">
+                <span className="sessions-section__title">Claude Sessions</span>
+                <span className="sessions-section__count">{visibleSessions.length}</span>
+              </div>
+              <div className="sessions-section__grid">
+                {visibleSessions.map((s) => (
+                  <SessionCard key={s.sessionId} session={s} />
+                ))}
+              </div>
+            </aside>
           )}
-        </main>
-      )}
-      {visibleSessions.length > 0 && (
-        <section className="sessions-section" aria-label="Claude Sessions">
-          <div className="sessions-section__header">
-            <span className="sessions-section__title">Claude Sessions</span>
-            <span className="sessions-section__count">{visibleSessions.length}</span>
-          </div>
-          <div className="sessions-section__grid">
-            {visibleSessions.map((s) => (
-              <SessionCard key={s.sessionId} session={s} />
-            ))}
-          </div>
-        </section>
+        </div>
       )}
       <footer className="dashboard-footer">
         <span className="dashboard-footer__brand">jira-integration plugin</span>

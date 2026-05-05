@@ -1865,8 +1865,41 @@ body > * { position: relative; z-index: 1; }
 
 /* ===== Claude Sessions Section ===== */
 
+/* ===== Dashboard body: cards + optional right sessions sidebar ===== */
+.dashboard-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.dashboard-body > .dashboard-grid {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.dashboard-body--with-sessions > .sessions-section {
+  flex: 0 0 280px;
+  width: 280px;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  max-height: 100vh;
+  overflow-y: auto;
+  border-left: 1px solid rgba(167, 139, 250, 0.18);
+  background: linear-gradient(180deg, rgba(51, 65, 85, 0.55) 0%, rgba(51, 65, 85, 0.35) 100%);
+}
+@media (max-width: 1100px) {
+  .dashboard-body { flex-direction: column; }
+  .dashboard-body--with-sessions > .sessions-section {
+    flex: 0 0 auto;
+    width: auto;
+    position: static;
+    max-height: none;
+    border-left: none;
+    border-top: 1px solid rgba(167, 139, 250, 0.18);
+  }
+}
+
 .sessions-section {
-  padding: 0 20px 24px;
+  padding: 14px 14px 24px;
   position: relative;
   z-index: 1;
 }
@@ -1875,9 +1908,19 @@ body > * { position: relative; z-index: 1; }
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   padding-bottom: 10px;
   border-bottom: 1px solid rgba(167, 139, 250, 0.25);
+  position: sticky;
+  top: 0;
+  background: rgba(51, 65, 85, 0.92);
+  backdrop-filter: blur(6px);
+  z-index: 2;
+  margin-left: -14px;
+  margin-right: -14px;
+  padding-left: 14px;
+  padding-right: 14px;
+  padding-top: 10px;
 }
 
 .sessions-section__title {
@@ -1899,9 +1942,9 @@ body > * { position: relative; z-index: 1; }
 }
 
 .sessions-section__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 /* ===== SessionCard ===== */
@@ -1972,4 +2015,20 @@ body > * { position: relative; z-index: 1; }
   font-family: "SF Mono", "Fira Code", "Consolas", monospace;
   color: rgba(167, 139, 250, 0.55);
   letter-spacing: 0.05em;
+}
+
+/* SessionCard 내부 ActivityPanel은 어두운 보라 배경에 맞춰
+   텍스트 색을 밝게 override. 기본 .activity-panel__row dd는 color:#333이라
+   여기서 안 보임. */
+.session-card .activity-panel__title {
+  color: rgba(167, 139, 250, 0.85);
+}
+.session-card .activity-panel__row dt {
+  color: rgba(196, 181, 253, 0.6);
+}
+.session-card .activity-panel__row dd {
+  color: rgba(243, 244, 246, 0.92);
+}
+.session-card .activity-panel__prompt {
+  color: rgba(221, 214, 254, 0.9);
 }
