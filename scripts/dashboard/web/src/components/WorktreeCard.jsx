@@ -88,7 +88,7 @@ function prioritySlug(value) {
  * @param {{ worktree: import('../state/reducer.js').WorktreeState }} props
  */
 export default function WorktreeCard({ worktree }) {
-  const { path, branch, taskId, noContext, cachedIssue, activity = [], completedSteps } = worktree;
+  const { path, branch, taskId, noContext, cachedIssue, activity = [], completedSteps, lastActiveAt } = worktree;
 
   // 1초 tick으로 상대시간 자동 갱신.
   const now = useNowTick(1000);
@@ -123,6 +123,9 @@ export default function WorktreeCard({ worktree }) {
   const pSlug = noContext ? 'neutral' : prioritySlug(priority);
 
   const showStatusBadge = !noContext && status != null;
+
+  // 활성 뱃지: lastActiveAt이 5분 이내면 표시. useNowTick(1000)에 의해 경계도 자연 갱신.
+  const isActive = lastActiveAt != null && (now - new Date(lastActiveAt).getTime() < 5 * 60 * 1000);
 
   // Stale = Jira 상태가 완료인데 worktree가 아직 살아있음 (정리 대상).
   const isStale = !noContext && status === '완료';
@@ -203,6 +206,12 @@ export default function WorktreeCard({ worktree }) {
         {lastActivityTs && (
           <span className="wt-card__last-activity" title={lastActivityTs}>
             {formatRelative(lastActivityTs, now)}
+          </span>
+        )}
+        {isActive && (
+          <span className="wt-card__active-badge" title={`최근 활동 ${lastActiveAt}`}>
+            <span className="wt-card__active-dot" aria-hidden="true" />
+            active
           </span>
         )}
         {showStatusBadge && (

@@ -69,7 +69,7 @@ function createStore(opts = {}) {
       _map.set(wPath, {
         state: {
           path: wPath, branch: null, taskId: null,
-          cachedIssue: null, lastFetchedAt: null, noContext: false,
+          cachedIssue: null, lastFetchedAt: null, lastActiveAt: null, noContext: false,
           // ring buffer 밖에 별도 보존되는 신호. PreToolUse/PostToolUse가 폭주해
           // ring buffer가 가득 차도 prompt/response 신호가 사라지지 않도록 함.
           lastPromptEvent: null,
@@ -171,6 +171,7 @@ function createStore(opts = {}) {
     pushActivity(wPath, ev) {
       const record = _getOrCreate(wPath);
       record.activity.push(ev);
+      if (ev?.ts) record.state.lastActiveAt = ev.ts;
       // 핵심 신호는 ring buffer 외에 별도 필드에도 보존(eviction 방지).
       if (ev?.type === 'UserPromptSubmit') {
         record.state.lastPromptEvent = ev;
