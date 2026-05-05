@@ -3,7 +3,7 @@
 const path = require('node:path');
 const http = require('node:http');
 
-const { createStore } = require('./store');
+const { createStore, startSessionSweep } = require('./store');
 const { createLogger } = require('./logger');
 const { loadCredentials } = require('./credentials');
 const { startWorktreeCollector } = require('./collectors/worktree');
@@ -172,6 +172,10 @@ async function startServer(opts = {}) {
   // Start collectors
   const worktreeCollector = startWorktreeCollector(store, { workspaceRoots, logger });
 
+  // Session entry TTL sweep — removes zombie session cards when SessionEnd is
+  // missed (Ctrl+C, kill, crash). 30s tick, 5min TTL.
+  const sessionSweep = startSessionSweep(store, { logger });
+
   // D-5: on new workspace registration, immediately re-collect worktrees so the
   // same ingest response can already see the new workspace's worktrees.
   workspaces.events.on('workspace.registered', ({ path: newRoot }) => {
@@ -216,6 +220,7 @@ async function startServer(opts = {}) {
     async stop() {
       worktreeCollector.stop();
       jiraCollector.stop();
+      sessionSweep.stop();
       await new Promise((resolve) => httpServer.close(resolve));
       await logger.close();
     },

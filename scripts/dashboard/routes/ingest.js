@@ -172,19 +172,24 @@ function createIngestRouter(store, logger = null, workspacesModule = null) {
       store.pushActivity(worktreePath, { ts: receivedAt, type: hookName, data: event });
     } else if (label === 'session') {
       // SessionStart → 신규 등록 또는 startedAt/cwd/source 갱신.
+      // SessionEnd  → session entry 즉시 제거 (sweep TTL 기다리지 않음).
       // 그 외 lifecycle hook → lastActiveAt만 partial update.
-      if (hookName === 'SessionStart') {
-        store.upsertSession({
-          sessionId,
-          cwd,
-          source: typeof payload.source === 'string' ? payload.source : null,
-          startedAt: receivedAt,
-          lastActiveAt: receivedAt,
-        });
+      if (hookName === 'SessionEnd') {
+        store.removeSession(sessionId);
       } else {
-        store.upsertSession({ sessionId, lastActiveAt: receivedAt });
+        if (hookName === 'SessionStart') {
+          store.upsertSession({
+            sessionId,
+            cwd,
+            source: typeof payload.source === 'string' ? payload.source : null,
+            startedAt: receivedAt,
+            lastActiveAt: receivedAt,
+          });
+        } else {
+          store.upsertSession({ sessionId, lastActiveAt: receivedAt });
+        }
+        store.pushSessionActivity(sessionId, { ts: receivedAt, type: hookName, data: event });
       }
-      store.pushSessionActivity(sessionId, { ts: receivedAt, type: hookName, data: event });
     } else {
       // no-context: cwd도 없거나 session_id도 없는 hook. drop + log.
       logger && logger.warn('ingest.session-id-missing', { cwd, hookName });
