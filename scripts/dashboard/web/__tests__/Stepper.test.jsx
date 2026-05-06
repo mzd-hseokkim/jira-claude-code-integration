@@ -9,13 +9,13 @@ describe('Stepper', () => {
   const findStep = (label, state) => screen.getByLabelText(`${label}: ${state}`);
 
   // U14
-  it('U14 — 8개 step 순서대로 렌더 (init 제외), 첫 라벨 start / 마지막 done', () => {
+  it('U14 — 7개 step 순서대로 렌더 (init 제외, plan+design→approach), 첫 라벨 start / 마지막 done', () => {
     render(<Stepper completedSteps={[]} />);
     const items = screen.getAllByRole('listitem');
-    expect(items).toHaveLength(8);
+    expect(items).toHaveLength(7);
     // 빈 completedSteps이면 start=active, 나머지=pending
     expect(items[0]).toHaveAttribute('aria-label', 'start: active');
-    expect(items[7]).toHaveAttribute('aria-label', 'done: pending');
+    expect(items[6]).toHaveAttribute('aria-label', 'done: pending');
   });
 
   // U15
@@ -28,8 +28,8 @@ describe('Stepper', () => {
   // U16
   it('U16 — active 단계에 --active modifier class', () => {
     render(<Stepper completedSteps={['start']} />);
-    const planItem = findStep('plan', 'active');
-    expect(planItem.className).toContain('wt-stepper__step--active');
+    const approachItem = findStep('approach', 'active');
+    expect(approachItem.className).toContain('wt-stepper__step--active');
   });
 
   // U17
@@ -55,7 +55,7 @@ describe('Stepper', () => {
   // U20 — payload에 init이 들어있어도 시각화에는 영향 없음 (init은 SDLC_STEPS에서 제외)
   it('U20 — payload에 init이 있어도 첫 가시 단계는 start (active)', () => {
     render(<Stepper completedSteps={['init']} />);
-    expect(screen.getAllByRole('listitem')).toHaveLength(8);
+    expect(screen.getAllByRole('listitem')).toHaveLength(7);
     expect(findStep('start', 'active')).toBeInTheDocument();
   });
 

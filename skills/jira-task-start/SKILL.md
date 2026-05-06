@@ -168,8 +168,8 @@ Completion Summary 직전에 다음 형식의 권고 블록을 출력한다. 이
 - Worktree: <path>
 - Jira 코멘트 게시됨
 
-**Progress**: init → **start ✓** → plan → design → impl → test → review → merge → pr → done
+**Progress**: init → **start ✓** → approach → impl → test → review → merge → pr → done
 
-**Next**: `/jira-task plan <TASK-ID>` — 기획 문서를 작성합니다 (Step 7의 권고에 따라 다른 단계로 바로 갈 수도 있음)
+**Next**: `/jira-task approach <TASK-ID>` — level-aware approach 문서를 작성합니다 (Step 7의 권고에 따라 다른 단계로 바로 갈 수도 있음)
 ---
 ```

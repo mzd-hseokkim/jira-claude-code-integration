@@ -179,7 +179,7 @@ Step 4 합성 산출물(FR / Edge Cases / Out of Scope / Open Questions)을 사�
 - 코드베이스 컨텍스트: <발췌 파일 N개> (또는 "관련 영역 미발견")
 - 이슈 분해 제안: <L1: "단일 작업 1건" / L2: "스토리 1 + 서브태스크 N" / L3: "에픽 1 + 스토리 N + 서브태스크 M">
 
-**Progress**: **discover ✓** → create → init → start → plan → design → impl → test → review → merge → pr → done
+**Progress**: **discover ✓** → create → init → start → approach → impl → test → review → merge → pr → done
 
 **Next** (Step 5에서 확정된 분해 레벨에 따라 1줄 출력):
 - L1 Single: `/jira-task create <한 줄 힌트>` — 분석서를 참고로 Jira 작업 1건을 등록합니다 (import 파서가 Single을 아직 못 받음)

@@ -1,6 +1,6 @@
 ---
 name: jira-task-auto
-description: "Auto-execute the full Jira task workflow (start → plan → design → impl → test → review) sequentially. Triggers: jira-task auto, auto run; 자동 실행, 전체 워크플로 자동."
+description: "Auto-execute the full Jira task workflow (start → approach → impl → test → review) sequentially. Triggers: jira-task auto, auto run; 자동 실행, 전체 워크플로 자동."
 user-invocable: false
 argument-hint: "<TASK-ID>"
 allowed-tools:
@@ -15,7 +15,7 @@ allowed-tools:
 
 ## Overview
 
-`start → plan → design → impl → test → review` 단계를 자동으로 순차 실행하는 **경량 오케스트레이터**.
+`start → approach → impl → test → review` 단계를 자동으로 순차 실행하는 **경량 오케스트레이터**.
 
 - 각 단계는 **독립된 sub-agent(`Agent` 도구)**로 실행 → 컨텍스트 격리 + 페르소나 격리
 - 단계별로 적합한 모델 배정 (모델 차등)
@@ -30,7 +30,7 @@ allowed-tools:
 
 `.jira-context.json`을 `Read` 도구로 읽어 `completedSteps`를 확인.
 
-**실행 대상 단계**: `["start", "plan", "design", "impl", "test", "review"]`
+**실행 대상 단계**: `["start", "approach", "impl", "test", "review"]`
 
 이미 완료된 단계를 제외한 나머지를 실행 계획으로 결정.
 
@@ -39,7 +39,7 @@ allowed-tools:
 ```
 🚀 Auto 모드: <TASK-ID>
 
-실행할 단계: start → plan → design → impl → test → review
+실행할 단계: start → approach → impl → test → review
 완료된 단계: <completedSteps 목록 또는 "없음">
 건너뛸 단계: <이미 완료된 단계 목록 또는 "없음">
 
@@ -88,11 +88,10 @@ Agent({
 | 순서 | 단계 | subagent_type | 모델 | 사고 유형 |
 |------|------|---------------|------|----------|
 | 1 | start | `general-purpose` | haiku | 상태 전이 + 브랜치 셋업, 판단 거의 없음 |
-| 2 | plan | `general-purpose` | opus | 스코프 결정 — 사고 집약적 |
-| 3 | design | `general-purpose` | opus | 결정·아키텍처, 가장 사고 집약적 |
-| 4 | impl | `general-purpose` | sonnet | 코드 생성, 토큰 다량 소비 |
-| 5 | test | `general-purpose` | sonnet | 실행 + 결과 정리 |
-| 6 | review | `general-purpose` | opus | 오케스트레이션만 — 실제 리뷰 작업은 inner `jira-reviewer` agent가 수행 |
+| 2 | approach | `general-purpose` | opus | 스코프·아키텍처 통합 결정 — 사고 집약적 (level-aware) |
+| 3 | impl | `general-purpose` | sonnet | 코드 생성, 토큰 다량 소비 |
+| 4 | test | `general-purpose` | sonnet | 실행 + 결과 정리 |
+| 5 | review | `general-purpose` | opus | 오케스트레이션만 — 실제 리뷰 작업은 inner `jira-reviewer` agent가 수행 |
 
 전 단계 `general-purpose`로 통일한다. review의 self-praise bias 차단은 `jira-task-review` Skill 내부에서 자체적으로 띄우는 `jira-reviewer` subagent가 담당한다 (Step 2, `Reviewer Independence Rule`).
 
@@ -100,7 +99,7 @@ Agent({
 
 ### 표준 Prompt 형식
 
-review 외 단계 (start/plan/design/impl/test):
+review 외 단계 (start/approach/impl/test):
 
 ```
 Jira task <TASK-ID>의 <단계명> 단계를 수행하라.
@@ -129,7 +128,7 @@ review 단계 (general-purpose wrapper, **`[review-self-mode]` 마커 필수**):
 
 Jira task <TASK-ID>의 review 단계를 수행하라. `jira-integration:jira-task-review` Skill을 호출하고, 동일한 *최소 요약* 형식으로 결과만 반환하라. 산출물 본문 미반환.
 
-주의: 본 wrapper는 이미 격리된 sub-agent 컨텍스트이므로 추가 `Agent` 도구 사용 권한이 없다. `[review-self-mode]` 마커에 따라 Skill의 Step 2를 self-mode(직접 수행)로 진행한다 — gap analysis / lint / code quality 검토를 wrapper agent가 직접 수행. 이미 plan/design/impl과 분리된 fresh context이므로 self-praise bias 우려 없음.
+주의: 본 wrapper는 이미 격리된 sub-agent 컨텍스트이므로 추가 `Agent` 도구 사용 권한이 없다. `[review-self-mode]` 마커에 따라 Skill의 Step 2를 self-mode(직접 수행)로 진행한다 — gap analysis / lint / code quality 검토를 wrapper agent가 직접 수행. 이미 approach/impl과 분리된 fresh context이므로 self-praise bias 우려 없음.
 ```
 
 > `[review-self-mode]` 마커는 필수다. 누락 시 Skill이 Mode A(Agent delegation)로 돌입했다가 sub-agent 환경의 Agent 도구 부재로 fail한다.
@@ -273,7 +272,7 @@ review를 제외한 단계 실패 시 즉시 중단하고 안내:
 ─────────────────────────────────────────
 🎉 Auto 모드 완료 — <TASK-ID>
 ─────────────────────────────────────────
-✅ 완료된 단계: start → plan → design → impl → test → review
+✅ 완료된 단계: start → approach → impl → test → review
 
 **다음 단계** (수동 실행 필요):
 - merge: `/jira-task merge <TASK-ID>` — worktree에서 로컬 병합

@@ -7,7 +7,9 @@ Usage:
 Args:
     TASK-ID    Jira issue key (e.g. MAE-279).
     step       Workflow step name to append to completedSteps (e.g. "merge", "done").
-               Also drives the timestamp field name: "<step>At" (e.g. mergedAt, doneAt).
+               Must be one of: discover, create, init, start, approach, impl, test,
+               review, merge, pr, done. Also drives the timestamp field name:
+               "<step>At" (e.g. mergedAt, doneAt).
     status     Value to set as top-level `status` and (if present) `cachedIssue.status`.
                **Must be a Jira-verified value** — caller is responsible for fetching
                the post-transition status from Jira (`jira_get_issue` after
@@ -37,6 +39,14 @@ import datetime
 import json
 import os
 import sys
+
+
+# Valid workflow step whitelist. Keep in sync with skill SKILL.md Progress lines
+# and dashboard SDLC_STEPS. `plan`/`design`은 통합되어 `approach`로 대체됨.
+VALID_STEPS = frozenset({
+    "discover", "create", "init", "start", "approach",
+    "impl", "test", "review", "merge", "pr", "done",
+})
 
 
 def _now_utc_iso() -> str:
@@ -80,6 +90,12 @@ def main(argv: list[str]) -> int:
         print(__doc__, file=sys.stderr)
         return 2
     task_id, step, status = argv[1], argv[2], argv[3]
+    if step not in VALID_STEPS:
+        print(
+            f"error: invalid step '{step}'. Valid steps: {sorted(VALID_STEPS)}",
+            file=sys.stderr,
+        )
+        return 2
     ts = _now_utc_iso()
     for ctx_file in argv[4:]:
         print(update_context(ctx_file, task_id, step, status, ts))

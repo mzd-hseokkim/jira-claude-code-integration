@@ -84,7 +84,7 @@ Design 문서가 없으면, Jira 이슈 설명과 Acceptance Criteria 기반으�
 - 수정된 파일: <list>
 - Jira 코멘트 게시됨
 
-**Progress**: init → start → plan → design → **impl ✓** → test → review → merge → pr → done
+**Progress**: init → start → approach → **impl ✓** → test → review → merge → pr → done
 
 **Next**: `/jira-task test <TASK-ID>` — 테스트 코드를 작성하고 실행합니다
 ---
