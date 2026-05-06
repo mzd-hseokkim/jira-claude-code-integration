@@ -99,18 +99,25 @@
 
 ## Proposed Issue Breakdown
 
-<!-- 입력 규모에 맞는 형식 하나만 선택해 채운다. 항상 트리 강제 X.
-     - 단일 PR / 단일 버그 → Single 형식
-     - 여러 영역 병렬 작업 → Tree 형식 -->
+<!-- 분해 레벨 3종 (L1 Single / L2 Story+Subtasks / L3 Epic+Stories+Subtasks).
+     입력 규모에 맞는 1개만 채운다. 항상 트리 강제 X.
+     레벨 정의·신호표·템플릿은 skills/jira-task-discover/refs/breakdown-level.md 참조. -->
 
-<!-- Single 형식 예시:
+<!-- L1 Single 예시:
 
 - **작업**: <한 줄 요약>
   - 범위: <변경 파일/모듈 한 줄>
   - 검증: <측정 가능한 완료 기준 한 줄>
 -->
 
-<!-- Tree 형식 예시:
+<!-- L2 Story+Subtasks 예시:
+
+- **Story**: <스토리 요약>
+  - Sub-task 1: <서브태스크 요약>
+  - Sub-task 2: <서브태스크 요약>
+-->
+
+<!-- L3 Epic+Stories+Subtasks 예시:
 
 - **Epic**: <에픽 요약>
   - **Story 1**: <스토리 요약>
@@ -119,3 +126,20 @@
   - **Story 2**: <스토리 요약>
     - Sub-task 2.1: <서브태스크 요약>
 -->
+
+## Technical Approach Hint
+
+<!-- 요구사항 문서 말미 섹션. plan/design 단계가 approach로 통합됨에 따라 구현 방향의 1차 힌트.
+     입력: Codebase Context · Functional Requirements · Constraints.
+     코드 스니펫 금지 — 의사결정/접근 옵션/주의사항 위주.
+     --lite 모드는 3-5줄 요약. -->
+
+### 핵심 구현 포인트
+- <FR을 만족하기 위해 손볼 모듈/파일 영역 1-3줄>
+
+### 검토할 접근 옵션
+- 옵션 A: <접근명> — 장점 / 단점 1줄씩
+- 옵션 B: <접근명> — 장점 / 단점 1줄씩
+
+### 주의 지점
+- <리스크/의존/마이그레이션/롤백 고려>
