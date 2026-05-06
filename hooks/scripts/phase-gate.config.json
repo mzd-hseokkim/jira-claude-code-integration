@@ -18,21 +18,17 @@
       "requires": ["init"],
       "enforced": true
     },
-    "plan": {
+    "approach": {
       "requires": ["start"],
-      "enforced": true
-    },
-    "design": {
-      "requires": ["plan"],
       "artifacts": [
-        { "fileGlob": "docs/plan/{TASK_ID}.plan.md" }
+        { "fileGlob": "docs/approach/{TASK_ID}.approach.md" }
       ],
       "enforced": true
     },
     "impl": {
-      "requires": ["design"],
+      "requires": ["approach"],
       "artifacts": [
-        { "fileGlob": "docs/design/{TASK_ID}.design.md" }
+        { "fileGlob": "docs/approach/{TASK_ID}.approach.md" }
       ],
       "enforced": true
     },

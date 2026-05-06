@@ -73,10 +73,14 @@ test('isEnvTruthy: non-string → false', () => {
 const baseConfig = {
   phases: {
     discover: { requires: [], enforced: false },
-    plan: { requires: ['start'], enforced: true },
-    design: {
-      requires: ['plan'],
-      artifacts: [{ fileGlob: 'docs/plan/{TASK_ID}.plan.md' }],
+    approach: {
+      requires: ['start'],
+      artifacts: [{ fileGlob: 'docs/approach/{TASK_ID}.approach.md' }],
+      enforced: true,
+    },
+    impl: {
+      requires: ['approach'],
+      artifacts: [{ fileGlob: 'docs/approach/{TASK_ID}.approach.md' }],
       enforced: true,
     },
   },
@@ -90,7 +94,7 @@ test('V1: enforced=false phase → ok', () => {
 
 test('V2: requires 누락 → missing-requires', () => {
   const r = validate(
-    'plan',
+    'approach',
     baseConfig,
     { completedSteps: [], taskId: 'T-1' },
     '/tmp'
@@ -104,14 +108,14 @@ test('V3: artifacts 누락 → missing-artifact', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'phase-gate-test-'));
   try {
     const r = validate(
-      'design',
+      'impl',
       baseConfig,
-      { completedSteps: ['plan'], taskId: 'T-1' },
+      { completedSteps: ['start', 'approach'], taskId: 'T-1' },
       tmp
     );
     assert.equal(r.ok, false);
     assert.equal(r.reason, 'missing-artifact');
-    assert.deepEqual(r.missingArtifacts, ['docs/plan/T-1.plan.md']);
+    assert.deepEqual(r.missingArtifacts, ['docs/approach/T-1.approach.md']);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -120,13 +124,13 @@ test('V3: artifacts 누락 → missing-artifact', () => {
 test('V4: 모두 충족 → ok', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'phase-gate-test-'));
   try {
-    const planDir = path.join(tmp, 'docs/plan');
-    fs.mkdirSync(planDir, { recursive: true });
-    fs.writeFileSync(path.join(planDir, 'T-1.plan.md'), '# plan');
+    const approachDir = path.join(tmp, 'docs/approach');
+    fs.mkdirSync(approachDir, { recursive: true });
+    fs.writeFileSync(path.join(approachDir, 'T-1.approach.md'), '# approach');
     const r = validate(
-      'design',
+      'impl',
       baseConfig,
-      { completedSteps: ['plan'], taskId: 'T-1' },
+      { completedSteps: ['start', 'approach'], taskId: 'T-1' },
       tmp
     );
     assert.equal(r.ok, true);
