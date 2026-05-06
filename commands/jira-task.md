@@ -1,8 +1,8 @@
 ---
 name: jira-task
-description: Main workflow command for Jira-integrated development. Routes to specialized skills based on the action argument. Usage /jira-task [action] [TASK-ID]. Actions create, discover, init, start, plan, design, impl, test, review, merge, pr, done, report, status, clean. Triggers jira-task, jira task, create task, new task, discover requirements, init tasks, setup tasks, start task, begin task, implement task, test task, review task, create PR, complete task, task report, clean worktree, 태스크 생성, 이슈 등록, 요구사항 수집, 현황 리포트, 작업 환경 세팅, 작업 시작, 구현 시작, 테스트 실행, 코드 리뷰, PR 만들어, 작업 완료, 워크트리 정리
+description: Main workflow command for Jira-integrated development. Routes to specialized skills based on the action argument. Usage /jira-task [action] [TASK-ID]. Actions create, discover, init, start, approach, impl, test, review, merge, pr, done, report, status, clean. Triggers jira-task, jira task, create task, new task, discover requirements, init tasks, setup tasks, start task, begin task, approach task, implement task, test task, review task, create PR, complete task, task report, clean worktree, 태스크 생성, 이슈 등록, 요구사항 수집, 현황 리포트, 작업 환경 세팅, 작업 시작, 접근 설계, 구현 시작, 테스트 실행, 코드 리뷰, PR 만들어, 작업 완료, 워크트리 정리
 user-invocable: true
-argument-hint: "[create|discover|init|start|plan|design|impl|test|review|pr|merge|done|report|auto|clean] [TASK-ID 또는 힌트/주제]"
+argument-hint: "[create|discover|init|start|approach|impl|test|review|pr|merge|done|report|auto|clean] [TASK-ID 또는 힌트/주제]"
 allowed-tools:
   - Read
   - Write
@@ -22,7 +22,7 @@ Parse the user's argument to determine the action and task ID, then execute the 
 
 The argument format is: `[action] [TASK-ID 또는 힌트]`
 
-- **action**: One of `create`, `discover`, `init`, `start`, `plan`, `design`, `impl`, `test`, `review`, `pr`, `merge`, `done`, `report`, `status`, `auto`, `clean`
+- **action**: One of `create`, `discover`, `init`, `start`, `approach`, `impl`, `test`, `review`, `pr`, `merge`, `done`, `report`, `status`, `auto`, `clean`
 - **TASK-ID**: Jira issue key (e.g., `PROJ-123`). Optional — if omitted, auto-detect from context. Not required for `create`, `discover`, `init`, `report`, `status`.
 - For `create`, any text after the action is treated as an initial hint (자연어 설명) and passed to the skill as-is.
 - For `discover`, any text after the action (자연어 주제) 및 `--lite`, `--from <파일경로>` 등의 플래그는 원문 그대로 스킬에 위임된다.
@@ -87,11 +87,10 @@ Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-init", args: "
 ### `start <TASK-ID>`
 Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-start", args: "<TASK-ID>" })`
 
-### `plan <TASK-ID>`
-Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-plan", args: "<TASK-ID>" })`
+### `approach <TASK-ID>`
+Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-approach", args: "<TASK-ID>" })`
 
-### `design <TASK-ID>`
-Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-design", args: "<TASK-ID>" })`
+기존 `plan` + `design` 두 단계를 단일 단계로 통합한 level-aware approach 문서를 생성한다 (L1/L2/L3).
 
 ### `impl <TASK-ID>`
 Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-impl", args: "<TASK-ID>" })`
@@ -114,7 +113,7 @@ Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-done", args: "
 ### `auto <TASK-ID>`
 Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-auto", args: "<TASK-ID>" })`
 
-`start → plan → design → impl → test → review`를 자동으로 연결하여 순차 실행. 이미 완료된 단계는 건너뜀. `merge/pr/done`은 포함하지 않음.
+`start → approach → impl → test → review`를 자동으로 연결하여 순차 실행. 이미 완료된 단계는 건너뜀. `merge/pr/done`은 포함하지 않음.
 
 ### `clean [TASK-ID ...] | --all | --list`
 Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-clean", args: "<TASK-ID(s) 또는 --all 또는 --list>" })`
@@ -151,7 +150,7 @@ Quick status check — `.jira-context.json`에서 활성 태스크 정보를 읽
 - **Done**: 실제로 수행한 작업을 간결하게 기술 (예: "PROJ-123 기획 문서 생성")
 - **Used**: 사용한 스킬(`jira-task-plan` 등), 에이전트(`jira-reviewer` 등), Jira MCP 도구(`get-issue`, `add-comment` 등)를 나열. 사용하지 않았으면 생략
 - **Next**: `.jira-context.json`의 `completedSteps` 기반으로 다음 워크플로 단계를 추천. 워크플로 외 작업이면 맥락에 맞는 다음 작업 추천
-  - 워크플로 단계 순서: `discover → create → init → start → plan → design → impl → test → review → merge → pr → done`
+  - 워크플로 단계 순서: `discover → create → init → start → approach → impl → test → review → merge → pr → done`
   - `review` 완료 후 next는 반드시 `merge` (`/jira-task merge <TASK-ID>`)
   - `merge` 완료 후 next는 `pr` (`/jira-task pr <TASK-ID>`)
 - 워크플로와 무관한 단순 질의응답에서는 생략 가능

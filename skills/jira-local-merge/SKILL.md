@@ -195,7 +195,7 @@ python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> merge "<final-jira-status>" \
 - feature 브랜치(feature/<TASK-ID>)는 PR 생성을 위해 보존됨
 - 완료 리포트 Jira에 게시됨
 
-**Progress**: init → start → plan → design → impl → test → review → **merge ✓** → pr → done
+**Progress**: init → start → approach → impl → test → review → **merge ✓** → pr → done
 
 **Next**: 세션 종료 후 메인 레포에서 `/jira-task pr <TASK-ID>` — PR을 생성합니다
 ---

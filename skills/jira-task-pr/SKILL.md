@@ -119,7 +119,7 @@ mcp__atlassian__jira_transition_issue with transitionId: <In Review transition I
 - Files: <count> changed
 - Jira 코멘트 게시됨
 
-**Progress**: init → start → plan → design → impl → test → review → merge → **pr ✓** → done
+**Progress**: init → start → approach → impl → test → review → merge → **pr ✓** → done
 
 **Next**: PR 머지 후 `/jira-task done <TASK-ID>` — 태스크를 완료 처리합니다
 ---

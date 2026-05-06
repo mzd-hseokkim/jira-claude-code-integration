@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MAE-356",
+  "entries": [
+    {
+      "taskId": "MAE-356",
+      "timestamp": "2026-05-06T13:38:41Z",
+      "reviewerVersion": "cbd32ec1d159",
+      "outcome": "fail",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "info",
+          "file": "hooks/scripts/phase-gate.config.json",
+          "line": 21,
+          "category": "regression",
+          "message": "phase-gate reverted approach->plan/design vs main"
+        },
+        {
+          "id": "F-002",
+          "severity": "info",
+          "file": "docs/review-log/MAE-355.json",
+          "line": 1,
+          "category": "regression",
+          "message": "deleted MAE-355 review log artifact"
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 2
+      },
+      "falsePositive": null,
+      "userOverride": null
+    }
+  ]
+}

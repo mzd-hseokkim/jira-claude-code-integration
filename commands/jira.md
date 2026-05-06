@@ -50,11 +50,10 @@ Display the available workflow commands:
 | `/jira dashboard [start\|stop\|status\|setup]` | Dashboard 서버 관리 — 셋업/기동/중지/상태조회 (인자 없으면 자동 시작) |
 | `/jira-task create [힌트]` | 신규 Jira 이슈를 대화형으로 생성 (서브태스크/의존성/에픽 연결 포함) |
 | `/jira-task init [N]` | Fetch my top N assigned tasks and create worktrees for each |
-| `/jira-task auto <TASK-ID>` | Auto-execute full workflow (start → plan → design → impl → test → review) |
+| `/jira-task auto <TASK-ID>` | Auto-execute full workflow (start → approach → impl → test → review) |
 | `/jira-task start <TASK-ID>` | Start working on a task (fetch context, create branch, transition to In Progress) |
-| `/jira-task plan <TASK-ID>` | Generate a planning document from Jira issue |
-| `/jira-task design <TASK-ID>` | Generate a design document |
-| `/jira-task impl <TASK-ID>` | Implement based on design document |
+| `/jira-task approach <TASK-ID>` | Generate a level-aware approach document (plan + design 통합) |
+| `/jira-task impl <TASK-ID>` | Implement based on approach document |
 | `/jira-task test <TASK-ID>` | Run tests (Playwright E2E, unit) and report to Jira |
 | `/jira-task review <TASK-ID>` | Run code review and post results to Jira |
 | `/jira-task pr <TASK-ID>` | Create pull request and link to Jira |

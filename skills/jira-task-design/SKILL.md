@@ -131,7 +131,9 @@ SCRIPT_NAME="jira-attach.sh" OUT_VAR="JIRA_ATTACH_SH"
 - Jira 코멘트 게시됨
 - Jira 첨부파일 업로드됨 (또는 실패 시 로컬 경로 안내)
 
-**Progress**: init → start → plan → **design ✓** → impl → test → review → merge → pr → done
+**Progress**: init → start → approach → impl → test → review → merge → pr → done
+
+> 참고: `design`은 레거시 단계입니다. 신규 워크플로는 `approach`로 통합됩니다 (`/jira-task approach <TASK-ID>`).
 
 **Next**: `/jira-task impl <TASK-ID>` — 설계 기반으로 구현을 시작합니다
 ---
