@@ -9,6 +9,7 @@ Step 4가 메모리상에 만든 합성 산출물(Functional Requirements / Edge
 - 각 confirm 대상 섹션은 **3줄 이내**로 요약 표시한다 (단순 입력에서 사용자 마찰 최소화).
 - 항목이 4개 이상이면 **상위 3개 + "외 N건"** 형태로 축약한다.
 - 표시 순서는 항상: Functional Requirements → Edge Cases → Out of Scope → Open Questions (해당 모드에서 생성된 섹션만).
+- **추천 분해 레벨 표시 (필수)**: 마지막에 "추천 분해 레벨: L1 Single | L2 Story+Subtasks | L3 Epic+Stories+Subtasks (사유 1줄)" 형식으로 1줄을 추가한다. 추천 산정은 `refs/breakdown-level.md`의 신호표를 따른다. `proceed` 선택 시 추천 레벨이 그대로 확정되어 Step 5에 전달된다. 다른 레벨을 원하면 `revise`에서 자유 입력으로 지정 (예: "L3 Tree로 바꿔줘") — Step 4의 합성은 재실행하지 않고 레벨만 갱신한다.
 
 #### 모드별 confirm 대상 매핑
 

@@ -131,6 +131,7 @@ Step 4와의 협력: 격상된 `[CONFLICT]` 항목은 Step 4의 Open Questions�
 - Edge Cases (`--lite` 시 생략)
 - Out of Scope (`--lite` 시 생략)
 - Open Questions (TBD로 표시된 항목 모음 + Step 3.5에서 격상된 `[CONFLICT]` 항목 + Goals↔FR 매핑 누락 항목 자동 포함. 순서: TBD 항목 먼저 → 매핑 누락 → conflict 항목)
+- Technical Approach Hint (요구사항 문서 말미 섹션. plan/design 단계가 사라지고 approach로 통합됨에 따라 구현 방향의 1차 힌트를 여기에 둔다. Codebase Context · Functional Requirements · Constraints를 입력으로 LLM이 합성하며, 코드 스니펫 금지 — 의사결정/접근 옵션/주의사항 위주. `--lite` 시 3-5줄 요약. 자세한 작성 가이드는 템플릿 안내 주석 참조.)
 
 `--from <path>`가 지정된 경우: `<path>` 본문을 베이스로 위 섹션을 보강·재구성한다 (덮어쓰기 X, 보강 O).
 
@@ -151,46 +152,19 @@ Step 4와의 협력: 격상된 `[CONFLICT]` 항목은 Step 4의 Open Questions�
 Step 4 합성 산출물(FR / Edge Cases / Out of Scope / Open Questions)을 사용자에게 검증받는 단일 confirm gate이다.
 분기: `proceed` → Step 5 진입 + 파일 쓰기. `revise` → 재합성(최대 3회). `cancel` → 메모리 폐기 후 정상 종료.
 
-### Step 5: Issue Breakdown Section
+### Step 5: Issue Breakdown + Technical Approach Hint Section
 
-**진입 조건:** Step 4.5 confirm을 통과(`proceed`)한 합성 결과를 입력으로 받아 본 단계를 실행한다. Step 4에서 생성한 문서의 **마지막 섹션**으로 분해 제안을 추가한다. **Jira 이슈를 만들지 않는다 — 문서에만 기록한다.**
+**진입 조건:** Step 4.5 confirm을 통과(`proceed`)한 합성 결과 + 확정 분해 레벨을 입력으로 받아 본 단계를 실행한다. Step 4에서 생성한 문서의 **말미 두 섹션**(Proposed Issue Breakdown, Technical Approach Hint)을 채운다. **Jira 이슈를 만들지 않는다 — 문서에만 기록한다.**
 
-분해 형식은 입력 규모에 맞게 LLM이 판단한다. 항상 트리를 강제하지 않는다.
+**필수**: `skills/jira-task-discover/refs/breakdown-level.md`를 Read하여 3 레벨 정의·신호표·출력 템플릿을 확인한다. 본 SKILL.md에는 정의를 인라인하지 않는다.
 
-- **단일 PR 범위 / 단일 버그 수정 / 변경 파일 수 작음** → 작업 1건 형식 (Epic·Story·Sub-task 생략)
-- **여러 영역에 걸쳐 병렬 작업이 가능 / FR이 다층** → Epic + Story + Sub-task 트리 형식
+분해 레벨은 3종 (L1 Single / L2 Story+Subtasks / L3 Epic+Stories+Subtasks). LLM이 합성 결과를 보고 1개를 추천하고, 그 추천은 **Step 4.5 synthesis-confirm gate에 함께 노출되어 사용자 검증을 받는다** (별도 confirm gate를 두지 않음 — 수렴 gate 통합).
 
-판단 신호 예: Functional Requirements 개수, Goals 개수, Codebase Context의 파일 면적, "버그/수정/단일" vs "도입/구축/리뉴얼" 같은 topic 어감. 절대 규칙은 두지 않는다 — 합성 결과를 보고 적절한 형식을 고른다.
+#### Step 5 절차
 
-**Single 작업 형식:**
-
-```markdown
-## Proposed Issue Breakdown
-
-단일 작업으로 한 PR 범위. Epic/Story/Sub-task 트리 대신 작업 1건으로 등록한다.
-
-- **작업**: <한 줄 요약>
-  - 범위: <변경 파일/모듈 한 줄>
-  - 검증: <측정 가능한 완료 기준 한 줄>
-```
-
-**Tree 형식:**
-
-```markdown
-## Proposed Issue Breakdown
-
-- **Epic**: <에픽 1줄 요약>
-  - **Story 1**: <스토리 요약>
-    - Sub-task 1.1: <서브태스크 요약>
-    - Sub-task 1.2: <서브태스크 요약>
-  - **Story 2**: <스토리 요약>
-    - Sub-task 2.1: <서브태스크 요약>
-```
-
-공통 규칙:
-- 각 항목은 명사구 또는 동사구 한 줄 요약
-- 우선순위·의존성 추정은 선택. 명시할 수 있으면 `(blocks: ...)` 등으로 표기
-- Tree 형식 산출물은 `/jira-task create --from-requirements <경로>`로 Jira 일괄 등록 가능. Single 형식은 현재 import 파서가 받지 않으므로 `/jira-task create <자연어 힌트>` (default 모드)로 등록 — Step 6 Next 안내에 형식별 권장 명령을 출력한다.
+1. `breakdown-level.md`의 출력 템플릿 중 Step 4.5에서 확정된 레벨 1개를 골라 `Proposed Issue Breakdown` 섹션을 채운다.
+2. `Technical Approach Hint` 섹션을 채운다 — Codebase Context · Functional Requirements · Constraints를 입력으로 LLM이 합성. 코드 스니펫 금지. 항목: 핵심 구현 포인트 / 검토할 접근 옵션 / 주의 지점. `--lite`면 3-5줄 요약.
+3. Step 6 Next 안내는 확정 레벨에 따라 권장 명령을 분기 출력한다 (L1: `/jira-task create <힌트>`, L2/L3: `/jira-task create --from-requirements ...`).
 
 ### Step 6: Completion Summary
 
@@ -203,13 +177,13 @@ Step 4 합성 산출물(FR / Edge Cases / Out of Scope / Open Questions)을 사�
 - 요구사항 문서 생성: `docs/requirements/<slug>.requirements.md`
 - 모드: default | lite | from | lite+from
 - 코드베이스 컨텍스트: <발췌 파일 N개> (또는 "관련 영역 미발견")
-- 이슈 분해 제안: <Tree면 "에픽 1 + 스토리 N + 서브태스크 M" / Single이면 "단일 작업 1건">
+- 이슈 분해 제안: <L1: "단일 작업 1건" / L2: "스토리 1 + 서브태스크 N" / L3: "에픽 1 + 스토리 N + 서브태스크 M">
 
 **Progress**: **discover ✓** → create → init → start → plan → design → impl → test → review → merge → pr → done
 
-**Next**:
-- Tree 형식: `/jira-task create --from-requirements docs/requirements/<slug>.requirements.md` — 이 분석서로 Jira 이슈를 일괄 등록합니다
-- Single 형식: `/jira-task create <한 줄 힌트>` — 분석서를 참고로 Jira 작업 1건을 등록합니다 (import 파서가 Single을 아직 못 받음)
+**Next** (Step 5에서 확정된 분해 레벨에 따라 1줄 출력):
+- L1 Single: `/jira-task create <한 줄 힌트>` — 분석서를 참고로 Jira 작업 1건을 등록합니다 (import 파서가 Single을 아직 못 받음)
+- L2 Story+Subtasks / L3 Epic+Stories+Subtasks: `/jira-task create --from-requirements docs/requirements/<slug>.requirements.md` — 이 분석서로 Jira 이슈를 일괄 등록합니다
 ---
 ```
 
