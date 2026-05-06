@@ -155,12 +155,17 @@ Epic 연결 여부, Labels, Components, Assignee를 배치 질문.
 
 Preview 출력 **직전**에 모든 노드 summary를 일괄 JQL로 중복 검사. 일치 시 `## Duplicate Warning` 블록 포함.
 
+`breakdownLevel`(`L1` | `L2` | `L3`)을 Preview 상단에 1줄로 명시한다.
+
 ```
 📦 생성 예정 이슈 (import)
 
 Source: docs/requirements/<slug>.requirements.md
+Breakdown Level: <L1 Single | L2 Story-only | L3 Epic+Stories+Subtasks>
 
-## Epic / ## Stories (N개) / ## Sub-tasks (M개) / ## Issue Links (K개)
+# L1: ## Task (단건)
+# L2: ## Story / ## Sub-tasks (M개) / ## Issue Links (K개)
+# L3: ## Epic / ## Stories (N개) / ## Sub-tasks (M개) / ## Issue Links (K개)
 ```
 
 **최종 확인 (`AskUserQuestion`):** `생성 진행` / `수정` / `취소`
@@ -169,22 +174,29 @@ Source: docs/requirements/<slug>.requirements.md
 
 > 모드별 호출 시퀀스:
 > - **default**: 6-1 (Parent) → 6-2 (Epic 연결 검증) → 6-3 (Subtask 루프) → 6-4 (링크) → 6-5 (검증)
-> - **import**: 6-1 (Epic 생성) → 6-2 **skip** → 6-1b (Story 루프) → 6-3 (Subtask 루프) → 6-4 (링크) → 6-5 (검증)
+> - **import L1 Single**: 6-1 (Task 단건) → 6-5 (검증). 6-1b/6-3/6-4 skip.
+> - **import L2 Story-only**: 6-1b (Story 1건, parent 없음) → 6-3 (Subtask 루프) → 6-4 (링크) → 6-5 (검증). 6-1/6-2 skip (Epic 생성·연결 없음).
+> - **import L3 Tree**: 6-1 (Epic 생성) → 6-2 **skip** → 6-1b (Story 루프) → 6-3 (Subtask 루프) → 6-4 (링크) → 6-5 (검증).
 
-**6-1. 상위 이슈 생성**
+**6-1. 상위 이슈 생성 (default 또는 import L1/L3에서 호출)**
 
-`additional_fields`는 **JSON 문자열**로 직렬화. priority/labels/epic_key를 dict에 조립 후 `json.dumps()`.
+`additional_fields`는 **JSON 문자열**로 직렬화. priority/labels/epic_key를 dict에 조립 후 `json.dumps()`. priority 기본값은 `Medium` (`from-requirements-mode.md` Step 1.5-5의 추출 규칙과 동일).
 
-폴백 규칙 (mcp-schema.md 참고):
-- Epic 타입 실패 → `Task` + label `epic-substitute`
-- Story 타입 실패 → `Task` + parent=Epic-KEY
-- Subtask 타입 실패 → `Task` + parent=Story-KEY
+폴백 규칙은 호출 모드별로 발동 케이스가 다르다 — `from-requirements-mode.md`의 Tree→Issue Mapping 표가 단일 진실. 본 절은 요약만 둔다:
+
+- **default / import L1**: Task 또는 Story 타입 시도. Story 실패 → `Task` (default 모드는 + `parent=Epic-KEY` if epic-link, L1은 parent 없음).
+- **import L3 Epic 생성**: Epic 타입 실패 → `Task` + label `epic-substitute`.
+- **Subtask 타입 실패**: `Task` + `parent=Story-KEY` (6-3 영역 — 본 절 비대상).
+- **import L2 Story 생성**: 본 절이 아니라 6-1b가 담당 (Epic 부재로 parent 생략).
 
 폴백 사용 시 사용자에게 즉시 알린다.
 
 **6-1b. Story 생성 루프 (★ import 모드 전용)**
 
-각 Story에 `parent = epic.created_key` 설정. 생성 직후 `(story.index → story.created_key)` 누적.
+- **L3 Tree**: 각 Story에 `parent = epic.created_key` 설정. 폴백: `Story` 실패 → `Task` + `parent=Epic-KEY`.
+- **L2 Story-only**: Story 1건만 생성. `parent`는 설정하지 않음(Epic 부재). 폴백: `Story` 실패 → `Task` (parent 없음).
+
+생성 직후 `(story.index → story.created_key)` 누적.
 
 **6-2. 에픽 연결 검증 (default 모드 전용)**
 
@@ -239,10 +251,11 @@ Source: docs/requirements/<slug>.requirements.md
 | E3 | 빈 파일 | 에러 + 종료 |
 | E4 | `Proposed Issue Breakdown` 섹션 부재 | 자연어 모드 폴백 제안 (`AskUserQuestion`) |
 | E5 | 트리 노드 0개 | 보강 입력 요청 또는 종료 |
-| E6 | Epic 없이 Story만 존재 | 기본 Epic 자동 생성 + confirm |
+| E6 | Epic 없이 Story만 존재 | **L2 Story-only로 진행** (자동 Epic 생성하지 않음) |
 | E7 | sibling 외 `(blocks: ...)` 참조 | 해당 링크 skip + 경고 |
 | E8 | 동일 summary 이슈 존재 | Preview에 `## Duplicate Warning` + 진행/취소 confirm |
 | E9 | Epic/Story 타입 비활성 | Task + parent 또는 + label `epic-substitute` 폴백, 즉시 알림 |
 | E10 | 트리 들여쓰기 혼용 | 경고 + 첫 자식 기준 진행 (불가 시 종료) |
+| E11 | 루트 노드 토큰 식별 실패 (`작업`/`Story`/`Epic` 어느 쪽도 아님) | 자연어 모드 폴백 제안 (`AskUserQuestion`) |
 
 **Non-goals**: worktree/branch 생성, `.jira-context.json` 수정, 구현/테스트/리뷰 수행, 기존 이슈 수정.
