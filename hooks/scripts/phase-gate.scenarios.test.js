@@ -118,17 +118,16 @@ const INIT_PAYLOAD = () => ({
   tool_input: { skill: 'jira-integration:jira-task-init', args: '' },
 });
 
-// Scenario 1 — design 없이 impl 호출 → 차단
-runScenario('1. block: impl without design', () => {
+// Scenario 1 — approach 없이 impl 호출 → 차단
+runScenario('1. block: impl without approach', () => {
   const fx = makeFixture({
     taskId: 'TEST-1',
-    completedSteps: ['init', 'start', 'plan'],
-    artifacts: ['docs/plan/TEST-1.plan.md'],
+    completedSteps: ['init', 'start'],
   });
   try {
     const r = runGate(IMPL_PAYLOAD('TEST-1'), { cwd: fx.dir });
     assert(r.status === 2, `expected exit 2, got ${r.status}; stderr=${preview(r.stderr)}`);
-    assert(r.stderr.includes('design'), `stderr should mention 'design'; got=${preview(r.stderr)}`);
+    assert(r.stderr.includes('approach'), `stderr should mention 'approach'; got=${preview(r.stderr)}`);
     let parsed;
     try {
       parsed = JSON.parse(r.stdout);
@@ -143,11 +142,11 @@ runScenario('1. block: impl without design', () => {
 });
 
 // Scenario 2 — 정상 순서 호출 → 통과
-runScenario('2. pass: impl with design satisfied', () => {
+runScenario('2. pass: impl with approach satisfied', () => {
   const fx = makeFixture({
     taskId: 'TEST-2',
-    completedSteps: ['init', 'start', 'plan', 'design'],
-    artifacts: ['docs/plan/TEST-2.plan.md', 'docs/design/TEST-2.design.md'],
+    completedSteps: ['init', 'start', 'approach'],
+    artifacts: ['docs/approach/TEST-2.approach.md'],
   });
   try {
     const r = runGate(IMPL_PAYLOAD('TEST-2'), { cwd: fx.dir });
@@ -167,8 +166,7 @@ runScenario(
   () => {
     const fx = makeFixture({
       taskId: 'TEST-3',
-      completedSteps: ['init', 'start', 'plan'],
-      artifacts: ['docs/plan/TEST-3.plan.md'],
+      completedSteps: ['init', 'start'],
     });
     try {
       const r = runGate(IMPL_PAYLOAD('TEST-3'), { cwd: fx.dir, env: { JIRA_PHASE_GATE_BYPASS: '1' } });
@@ -186,8 +184,7 @@ runScenario(
   () => {
     const fx = makeFixture({
       taskId: 'TEST-3b',
-      completedSteps: ['init', 'start', 'plan'],
-      artifacts: ['docs/plan/TEST-3b.plan.md'],
+      completedSteps: ['init', 'start'],
       extraContext: { bypassGate: true },
     });
     try {
