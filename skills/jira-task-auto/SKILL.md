@@ -44,6 +44,7 @@ allowed-tools:
 건너뛸 단계: <이미 완료된 단계 목록 또는 "없음">
 
 각 단계를 독립 sub-agent로 순차 실행합니다 (모델 차등 적용).
+PDCA 권고는 자동 적용됩니다 — 변경하려면 auto 종료 후 단계별로 실행하세요.
 ```
 
 ### Step 1.5: start 권고 반영 (PDCA 스킵)
@@ -168,7 +169,7 @@ review sub-agent 완료 후 `.jira-context.json`을 `Read`로 읽어 `completedS
 | matchRate ≥ 70% **그리고** Critical count < 3 | **Trivial fix** | 기존 fix loop 진입 (최대 2회) |
 | 위 두 신호 추출 실패 (parse error) | 기존 동작 보존 | fix loop 진입 (fail-safe) |
 
-**근거**: scope shortfall 분기 근거는 `Read skills/jira-task-auto/refs/review-wrapper.md` (Scope Shortfall 섹션) 참조.
+> **임계값 70% / 3건 근거**: `skills/jira-task-auto/refs/review-wrapper.md` "Scope Shortfall 분기 근거" 섹션 — 관측 분포 기반 휴리스틱. 자세한 분기 근거는 동 파일 참조.
 
 #### Scope Shortfall Bail (즉시 중단)
 
