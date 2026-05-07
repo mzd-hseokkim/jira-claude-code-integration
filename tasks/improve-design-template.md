@@ -1,9 +1,11 @@
 # Design 템플릿 보강 계획
 
-- **Status**: Draft
+> **DEPRECATED (2026-05-07, MAE-358)**: Phase 2 (MAE-350)에서 plan/design이 `approach`로 통합되어 본 보강안은 의미를 잃었다. Key Decisions / Plan Inputs / Open Items 게이트 요구사항은 `templates/approach.template.md`에 흡수되었다. 역사적 참고용으로만 남겨둠.
+
+- **Status**: Deprecated (was: Draft)
 - **Created**: 2026-04-29
-- **Target file**: `templates/design.template.md`, `skills/jira-task-design/SKILL.md`
-- **Related**: `tasks/improve-plan-template.md` (선행 작업 — v0.18.0에서 plan에 Source Requirements / Open Items 신설됨)
+- **Target file**: `templates/design.template.md`, `skills/jira-task-design/SKILL.md` *(both removed in MAE-358)*
+- **Related**: `tasks/improve-plan-template.md` (선행 작업 — v0.18.0에서 plan에 Source Requirements / Open Items 신설됨; 본 작업과 함께 deprecated)
 
 ## 배경
 
