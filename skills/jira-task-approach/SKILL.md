@@ -82,6 +82,23 @@ requirements 파일이 없으면 Step 3에서 `Source` 섹션을 `N/A — discov
 
 레벨별 출력 템플릿은 `Read skills/jira-task-approach/refs/level-templates.md` 후 해당 레벨 블록만 사용한다.
 
+#### 3.0 L3 Empty-Child Guard
+
+레벨이 **L3**일 때만 적용. Step 1에서 fetch/cache한 `cachedIssue`의 `subtasks` + `issuelinks`(`is blocked by` 역방향 포함)를 합쳐 child Story 후보 수를 센다. 0건이면 빈 시퀀싱 표만 만들어지므로 **여기서 조기 종료**한다.
+
+- 사용자에게 안내 출력:
+
+  ```
+  ⚠️  L3 Epic의 child Story가 0건입니다.
+  먼저 `/jira-task create` 또는 Jira에서 child issue를 분해 등록한 뒤 다시 실행하세요.
+  ```
+
+- 문서 생성/Jira 코멘트/첨부 모두 **건너뛴다**.
+- `.jira-context.json`의 `completedSteps`에 `"approach"`를 **추가하지 않는다** (실행되지 않은 것으로 간주).
+- 정상 종료(에러 아님). 후속 Step 3.1~5는 수행하지 않는다.
+
+L1/L2 또는 child 1건 이상의 L3는 본 가드를 통과하여 3.1로 진입한다.
+
 #### 3.1 디렉토리 + 베이스 템플릿 복사
 
 ```bash
