@@ -22,7 +22,7 @@ Parse the user's argument to determine the action and task ID, then execute the 
 
 The argument format is: `[action] [TASK-ID 또는 힌트]`
 
-- **action**: One of `create`, `discover`, `init`, `start`, `approach`, `impl`, `test`, `review`, `pr`, `merge`, `done`, `report`, `status`, `auto`, `clean`
+- **action**: One of `create`, `discover`, `init`, `start`, `approach`, `impl`, `test`, `review`, `pr`, `merge`, `done`, `report`, `status`, `auto`, `clean`. `plan`/`design`은 `approach`의 deprecated alias로 허용된다 (자동 라우팅).
 - **TASK-ID**: Jira issue key (e.g., `PROJ-123`). Optional — if omitted, auto-detect from context. Not required for `create`, `discover`, `init`, `report`, `status`.
 - For `create`, any text after the action is treated as an initial hint (자연어 설명) and passed to the skill as-is.
 - For `discover`, any text after the action (자연어 주제) 및 `--lite`, `--from <파일경로>` 등의 플래그는 원문 그대로 스킬에 위임된다.
@@ -91,6 +91,18 @@ Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-start", args: 
 Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-approach", args: "<TASK-ID>" })`
 
 기존 `plan` + `design` 두 단계를 단일 단계로 통합한 level-aware approach 문서를 생성한다 (L1/L2/L3).
+
+### `plan <TASK-ID>` / `design <TASK-ID>` (deprecated alias)
+
+`plan`과 `design`은 MAE-350에서 `approach`로 통합되었다. 호출 시 deprecation 안내를 1회 출력한 뒤 approach 스킬로 자동 라우팅한다.
+
+먼저 다음 메시지를 사용자에게 출력:
+
+```
+⚠️ deprecated: `plan`/`design`은 `approach`로 통합되었습니다 (MAE-350). 자동으로 `/jira-task approach <TASK-ID>`로 라우팅합니다.
+```
+
+그 다음: `Skill({ skill: "jira-integration:jira-task-approach", args: "<TASK-ID>" })`
 
 ### `impl <TASK-ID>`
 Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-impl", args: "<TASK-ID>" })`

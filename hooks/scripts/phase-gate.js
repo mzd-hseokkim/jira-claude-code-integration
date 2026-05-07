@@ -94,8 +94,17 @@ function validate(phase, config, context, contextDir) {
   const completedSteps = Array.isArray(context.completedSteps)
     ? context.completedSteps
     : [];
+  // MAE-357 migration: legacy plan+design completed counts as approach satisfied.
+  const effectiveSteps = completedSteps.slice();
+  if (
+    completedSteps.includes('plan') &&
+    completedSteps.includes('design') &&
+    !effectiveSteps.includes('approach')
+  ) {
+    effectiveSteps.push('approach');
+  }
   const requires = Array.isArray(rule.requires) ? rule.requires : [];
-  const missingPhases = requires.filter((p) => !completedSteps.includes(p));
+  const missingPhases = requires.filter((p) => !effectiveSteps.includes(p));
   if (missingPhases.length > 0) {
     return {
       ok: false,
@@ -113,7 +122,15 @@ function validate(phase, config, context, contextDir) {
       if (!a || typeof a.fileGlob !== 'string') continue;
       const replaced = a.fileGlob.replace(/\{TASK_ID\}/g, taskId);
       const abs = path.resolve(contextDir, replaced);
-      if (!fs.existsSync(abs)) missingArtifacts.push(replaced);
+      if (fs.existsSync(abs)) continue;
+      // MAE-357 migration: accept legacy plan.md + design.md when approach.md missing.
+      const isApproachDoc = /docs[\\/]approach[\\/].+\.approach\.md$/.test(replaced);
+      if (isApproachDoc) {
+        const planLegacy = path.resolve(contextDir, `docs/plan/${taskId}.plan.md`);
+        const designLegacy = path.resolve(contextDir, `docs/design/${taskId}.design.md`);
+        if (fs.existsSync(planLegacy) && fs.existsSync(designLegacy)) continue;
+      }
+      missingArtifacts.push(replaced);
     }
     if (missingArtifacts.length > 0) {
       return {

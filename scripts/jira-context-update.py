@@ -3,6 +3,11 @@
 
 Usage:
     python3 scripts/jira-context-update.py <TASK-ID> <step> <status> <ctx-file> [<ctx-file>...]
+    python3 scripts/jira-context-update.py --migrate-approach <ctx-file> [<ctx-file>...]
+
+The --migrate-approach mode is a one-shot migration (MAE-357): for each task
+that has both 'plan' and 'design' in completedSteps but is missing 'approach',
+inserts 'approach' after the later of the two. No-op if already migrated.
 
 Args:
     TASK-ID    Jira issue key (e.g. MAE-279).
@@ -85,7 +90,42 @@ def update_context(ctx_file: str, task_id: str, step: str, status: str, ts: str)
     return f"worktree updated: {ctx_file}"
 
 
+def _migrate_target(t: dict) -> bool:
+    """MAE-357 one-shot: insert 'approach' after plan+design when missing."""
+    steps = t.get("completedSteps")
+    if not isinstance(steps, list):
+        return False
+    if "plan" in steps and "design" in steps and "approach" not in steps:
+        idx = max(steps.index("plan"), steps.index("design"))
+        steps.insert(idx + 1, "approach")
+        t["completedSteps"] = steps
+        return True
+    return False
+
+
+def migrate_approach(ctx_file: str) -> str:
+    if not os.path.isfile(ctx_file):
+        return f"missing: {ctx_file}"
+    with open(ctx_file, "r", encoding="utf-8") as f:
+        ctx = json.load(f)
+    migrated = 0
+    if isinstance(ctx.get("tasks"), list):
+        for t in ctx["tasks"]:
+            if _migrate_target(t):
+                migrated += 1
+    elif _migrate_target(ctx):
+        migrated = 1
+    if migrated:
+        with open(ctx_file, "w", encoding="utf-8") as f:
+            json.dump(ctx, f, indent=2, ensure_ascii=False)
+    return f"migrated {migrated} task(s): {ctx_file}"
+
+
 def main(argv: list[str]) -> int:
+    if len(argv) >= 3 and argv[1] == "--migrate-approach":
+        for ctx_file in argv[2:]:
+            print(migrate_approach(ctx_file))
+        return 0
     if len(argv) < 5:
         print(__doc__, file=sys.stderr)
         return 2
