@@ -53,11 +53,11 @@ start sub-agent 완료 후 응답 본문에 "PDCA 권고" 블록이 있으면, "
 규칙:
 - 스킵된 단계는 `completedSteps`에 추가하지 않는다 (실행한 게 아님).
 - 권고 블록이 없거나 "스킵 가능: 없음"이면 전 단계 정상 실행.
-- 사용자가 자연어("design은 넣어줘")로 권고를 뒤집으면 그대로 따른다 — 권고는 강제가 아니라 제안.
+- 사용자가 자연어("test는 넣어줘")로 권고를 뒤집으면 그대로 따른다 — 권고는 강제가 아니라 제안.
 
 출력 예 (스킵 시):
 ```
-⏭ design 스킵 (start 권고: 동작 변경 없는 텍스트 변경)
+⏭ test 스킵 (start 권고: 동작 변경 없는 텍스트 변경)
 ```
 
 ## Step 2: Sequential Execution
@@ -118,7 +118,7 @@ Jira task <TASK-ID>의 <단계명> 단계를 수행하라.
 - failureReason: <result=failed일 때만, 한 줄>
 ---
 
-산출물 본문(plan/design/test/review 문서 내용 등)을 부모에 그대로 출력하지 마라 — 부모 컨텍스트 오염 방지.
+산출물 본문(approach/test/review 문서 내용 등)을 부모에 그대로 출력하지 마라 — 부모 컨텍스트 오염 방지.
 ```
 
 review 단계 (general-purpose wrapper, **`[review-self-mode]` 마커 필수**):
