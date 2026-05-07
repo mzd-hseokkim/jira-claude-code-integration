@@ -139,6 +139,82 @@ test('V4: 모두 충족 → ok', () => {
   }
 });
 
+// ─── MAE-357 migration: legacy plan+design → approach ───────────────────
+
+test('MIG1: legacy plan+design completedSteps → impl requires.approach 충족', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'phase-gate-test-'));
+  try {
+    const planDir = path.join(tmp, 'docs/plan');
+    const designDir = path.join(tmp, 'docs/design');
+    fs.mkdirSync(planDir, { recursive: true });
+    fs.mkdirSync(designDir, { recursive: true });
+    fs.writeFileSync(path.join(planDir, 'T-1.plan.md'), '# plan');
+    fs.writeFileSync(path.join(designDir, 'T-1.design.md'), '# design');
+    const r = validate(
+      'impl',
+      baseConfig,
+      { completedSteps: ['start', 'plan', 'design'], taskId: 'T-1' },
+      tmp
+    );
+    assert.equal(r.ok, true);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('MIG2: plan만 completed (design 없음) → 마이그레이션 불충분, missing-requires', () => {
+  const r = validate(
+    'impl',
+    baseConfig,
+    { completedSteps: ['start', 'plan'], taskId: 'T-1' },
+    '/tmp'
+  );
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'missing-requires');
+  assert.deepEqual(r.requiredPhases, ['approach']);
+});
+
+test('MIG3: legacy plan.md+design.md만 (steps 없음) → artifact 충족', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'phase-gate-test-'));
+  try {
+    const planDir = path.join(tmp, 'docs/plan');
+    const designDir = path.join(tmp, 'docs/design');
+    fs.mkdirSync(planDir, { recursive: true });
+    fs.mkdirSync(designDir, { recursive: true });
+    fs.writeFileSync(path.join(planDir, 'T-1.plan.md'), '# plan');
+    fs.writeFileSync(path.join(designDir, 'T-1.design.md'), '# design');
+    // steps에 approach가 있다고 가정 — artifacts만 marker (legacy docs)
+    const r = validate(
+      'impl',
+      baseConfig,
+      { completedSteps: ['start', 'approach'], taskId: 'T-1' },
+      tmp
+    );
+    assert.equal(r.ok, true);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('MIG4: design.md만 (plan.md 없음) → artifact 마이그레이션 불충분', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'phase-gate-test-'));
+  try {
+    const designDir = path.join(tmp, 'docs/design');
+    fs.mkdirSync(designDir, { recursive: true });
+    fs.writeFileSync(path.join(designDir, 'T-1.design.md'), '# design');
+    const r = validate(
+      'impl',
+      baseConfig,
+      { completedSteps: ['start', 'approach'], taskId: 'T-1' },
+      tmp
+    );
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, 'missing-artifact');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 // ─── formatBlockMessage 메시지 갱신 ──────────────────────────────────────
 
 test('M1: 메시지에 새 우회 안내 두 줄 포함', () => {
