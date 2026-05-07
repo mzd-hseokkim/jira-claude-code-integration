@@ -15,7 +15,7 @@
 - `agents/` — 서브에이전트 정의 (예: jira-reviewer)
 - `hooks/` — phase-gate 훅 + 동기화 스크립트 (`hooks/hooks.json` 자동 로드)
 - `scripts/` — 공용 헬퍼 (`jira-attach.sh`, `jira-context-update.py`, dashboard 서버 등)
-- `templates/` — 문서 템플릿 (plan/design/test-report/report)
+- `templates/` — 문서 템플릿 (approach/test-report/review/report)
 - `tests/` — 플러그인 테스트
 - `docs/` — 내부 문서 (`mcp-atlassian-tools.md`, requirements/plan/design/test 산출물)
 
@@ -35,13 +35,13 @@
 
 - **Markdown for Jira comments**: Jira 코멘트는 마크다운으로 작성.
 
-- **Cache-First Fetch** (design/impl/test/review/done): 호출 직전 `.jira-context.json`의 `cachedIssue`를 먼저 확인.
+- **Cache-First Fetch** (approach/impl/test/review/done): 호출 직전 `.jira-context.json`의 `cachedIssue`를 먼저 확인.
   1. `cachedIssue.key === <TASK-ID>`면 그 값 사용 → `jira_get_issue` 호출 **생략**.
   2. miss면 본래 fields/comment_limit으로 fetch 후 `cachedIssue` 갱신.
   3. 강제 새로고침은 사용자가 `cachedIssue`를 수동 삭제.
 
 - **공용 스크립트 lookup**: 워크트리 cwd에서는 플러그인 `scripts/`가 직접 보이지 않으므로 호출 직전 lookup으로 절대 경로를 결정한다. 단일 출처: `skills/_shared/script-lookup.md`. 각 스킬은 호출 직전 그 파일을 Read한 뒤 `SCRIPT_NAME` / `OUT_VAR`를 셋업하고 lookup 블록을 실행.
-  - `jira-attach.sh` (plan/design/test/review): Jira 첨부 업로드. 못 찾으면 첨부만 스킵, 워크플로 진행.
+  - `jira-attach.sh` (approach/test/review): Jira 첨부 업로드. 못 찾으면 첨부만 스킵, 워크플로 진행.
   - `jira-context-update.py` (merge/done): worktree-local + aggregate `.jira-context.json` 두 개의 `completedSteps`/`status`/`<step>At`/`cachedIssue` 갱신.
     호출: `python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> <step> <status> <ctx-file> [<ctx-file>...]`.
   - 그 외: `propagate-mcp-config.sh`(init), `append-review-log-wrapper.sh`(review), `cleanup-worktree-mcp.py`(done).
@@ -50,10 +50,10 @@
 
 - **Context 파일**: 활성 작업 컨텍스트는 `.jira-context.json`(gitignored). 브랜치 패턴 `feature/<TASK-ID>`, 워크트리 위치 `../<project>_worktree/<TASK-ID>`.
 
-- **Progress 추적**: 각 스킬은 완료 시 `.jira-context.json`의 `completedSteps`에 자기 단계를 추가(중복 방지). 유효 단계: `discover`, `create`, `init`, `start`, `plan`, `design`, `impl`, `test`, `review`, `merge`, `pr`, `done`. `done`은 추가로 `status`를 `"Done"`으로 변경. Completion Summary의 Progress `✓`는 `completedSteps`에서 생성.
+- **Progress 추적**: 각 스킬은 완료 시 `.jira-context.json`의 `completedSteps`에 자기 단계를 추가(중복 방지). 유효 단계: `discover`, `create`, `init`, `start`, `approach`, `impl`, `test`, `review`, `merge`, `pr`, `done`. `done`은 추가로 `status`를 `"Done"`으로 변경. Completion Summary의 Progress `✓`는 `completedSteps`에서 생성. (`plan`/`design`은 MAE-350에서 `approach`로 통합되어 제거됨; 기존 task의 stale 흔적은 마이그레이션 로직이 처리.)
 
-- **Design 문서에 코드 스니펫 금지** (토큰 낭비).
+- **Approach 문서에 코드 스니펫 금지** (토큰 낭비).
 
 ## JIRA_DEFAULT_PROJECT Scoping Rule
 
-`JIRA_DEFAULT_PROJECT` 환경변수가 설정되어 있으면 **모든 JQL에 `project = <JIRA_DEFAULT_PROJECT>` 조건을 반드시 포함**. 스프린트/에픽 하위/관련 이슈 검색 등 예외 없음. init/plan/report 등 JQL 쓰는 모든 스킬에 적용 (mcp-atlassian의 `JIRA_PROJECTS_FILTER`와 별개의 플러그인 자체 규칙).
+`JIRA_DEFAULT_PROJECT` 환경변수가 설정되어 있으면 **모든 JQL에 `project = <JIRA_DEFAULT_PROJECT>` 조건을 반드시 포함**. 스프린트/에픽 하위/관련 이슈 검색 등 예외 없음. init/report 등 JQL 쓰는 모든 스킬에 적용 (mcp-atlassian의 `JIRA_PROJECTS_FILTER`와 별개의 플러그인 자체 규칙).

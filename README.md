@@ -13,7 +13,7 @@
 
 ## Why This Plugin?
 
-Most Jira + AI tools stop at CRUD (read/create/update issues). This plugin automates the **entire development lifecycle**: planning → design → implementation → testing → review → PR → done, with every step synced back to Jira automatically.
+Most Jira + AI tools stop at CRUD (read/create/update issues). This plugin automates the **entire development lifecycle**: approach → implementation → testing → review → PR → done, with every step synced back to Jira automatically.
 
 | | **This Plugin** | Atlassian Official AI | netresearch/jira-skill |
 |---|:---:|:---:|:---:|
@@ -21,8 +21,8 @@ Most Jira + AI tools stop at CRUD (read/create/update issues). This plugin autom
 | Full PDCA lifecycle | ✅ | ❌ code gen only | ❌ CRUD only |
 | Multi-worktree batch setup | ✅ | ❌ | ❌ |
 | Auto Jira status transitions | ✅ | ✅ | manual |
-| Plan / Design / Test docs | ✅ | ❌ | ❌ |
-| Design-Impl gap analysis | ✅ | ❌ | ❌ |
+| Approach / Test docs | ✅ | ❌ | ❌ |
+| Approach-Impl gap analysis | ✅ | ❌ | ❌ |
 | Iterative review (auto-fix + retry) | ✅ | ❌ | ❌ |
 | Progress tracking across sessions | ✅ | ❌ | ❌ |
 
@@ -35,9 +35,8 @@ graph LR
     DSC["/jira-task discover\nTopic → requirements doc"] -.-> N["/jira-task create\nNew issue + sub-tasks"]
     N -.-> A["/jira-task init\nBatch worktree setup"]
     A --> B["/jira-task start\nIn Progress"]
-    B --> C["/jira-task plan\nPlanning doc"]
-    C --> D["/jira-task design\nDesign doc"]
-    D --> E["/jira-task impl\nImplement"]
+    B --> C["/jira-task approach\nApproach doc (L1/L2/L3)"]
+    C --> E["/jira-task impl\nImplement"]
     E --> F["/jira-task test\nE2E + unit tests"]
     F --> G["/jira-task review\nGap analysis + review"]
     G --> H["/jira-task merge\nLocal merge"]
@@ -55,7 +54,7 @@ graph LR
 
 > **Discover (optional first step)**: `/jira-task discover "<topic>"` turns a free-form topic into a structured `docs/requirements/<slug>.requirements.md`, which `/jira-task create --from-requirements <file>` can then consume to bulk-register Epic/Story/Sub-tasks.
 
-> **Shortcut**: `/jira-task auto <ID>` runs `start → plan → design → impl → test → review` automatically. Each step runs as an isolated sub-agent, and already-completed steps are skipped. If review fails, it auto-fixes and retries (up to 2×).
+> **Shortcut**: `/jira-task auto <ID>` runs `start → approach → impl → test → review` automatically. Each step runs as an isolated sub-agent, and already-completed steps are skipped. If review fails, it auto-fixes and retries (up to 2×).
 
 Each step automatically posts a comment and/or attachment to the Jira issue and transitions its status.
 
@@ -70,7 +69,7 @@ Each step automatically posts a comment and/or attachment to the Jira issue and 
 - **Silent-skip guard**: re-fetches created issues to verify priority/labels actually landed (unknown `additional_fields` keys are otherwise dropped with only a warning).
 
 **Auto Mode** *(v0.9.0)*
-`/jira-task auto PROJ-123` runs the full `start → plan → design → impl → test → review` pipeline automatically.
+`/jira-task auto PROJ-123` runs the full `start → approach → impl → test → review` pipeline automatically.
 - **Sub-agent isolation**: Each step runs as an independent sub-agent, preventing context pollution between stages.
 - **Iterative review**: When review finds issues (gap analysis or code quality), auto-fix → test → review retries up to 2 times before stopping.
 - **Smart resume**: Already-completed steps are skipped based on `.jira-context.json`.
@@ -83,7 +82,7 @@ Each step automatically posts a comment and/or attachment to the Jira issue and 
 `/jira-task init` supports three argument modes: count (`init 5` — bulk setup), issue key (`init PROJ-123` — sub-task analysis), or natural language (`init "auth 관련 작업"` — filtered search). Creates isolated git worktrees for each task.
 
 **Document Auto-generation**
-Generates requirements / plan / design / test report / review / PR description documents from dedicated templates under `templates/`, then immediately posts them as Jira attachments and comments via `scripts/jira-attach.sh`. No copy-paste required.
+Generates requirements / approach / test report / review / PR description documents from dedicated templates under `templates/`, then immediately posts them as Jira attachments and comments via `scripts/jira-attach.sh`. No copy-paste required.
 
 **Reviewer Calibration Log** *(v0.22.x)*
 Each `/jira-task review` run appends a structured entry to `docs/review-log/` (redacted per the project's policy). `scripts/analyze-review-log.py` aggregates pass/fail rates and recurring findings over time so reviewer behavior doesn't silently drift toward self-praise.
@@ -91,13 +90,13 @@ Each `/jira-task review` run appends a structured entry to `docs/review-log/` (r
 **Status Transition Automation**
 `start` → In Progress, `merge` → In Review, `done` → Done. Jira stays up to date without opening a browser.
 
-**Design-Impl Gap Analysis**
-`/jira-task review` compares your design document against actual code changes and flags discrepancies alongside code quality issues.
+**Approach-Impl Gap Analysis**
+`/jira-task review` compares your approach document against actual code changes and flags discrepancies alongside code quality issues.
 
 **Session Continuity**
 Progress is tracked in `.jira-context.json`. Reopen Claude Code anytime and see exactly where you left off:
 ```
-Progress: init ✓ → start ✓ → plan ✓ → design → impl → test → review → merge → pr → done
+Progress: init ✓ → start ✓ → approach ✓ → impl → test → review → merge → pr → done
 ```
 
 ---
@@ -141,13 +140,12 @@ claude
 
 # 5a. Auto mode — run the full pipeline in one command
 > cd ../your-project_worktree/PROJ-123
-> /jira-task auto       # start → plan → design → impl → test → review
+> /jira-task auto       # start → approach → impl → test → review
 
 # 5b. Or step-by-step (TASK-ID is auto-detected from branch/directory)
 > /jira-task start      # Transition to In Progress
-> /jira-task plan       # Generate planning doc
-> /jira-task design     # Generate design doc
-> /jira-task impl       # Implement based on design
+> /jira-task approach   # Generate approach doc (L1/L2/L3)
+> /jira-task impl       # Implement based on approach
 > /jira-task test       # Run tests + post report to Jira
 > /jira-task review     # Gap analysis + code review
 > /jira-task merge      # Merge locally (choose strategy)
@@ -228,9 +226,8 @@ claude
 | `/jira-task init [N\|KEY\|desc]` | main repo | Fetch tasks + create worktrees (count, issue key, or natural language) |
 | `/jira-task auto <ID>` | worktree | **Auto-run full pipeline** with sub-agent isolation + iterative review |
 | `/jira-task start [ID]` | worktree | Start task (branch, In Progress) |
-| `/jira-task plan [ID]` | worktree | Generate `docs/plan/<ID>.plan.md` |
-| `/jira-task design [ID]` | worktree | Generate `docs/design/<ID>.design.md` |
-| `/jira-task impl [ID]` | worktree | Implement based on design doc |
+| `/jira-task approach [ID]` | worktree | Generate `docs/approach/<ID>.approach.md` (L1/L2/L3 level-aware; replaces plan+design) |
+| `/jira-task impl [ID]` | worktree | Implement based on approach doc |
 | `/jira-task test [ID]` | worktree | Run tests + post report to Jira |
 | `/jira-task review [ID]` | worktree | Gap analysis + code review → Jira |
 | `/jira-task merge [ID]` | worktree | Merge locally (strategy: ff/squash/rebase) |
@@ -278,8 +275,7 @@ jira-claude-code-integration/
 │   │   └── refs/                # issue-key-mode / worktree-creation
 │   ├── jira-task-auto/          # auto-run full pipeline
 │   ├── jira-task-start/
-│   ├── jira-task-plan/
-│   ├── jira-task-design/
+│   ├── jira-task-approach/      # level-aware approach doc (replaces plan+design)
 │   ├── jira-task-impl/
 │   ├── jira-task-test/
 │   ├── jira-task-review/        # heavy logic extracted to scripts/append-review-log.py
@@ -313,8 +309,7 @@ jira-claude-code-integration/
 │
 ├── templates/                   # Document templates per workflow step
 │   ├── requirements.template.md
-│   ├── plan.template.md
-│   ├── design.template.md
+│   ├── approach.template.md
 │   ├── test-report.template.md
 │   ├── review.template.md
 │   ├── pr-description.template.md
@@ -323,7 +318,7 @@ jira-claude-code-integration/
 ├── docs/                        # Plugin reference docs
 │   ├── mcp-atlassian-tools.md   # Tool reference for the Atlassian MCP server
 │   └── review-log/              # Review log schema + sample entries
-│                                # (PDCA outputs plan/design/test/review/
+│                                # (PDCA outputs approach/test/review/
 │                                #  requirements are gitignored as
 │                                #  per-task artifacts)
 │
@@ -345,7 +340,7 @@ jira-claude-code-integration/
 
 **왜 비활성화 상태인가**
 
-이 플러그인은 본래 "원하는 단계만 골라 쓰는 도구함"으로 설계되었습니다 (작은 fix는 plan/design 생략, 문서 작업은 impl 생략 등). phase-gate를 켜면 모든 인접 단계가 강제 선행 조건이 되어 이 유연성을 깨뜨립니다. 따라서 강제 선형 워크플로를 원하는 팀만 명시적으로 켤 수 있도록 비활성화 상태로 둡니다.
+이 플러그인은 본래 "원하는 단계만 골라 쓰는 도구함"으로 설계되었습니다 (작은 fix는 approach 생략, 문서 작업은 impl 생략 등). phase-gate를 켜면 모든 인접 단계가 강제 선행 조건이 되어 이 유연성을 깨뜨립니다. 따라서 강제 선형 워크플로를 원하는 팀만 명시적으로 켤 수 있도록 비활성화 상태로 둡니다.
 
 **활성화 방법**
 
@@ -509,7 +504,7 @@ PORT=9000 npm run dashboard              # override default port
 ### What you see on each card
 
 - **Header** — Jira task id (or directory name when no Jira context), issue type, **outlined status badge with leading dot** (Jira workflow status, distinct from agent activity), `⚙ N` cumulative tool calls in this session, `X분 전` last activity, and badges for `⏵ 응답 대기` / `stale` / `⛔ blocked × N`.
-- **SDLC stepper** — One chip per `/jira-task` step (init/start/plan/design/impl/test/review/merge/pr/done) coloured by `completedSteps` in `.jira-context.json`. Skipped intermediate steps after `done` are shown with strikethrough.
+- **SDLC stepper** — One chip per `/jira-task` step (init/start/approach/impl/test/review/merge/pr/done) coloured by `completedSteps` in `.jira-context.json`. Skipped intermediate steps after `done` are shown with strikethrough.
 - **Activity panel** — Last prompt, **Last response (final concluding line of Claude's reply)**, current tool-in-flight, sub-agent indicator, and a blocked flag. Prompt/response signals are persisted on the server independent of the activity ring buffer so they survive long tool-call bursts.
 - **Issue links** — Below the meta row, `blocks` / `blocked by` chips show related issue keys. Open blockers are highlighted; resolved ones are struck through.
 - **Card border state**:
@@ -571,7 +566,7 @@ Log file: `<workspaceRoot>/logs/dashboard-server.log`
 - [x] Dashboard worktree cleanup button: in-card `🗑 정리` floating action for stale worktrees, with safety guards on the backend `POST /cleanup` *(v0.30.x)*
 - [ ] Bitbucket Cloud + GitLab MR support for `/jira-task pr`
 - [ ] Jira Server / Data Center (Personal Access Token)
-- [ ] Sub-task auto-creation from design doc task breakdown
+- [ ] Sub-task auto-creation from approach doc task breakdown
 - [ ] Time tracking: auto-log work sessions to Jira
 - [ ] CI/CD result posting (GitHub Actions, Bitbucket Pipelines)
 - [ ] Slack / Teams notifications on PR creation and task completion
@@ -628,9 +623,9 @@ Hook 흐름: `hooks/hooks.json` → `hooks/scripts/dashboard-ingest.sh`(UserProm
 - `/jira-task init` — 숫자(`init 5`), 이슈 키(`init PROJ-123`), 자연어(`init "인증 관련"`) 세 가지 모드로 **worktree 일괄 생성** *(v0.7.0)*
 - **Auto 모드** (`/jira-task auto PROJ-123`): 각 단계를 **독립 sub-agent**로 실행하여 컨텍스트 오염 방지. review 미통과 시 **자동 수정 → 재테스트 → 재리뷰** 최대 2회 반복 *(v0.9.0)*
 - **설정 위자드** (`/jira setup`): 사전 요건 확인 → 자격증명 입력 → MCP 등록 → 연결 검증 대화형 안내 *(v0.6.0)*
-- 기획 → 설계 → 구현 → 테스트 → 리뷰 → PR → 완료까지 **전 단계 커맨드화**
+- 접근 설계(approach) → 구현 → 테스트 → 리뷰 → PR → 완료까지 **전 단계 커맨드화** (plan/design 두 단계는 v0.33.0에서 `approach`로 통합)
 - 각 단계 완료 시 **Jira 코멘트·첨부파일·상태 전이 자동 처리**
-- 설계 문서와 실제 구현 코드 간 **Gap 자동 분석**
+- approach 문서와 실제 구현 코드 간 **Gap 자동 분석**
 - **Reviewer Calibration Log** — 매 review 결과를 `docs/review-log/`에 누적하고 `scripts/analyze-review-log.py`로 통과율·반복 지적 패턴을 분석해 리뷰어 self-praise drift 방지 *(v0.22.x)*
 - `.jira-context.json`으로 **세션 간 진행 상황 자동 복원**
 

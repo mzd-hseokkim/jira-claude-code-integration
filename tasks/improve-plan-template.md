@@ -1,9 +1,11 @@
 # Plan 템플릿 보강 계획
 
-- **Status**: Draft
+> **DEPRECATED (2026-05-07, MAE-358)**: Phase 2 (MAE-350)에서 plan/design이 `approach`로 통합되어 본 보강안은 의미를 잃었다. 결정의 명시적 기록·양방향 trace 요구사항은 `templates/approach.template.md`에 흡수되었다. 역사적 참고용으로만 남겨둠.
+
+- **Status**: Deprecated (was: Draft)
 - **Created**: 2026-04-29
-- **Target file**: `templates/plan.template.md`
-- **Related templates**: `templates/requirements.template.md`, `templates/design.template.md`
+- **Target file**: `templates/plan.template.md` *(removed in MAE-358)*
+- **Related templates**: `templates/requirements.template.md`, `templates/design.template.md` *(design.template.md also removed in MAE-358)*
 
 ## 배경
 
