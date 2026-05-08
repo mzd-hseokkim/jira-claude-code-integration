@@ -2,7 +2,7 @@
 
 **[English]** | [한국어](#korean)
 
-[![Version](https://img.shields.io/badge/version-0.31.0-blue)](#)
+[![Version](https://img.shields.io/badge/version-0.34.0-blue)](#)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-orange)](https://docs.anthropic.com/en/docs/claude-code)
 [![MCP](https://img.shields.io/badge/MCP-mcp--atlassian-purple)](https://github.com/sooperset/mcp-atlassian)
@@ -258,7 +258,8 @@ jira-claude-code-integration/
 │
 ├── commands/
 │   ├── jira.md                  # /jira
-│   └── jira-task.md             # /jira-task (router)
+│   ├── jira-task.md             # /jira-task (router)
+│   └── dashboard.md             # /dashboard (alias of /jira dashboard)
 │
 ├── skills/                      # One SKILL.md per workflow step
 │   │                            # Heavy SKILLs use refs/ for split details:
@@ -266,7 +267,9 @@ jira-claude-code-integration/
 │   │                            #   on demand by Read, not into the system
 │   │                            #   prompt. See SKILL bodies for explicit
 │   │                            #   `Read skills/<name>/refs/...` calls.
+│   ├── _shared/                 # script-lookup.md 등 공용 스니펫
 │   ├── jira-setup/              # interactive setup wizard
+│   ├── jira-dashboard/          # /jira dashboard 라우팅 SKILL
 │   ├── jira-task-discover/      # topic → requirements doc
 │   │   └── refs/                # conflict-detection / synthesis-confirm / trace-markers
 │   ├── jira-task-create/        # interactive issue creation
@@ -291,21 +294,28 @@ jira-claude-code-integration/
 ├── hooks/                       # Session event hooks
 │   ├── hooks.json
 │   └── scripts/
-│       ├── session-start.js     # Show active task on startup
-│       ├── stop-sync.js         # Remind to sync Jira on exit
-│       ├── phase-gate.js        # Phase dependency hook (disabled by default)
+│       ├── session-start.js         # Show active task on startup
+│       ├── stop-sync.js             # Remind to sync Jira on exit
+│       ├── dashboard-ingest.sh      # Forward UserPromptSubmit/PreToolUse/PostToolUse/SubagentStop/Notification → POST /ingest
+│       ├── dashboard-ingest.test.sh # Unit test for dashboard-ingest.sh
+│       ├── stop-ingest.sh           # Forward Stop event (extracts last assistant text from transcript)
+│       ├── phase-gate.js            # Phase dependency hook (disabled by default)
 │       ├── phase-gate.config.json
 │       ├── phase-gate.test.js
 │       └── phase-gate.scenarios.test.js
 │
 ├── scripts/                     # Helper scripts invoked by skills
-│   ├── jira-attach.sh           # Upload attachments via Jira REST API
-│   ├── clean-worktree.py        # Worktree/branch cleanup helper
-│   ├── bulk-register-roadmap.py # One-off Epic/Story/Sub-task bulk-register
-│   ├── analyze-review-log.py    # Reviewer calibration log analyzer
-│   ├── append-review-log.py     # /jira-task review: append entry to review-log
-│   ├── propagate-mcp-config.sh  # /jira-task init: propagate MCP config to worktree
-│   └── review_log/              # Stored reviewer calibration entries
+│   ├── jira-attach.sh             # Upload attachments via Jira REST API
+│   ├── jira-context-update.py     # merge/done: completedSteps/status 동기화
+│   ├── clean-worktree.py          # Worktree/branch cleanup helper
+│   ├── cleanup-worktree-mcp.py    # done: worktree 단위 MCP config 정리
+│   ├── analyze-review-log.py      # Reviewer calibration log analyzer
+│   ├── append-review-log.py       # /jira-task review: append entry to review-log
+│   ├── append-review-log-wrapper.sh # review SKILL → append-review-log.py wrapper
+│   ├── propagate-mcp-config.sh    # /jira-task init: propagate MCP config to worktree
+│   ├── dashboard-control.sh       # /jira dashboard start/stop/status/setup 제어
+│   ├── dashboard/                 # Dashboard 서버 + React SPA 소스
+│   └── review_log/                # Stored reviewer calibration entries
 │
 ├── templates/                   # Document templates per workflow step
 │   ├── requirements.template.md
@@ -564,6 +574,9 @@ Log file: `<workspaceRoot>/logs/dashboard-server.log`
 - [x] SKILL bloat refactor: 4 heavy SKILLs (create/discover/init/review) compressed from 1,989 → 921 lines (-54%) via `skills/<name>/refs/` split + script extraction *(v0.24.0)*
 - [x] Dashboard graph view: react-flow + d3-force visualization of `blocks` / `parent` / `epic` relationships with hierarchical force layout, drag-to-pin, status/assignee filters, isolated/cycle highlighting *(v0.30.x — Epic MAE-249)*
 - [x] Dashboard worktree cleanup button: in-card `🗑 정리` floating action for stale worktrees, with safety guards on the backend `POST /cleanup` *(v0.30.x)*
+- [x] Plan + Design → unified `/jira-task approach` (level-aware L1/L2/L3 sizing) *(v0.33.0 — MAE-350)*
+- [x] L3 Epic empty-child sequencing guard for `/jira-task auto` (early exit + guidance) *(v0.34.0 — MAE-364)*
+- [x] Auto SKILL.md hygiene: Scope Shortfall 출처 trail + PDCA 자동 분기 안내 *(v0.34.0 — MAE-366)*
 - [ ] Bitbucket Cloud + GitLab MR support for `/jira-task pr`
 - [ ] Jira Server / Data Center (Personal Access Token)
 - [ ] Sub-task auto-creation from approach doc task breakdown
