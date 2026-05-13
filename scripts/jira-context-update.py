@@ -21,6 +21,8 @@ Args:
                `jira_transition_issue`) and passing the actual `fields.status.name`.
                Do NOT pass the transition target name (e.g. "Done") as-is, since the
                resulting status may differ ("완료", "검토중", etc. depending on workflow).
+               Pass "-" to keep the existing status fields untouched (used by
+               record-only steps like approach/impl/review that don't transition Jira).
     ctx-file   One or more .jira-context.json paths. Format auto-detected:
                - Aggregate: {"tasks": [...], ...}  → updates the matching tasks[i] entry.
                - Worktree:  {"taskId": ..., ...}   → updates top-level fields.
@@ -63,11 +65,14 @@ def _apply_step(target: dict, step: str, status: str, ts: str) -> None:
     if step not in steps:
         steps.append(step)
     target["completedSteps"] = steps
-    target["status"] = status
     target[f"{step}At"] = ts
+    keep_status = status == "-"
+    if not keep_status:
+        target["status"] = status
     ci = target.get("cachedIssue")
     if isinstance(ci, dict):
-        ci["status"] = status
+        if not keep_status:
+            ci["status"] = status
         ci["fetchedAt"] = ts
 
 

@@ -151,7 +151,17 @@ SCRIPT_NAME="jira-attach.sh" OUT_VAR="JIRA_ATTACH_SH"
 
 ### Step 5: Completion Summary
 
-`.jira-context.json`의 `completedSteps`에 `"approach"` 추가 (중복 방지) 후 출력:
+`skills/_shared/context-update.md` 패턴으로 worktree-local + aggregate `.jira-context.json`을 갱신 (approach는 Jira transition 없음 → `STATUS="-"`):
+
+```bash
+SCRIPT_NAME="jira-context-update.py" OUT_VAR="JIRA_CTX_UPDATE_PY"
+# Read skills/_shared/script-lookup.md and execute its lookup block here
+python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> approach "-" \
+    "<worktree>/.jira-context.json" \
+    "<repoRoot>/.jira-context.json"
+```
+
+이후 출력:
 
 ```
 ---

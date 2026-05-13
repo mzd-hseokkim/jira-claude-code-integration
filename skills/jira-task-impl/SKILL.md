@@ -73,7 +73,17 @@ Approach 문서가 없으면, Jira 이슈 설명과 Acceptance Criteria 기반�
 
 ### Step 4: Completion Summary
 
-`.jira-context.json`의 `completedSteps`에 `"impl"` 추가 후, 아래 형식으로 완료 요약 출력:
+`skills/_shared/context-update.md` 패턴으로 worktree-local + aggregate `.jira-context.json`을 갱신 (impl은 Jira transition 없음 → `STATUS="-"`):
+
+```bash
+SCRIPT_NAME="jira-context-update.py" OUT_VAR="JIRA_CTX_UPDATE_PY"
+# Read skills/_shared/script-lookup.md and execute its lookup block here
+python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> impl "-" \
+    "<worktree>/.jira-context.json" \
+    "<repoRoot>/.jira-context.json"
+```
+
+이후 아래 형식으로 완료 요약 출력:
 
 ```
 ---

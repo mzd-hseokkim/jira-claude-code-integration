@@ -130,7 +130,15 @@ Reviewed by jira-reviewer subagent (model: opus)
 
 ### Step 6: Completion Summary
 
-Approve 시 `.jira-context.json`의 `completedSteps`에 `"review"` 추가 (Request Changes 시 추가하지 않음).
+Approve 시에만 `skills/_shared/context-update.md` 패턴으로 worktree-local + aggregate `.jira-context.json`을 갱신 (review는 Jira transition 없음 → `STATUS="-"`). Request Changes 시 호출하지 않는다:
+
+```bash
+SCRIPT_NAME="jira-context-update.py" OUT_VAR="JIRA_CTX_UPDATE_PY"
+# Read skills/_shared/script-lookup.md and execute its lookup block here
+python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> review "-" \
+    "<worktree>/.jira-context.json" \
+    "<repoRoot>/.jira-context.json"
+```
 
 **Approve 시:**
 ```

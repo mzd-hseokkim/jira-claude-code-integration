@@ -184,7 +184,16 @@ shots=$(find test-results/ playwright-report/ -name "*.png" -type f 2>/dev/null)
 
 ### Step 6: Completion Summary
 
-테스트 통과 시 `.jira-context.json`의 `completedSteps`에 `"test"` 추가 (실패 시 추가하지 않음).
+테스트 통과 시에만 `skills/_shared/context-update.md` 패턴으로 worktree-local + aggregate `.jira-context.json`을 갱신 (test는 Jira transition 없음 → `STATUS="-"`). 실패 시 호출하지 않는다:
+
+```bash
+SCRIPT_NAME="jira-context-update.py" OUT_VAR="JIRA_CTX_UPDATE_PY"
+# Read skills/_shared/script-lookup.md and execute its lookup block here
+python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> test "-" \
+    "<worktree>/.jira-context.json" \
+    "<repoRoot>/.jira-context.json"
+```
+
 테스트 결과에 따라 분기하여 완료 요약 출력:
 
 **테스트 통과 시:**

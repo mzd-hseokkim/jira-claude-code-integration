@@ -124,17 +124,28 @@ Use `mcp__atlassian__jira_add_comment` with:
 - `issueKey`: The TASK-ID
 - `comment`: "브랜치 `feature/<TASK-ID>`에서 개발을 시작했습니다. 작업 디렉토리: `<worktree-path or branch>`"
 
-### Step 6: Patch Local Context (no full rewrite)
+### Step 6: Patch Local Context
 
-기존 `.jira-context.json`이 있으면 **patch 방식**으로 갱신 — 통째 rewrite 금지. 원칙:
+`skills/_shared/context-update.md` 패턴으로 worktree-local + aggregate 두 파일을 한 번에 갱신한다. LLM 인라인 JSON patch 금지 — 누락/덮어쓰기 사고 방지.
 
-- 기존 필드(`branch`, `worktreePath`, `baseBranch`, `repoRoot`, `summary`, `priority`, `initializedAt` 등)는 그대로 보존.
-- 추가/갱신: `status: "In Progress"`, `startedAt: <new Date().toISOString()>`, `cachedIssue: {...}` (Step 1에서 fetch했거나 이미 충분했던 캐시).
-- `completedSteps`: 기존 배열에 `"start"`만 append (이미 있으면 dedup).
+호출 직전 `skills/_shared/script-lookup.md`로 `JIRA_CTX_UPDATE_PY` 절대경로를 해석:
 
-파일이 없는 경우(fresh 모드)에만 새로 생성.
+```bash
+SCRIPT_NAME="jira-context-update.py" OUT_VAR="JIRA_CTX_UPDATE_PY"
+# Read skills/_shared/script-lookup.md and execute its lookup block here
+python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> start "<fresh-jira-status>" \
+    "<worktree>/.jira-context.json" \
+    "<repoRoot>/.jira-context.json"
+```
 
-워크트리 디렉토리와 원본 레포 양쪽에 동일한 patch 적용. **모든 timestamp는 `new Date().toISOString()` UTC `Z` 형식**.
+- `<fresh-jira-status>`: Step 4 transition 직후 `jira_get_issue`로 재조회한 실제 status명 (예: `"In Progress"`, `"진행 중"`). transition 시도값을 그대로 쓰지 말 것.
+- `<repoRoot>`: worktree-local 파일의 `repoRoot` 필드. 없으면 `git worktree list | head -1`로 폴백.
+
+스크립트는 `completedSteps`에 `"start"` 추가, `status` 갱신, `startAt` 기록, `cachedIssue.status`/`fetchedAt` 갱신을 일괄 처리한다.
+
+`cachedIssue` 본문은 Step 1 fetch 결과로 worktree-local 파일에 미리 patch해두어야 스크립트가 status/fetchedAt만 깔끔히 갱신한다.
+
+파일이 없는 경우(fresh 모드)에만 새로 만든 뒤 위 스크립트를 호출한다.
 
 ### Step 7: PDCA 권고
 

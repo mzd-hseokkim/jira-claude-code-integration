@@ -42,8 +42,9 @@
 
 - **공용 스크립트 lookup**: 워크트리 cwd에서는 플러그인 `scripts/`가 직접 보이지 않으므로 호출 직전 lookup으로 절대 경로를 결정한다. 단일 출처: `skills/_shared/script-lookup.md`. 각 스킬은 호출 직전 그 파일을 Read한 뒤 `SCRIPT_NAME` / `OUT_VAR`를 셋업하고 lookup 블록을 실행.
   - `jira-attach.sh` (approach/test/review): Jira 첨부 업로드. 못 찾으면 첨부만 스킵, 워크플로 진행.
-  - `jira-context-update.py` (merge/done): worktree-local + aggregate `.jira-context.json` 두 개의 `completedSteps`/`status`/`<step>At`/`cachedIssue` 갱신.
+  - `jira-context-update.py` (start/approach/impl/test/review/merge/done): worktree-local + aggregate `.jira-context.json` 두 개의 `completedSteps`/`status`/`<step>At`/`cachedIssue` 갱신.
     호출: `python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> <step> <status> <ctx-file> [<ctx-file>...]`.
+    `status="-"`는 status/cachedIssue.status를 그대로 보존(Jira transition 없는 record-only 단계용). 표준 호출 스니펫: `skills/_shared/context-update.md`.
   - 그 외: `propagate-mcp-config.sh`(init), `append-review-log-wrapper.sh`(review), `cleanup-worktree-mcp.py`(done).
 
 - **상태 전환 전 항상 이슈 상세 fetch** (`jira_get_transitions` → `jira_transition_issue`에 transitionId 전달).
