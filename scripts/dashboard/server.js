@@ -48,14 +48,12 @@ async function startServer(opts = {}) {
   if (opts.workspaceRoot) {
     workspaceRoots = [opts.workspaceRoot];
   } else {
+    // dashboard를 시작한 프로젝트 cwd는 항상 등록 (idempotent — 이미 있으면
+    // lastSeenAt만 갱신). 그래야 다른 레포에서 dashboard를 켜도 그 레포의
+    // worktree가 collector 대상에 포함된다.
+    workspaces.register(process.cwd());
     const { workspaces: registered } = workspaces.loadAndPrune();
-    if (registered.length === 0) {
-      // AC4: empty registry → auto-register cwd
-      workspaces.register(process.cwd());
-      workspaceRoots = [process.cwd()];
-    } else {
-      workspaceRoots = registered.map((e) => e.path);
-    }
+    workspaceRoots = registered.map((e) => e.path);
   }
 
   // The "primary" workspace is used for credentials, log file location, and

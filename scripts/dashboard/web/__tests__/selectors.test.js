@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   pickLatestPrompt,
+  pickLatestResponse,
   pickCurrentTool,
   pickActiveSubagent,
   pickBlockedFlag,
@@ -134,5 +135,65 @@ describe('pickActiveSubagent', () => {
       { ts, type: 'PreToolUse', data: { payload: { tool_name: 'Bash' } } },
     ];
     expect(pickActiveSubagent(activity)).toBe(false);
+  });
+
+  it('SubagentStop 이후 SessionEnd: false (세션 종료가 sub-agent도 종결시킴)', () => {
+    const activity = [
+      { ts, type: 'SubagentStop', data: {} },
+      { ts, type: 'SessionEnd', data: {} },
+    ];
+    expect(pickActiveSubagent(activity)).toBe(false);
+  });
+});
+
+describe('pickLatestResponse', () => {
+  const mkResp = (type, t, text) => ({
+    ts: t,
+    type,
+    data: { payload: { lastAssistantText: text } },
+  });
+
+  it('Stop 이벤트의 lastAssistantText 반환', () => {
+    const activity = [mkResp('Stop', ts, 'hello world')];
+    const r = pickLatestResponse(activity);
+    expect(r?.text).toBe('hello world');
+    expect(r?.stale).toBeFalsy();
+  });
+
+  it('PostToolUse의 lastAssistantText도 채택 (턴 중간 응답)', () => {
+    const activity = [
+      mkResp('Stop', '2026-04-30T00:00:00.000Z', 'old turn'),
+      { ts: '2026-04-30T00:00:01.000Z', type: 'UserPromptSubmit', data: { payload: { prompt: 'next' } } },
+      mkResp('PostToolUse', '2026-04-30T00:00:02.000Z', 'mid-turn text'),
+    ];
+    const r = pickLatestResponse(activity);
+    expect(r?.text).toBe('mid-turn text');
+    expect(r?.stale).toBeFalsy();
+  });
+
+  it('마지막 응답 이후 UserPromptSubmit: stale=true', () => {
+    const activity = [
+      mkResp('Stop', '2026-04-30T00:00:00.000Z', 'previous reply'),
+      { ts: '2026-04-30T00:00:05.000Z', type: 'UserPromptSubmit', data: { payload: { prompt: 'next q' } } },
+    ];
+    const r = pickLatestResponse(activity);
+    expect(r?.text).toBe('previous reply');
+    expect(r?.stale).toBe(true);
+  });
+
+  it('응답 이벤트 없음: null', () => {
+    const activity = [
+      { ts, type: 'PreToolUse', data: { payload: { tool_name: 'Bash' } } },
+    ];
+    expect(pickLatestResponse(activity)).toBeNull();
+  });
+
+  it('lastAssistantText 없는 PostToolUse는 건너뛰고 더 과거 Stop 채택', () => {
+    const activity = [
+      mkResp('Stop', '2026-04-30T00:00:00.000Z', 'real reply'),
+      { ts: '2026-04-30T00:00:01.000Z', type: 'PostToolUse', data: { payload: { tool_name: 'Bash' } } },
+    ];
+    const r = pickLatestResponse(activity);
+    expect(r?.text).toBe('real reply');
   });
 });

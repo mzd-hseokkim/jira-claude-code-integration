@@ -73,8 +73,10 @@ export function pickCurrentTool(activity) {
 
 /**
  * Returns true if there appears to be an active sub-agent session.
- * Heuristic: if the last Stop-type event is SubagentStop (not plain Stop),
- * a sub-agent may still be running.
+ * Heuristic: if the last terminator-type event is SubagentStop (not plain
+ * Stop or SessionEnd), a sub-agent may still be running. SessionEnd counts
+ * as a terminator because Claude Code may end a session without emitting a
+ * top-level Stop hook after a SubagentStop.
  *
  * @param {Array<{ts:string,type:string,data?:unknown}>} activity
  * @returns {boolean}
@@ -83,18 +85,26 @@ export function pickActiveSubagent(activity) {
   if (!Array.isArray(activity)) return false;
   for (let i = activity.length - 1; i >= 0; i--) {
     const type = activity[i]?.type;
-    if (type === 'Stop') return false;
+    if (type === 'Stop' || type === 'SessionEnd') return false;
     if (type === 'SubagentStop') return true;
   }
   return false;
 }
 
 /**
- * Returns the most recent Stop event's lastAssistantText preview, truncated
+ * Event types that may carry an assistant text preview in
+ * `data.payload.lastAssistantText`. Stop is the canonical end-of-turn signal;
+ * PostToolUse fires mid-turn so its preview shows intermediate text as the
+ * assistant pauses between tool calls.
+ */
+const RESPONSE_EVENT_TYPES = new Set(['Stop', 'PostToolUse']);
+
+/**
+ * Returns the most recent event's lastAssistantText preview, truncated
  * to 120 characters with ellipsis if needed.
  *
  * @param {Array<{ts:string,type:string,data:{payload?:Record<string,unknown>}}>} activity
- * @returns {{ text: string, ts: string } | null}
+ * @returns {{ text: string, ts: string, stale?: boolean } | null}
  */
 function _formatResponse(ev) {
   if (!ev) return null;
@@ -121,11 +131,21 @@ function _formatResponse(ev) {
 
 export function pickLatestResponse(activity, fallbackEvent) {
   if (Array.isArray(activity)) {
+    // 마지막 응답 이벤트(Stop/PostToolUse 중 lastAssistantText 보유)를 뒤에서 탐색.
+    // 동시에 그 이벤트보다 뒤에 UserPromptSubmit이 있는지(=새 턴 시작) 확인해
+    // 응답을 stale로 마킹한다. 새 응답 이벤트가 들어오기 전까지 직전 응답이
+    // 그대로 표시되어 "예전 응답이 보인다"는 문제를 보정.
+    let sawNewerPrompt = false;
     for (let i = activity.length - 1; i >= 0; i--) {
       const ev = activity[i];
-      if (ev?.type !== 'Stop') continue;
+      const type = ev?.type;
+      if (type === 'UserPromptSubmit') {
+        sawNewerPrompt = true;
+        continue;
+      }
+      if (!RESPONSE_EVENT_TYPES.has(type)) continue;
       const r = _formatResponse(ev);
-      if (r) return r;
+      if (r) return sawNewerPrompt ? { ...r, stale: true } : r;
     }
   }
   return _formatResponse(fallbackEvent);

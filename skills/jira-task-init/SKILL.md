@@ -216,6 +216,17 @@ Use mcp__atlassian__jira_add_comment:
 }
 ```
 
+### Step 8.5: Dashboard Workspace Registration
+
+생성된 worktree들이 dashboard에 즉시 보이도록, 부모 레포(`$REPO_ROOT`)를 dashboard
+workspace registry에 등록한다. (idempotent — 이미 등록돼 있으면 lastSeenAt만 갱신.)
+
+```bash
+node "$CLAUDE_PLUGIN_ROOT/scripts/register-workspace.js" "$REPO_ROOT"
+```
+
+실패해도 워크플로는 진행 (등록은 dashboard 가시성에만 영향).
+
 ### Step 9: Completion Summary
 
 `.jira-context.json`의 `completedSteps`에 `"init"` 추가.

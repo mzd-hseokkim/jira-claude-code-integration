@@ -42,11 +42,14 @@ export default function ActivityPanel({ activity = [], fallback = null }) {
         <div className="activity-panel__row">
           <dt>Last response</dt>
           <dd
-            key={responseText}
-            className="activity-panel__prompt"
+            key={responseText + (latestResponse?.stale ? ':stale' : '')}
+            className={
+              'activity-panel__prompt'
+              + (latestResponse?.stale ? ' activity-panel__prompt--stale' : '')
+            }
             title={latestResponse?.text ?? ''}
           >
-            {responseText}
+            {latestResponse?.stale ? '응답 대기 중… ' : ''}{responseText}
           </dd>
         </div>
         <div className="activity-panel__row">

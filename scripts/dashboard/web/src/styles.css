@@ -1235,6 +1235,10 @@ body > * { position: relative; z-index: 1; }
   color: #444;
 }
 
+.activity-panel__prompt--stale {
+  opacity: 0.55;
+}
+
 .activity-panel__value--blocked {
   color: var(--color-status-blocked-text);
   background: var(--color-status-blocked-bg);
