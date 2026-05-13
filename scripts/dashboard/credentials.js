@@ -69,10 +69,37 @@ function tryEnv() {
 }
 
 /**
- * Step 2: <workspaceRoot>/.mcp.json — project-level mcp config
+ * Walk up from startDir looking for a file with the given relative path.
+ * Returns the absolute file path on first hit, or null if reached filesystem
+ * root without finding it. Stops at root.
+ *
+ * 사용 의도: cwd가 워크스페이스의 서브디렉토리(예: scripts/dashboard/web)일
+ * 때도 `.mcp.json`/`.claude/settings.local.json` 같은 프로젝트 루트 설정
+ * 파일을 찾을 수 있도록 한다.
+ */
+function findFileUp(startDir, relPath) {
+  if (typeof startDir !== 'string' || !path.isAbsolute(startDir)) return null;
+  let current = startDir;
+  while (true) {
+    const candidate = path.join(current, relPath);
+    try {
+      if (fs.statSync(candidate).isFile()) return candidate;
+    } catch {
+      // not found at this level, keep walking
+    }
+    const parent = path.dirname(current);
+    if (parent === current) return null; // filesystem root
+    current = parent;
+  }
+}
+
+/**
+ * Step 2: walk up from workspaceRoot looking for .mcp.json — project-level
+ * mcp config. Walk-up은 cwd가 워크스페이스 서브디렉토리여도 동작하도록 함.
  */
 function tryMcpJson(workspaceRoot) {
-  const filePath = path.join(workspaceRoot, '.mcp.json');
+  const filePath = findFileUp(workspaceRoot, '.mcp.json');
+  if (!filePath) return null;
   const data = readJsonSafe(filePath);
   if (!data) return null;
   const creds = extractFromMcpServers(data.mcpServers);
@@ -103,10 +130,11 @@ function tryClaudeJson(workspaceRoot) {
 }
 
 /**
- * Step 5a: <workspaceRoot>/.claude/settings.local.json
+ * Step 5a: walk up from workspaceRoot looking for .claude/settings.local.json
  */
 function trySettingsLocal(workspaceRoot) {
-  const filePath = path.join(workspaceRoot, '.claude', 'settings.local.json');
+  const filePath = findFileUp(workspaceRoot, path.join('.claude', 'settings.local.json'));
+  if (!filePath) return null;
   const data = readJsonSafe(filePath);
   if (!data) return null;
   const creds = extractFromMcpServers(data.mcpServers);

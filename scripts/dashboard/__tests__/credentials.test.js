@@ -92,6 +92,48 @@ test('U7: throws CredentialsNotFoundError when all sources miss', () => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+// U9: walk-up finds .mcp.json from a subdirectory of the workspace root
+test('U9: walk-up finds .mcp.json from a subdirectory', () => {
+  const dir = tmpDir();
+  fs.writeFileSync(path.join(dir, '.mcp.json'), JSON.stringify({
+    mcpServers: {
+      atlassian: { env: { JIRA_URL: 'https://walkup.example.com', JIRA_USERNAME: 'u@e.com', JIRA_API_TOKEN: 'tok' } },
+    },
+  }));
+  // Create a nested subdir and treat it as the starting workspaceRoot.
+  const subdir = path.join(dir, 'scripts', 'dashboard', 'web');
+  fs.mkdirSync(subdir, { recursive: true });
+
+  withCleanEnv(() => {
+    const creds = loadCredentials({ workspaceRoot: subdir, force: true });
+    assert.equal(creds.source, 'mcpJson');
+    assert.equal(creds.jiraUrl, 'https://walkup.example.com');
+  });
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+// U10: walk-up finds .claude/settings.local.json from a subdirectory
+test('U10: walk-up finds .claude/settings.local.json from a subdirectory', () => {
+  const dir = tmpDir();
+  fs.mkdirSync(path.join(dir, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.claude', 'settings.local.json'), JSON.stringify({
+    mcpServers: {
+      atlassian: { env: { JIRA_URL: 'https://settingsup.example.com', JIRA_USERNAME: 'u@e.com', JIRA_API_TOKEN: 'tok' } },
+    },
+  }));
+  const subdir = path.join(dir, 'scripts', 'dashboard');
+  fs.mkdirSync(subdir, { recursive: true });
+
+  withCleanEnv(() => {
+    const creds = loadCredentials({ workspaceRoot: subdir, force: true });
+    assert.equal(creds.source, 'settingsLocal');
+    assert.equal(creds.jiraUrl, 'https://settingsup.example.com');
+  });
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 // U8: second call returns cached result without re-reading fs (mock spy)
 test('U8: second call uses cache (no extra fs.readFileSync calls)', () => {
   const dir = tmpDir();
