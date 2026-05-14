@@ -199,79 +199,30 @@ export function pickIsBusy(activity, fallback) {
 }
 
 /**
- * Claude Code Notification 훅 발화는 system-notification 디바운스 때문에
- * 권한 프롬프트가 뜬 뒤 5~10초 늦게 들어온다. 그 사이 awaiting 표시가
- * 비어 보이는 문제를 줄이기 위해 in-flight PreToolUse 시간 기반 휴리스틱을
- * 병행한다.
- */
-const AWAITING_INFLIGHT_THRESHOLD_MS = 3000;
-const PERMISSION_PRONE_TOOLS = new Set([
-  'Bash', 'Edit', 'Write', 'MultiEdit', 'NotebookEdit',
-]);
-function _isPermissionProne(name) {
-  if (!name) return false;
-  if (PERMISSION_PRONE_TOOLS.has(name)) return true;
-  if (typeof name === 'string' && name.startsWith('mcp__')) return true;
-  return false;
-}
-
-/**
- * Awaiting = busy 상태에서 아래 둘 중 하나:
- *   (a) 마지막 Notification이 input/permission/waiting을 의미하고
- *       **그 이후 다른 hook이 떨어지지 않은** 경우.
- *   (b) `nowMs`가 주어졌을 때, 권한 프롬프트 가능성이 있는 도구의
- *       PreToolUse가 매칭 PostToolUse 없이 `AWAITING_INFLIGHT_THRESHOLD_MS`
- *       이상 in-flight인 경우 (Notification 디바운스 우회 신호).
+ * Awaiting = busy 상태에서 마지막 Notification이 input/permission/waiting을
+ * 의미하고, **그 이후 다른 hook이 떨어지지 않은** 경우.
  * 사용자가 권한을 승인하거나 prompt를 보내거나 도구가 다시 실행되면 해제.
  *
+ * Notification 훅이 Claude Code가 "사용자 주의 필요"를 알리는 유일한 정확한
+ * 신호다. PreToolUse 시간 기반 추정은 "실행 중 도구"와 "권한 대기"를 구분할
+ * 수 없어 (둘 다 PreToolUse + PostToolUse 부재) 도입하지 않는다.
+ *
  * @param {Array<{ts:string,type:string,data?:{payload?:Record<string,unknown>}}>} activity
- * @param {unknown} fallback
- * @param {number} [nowMs] 현재 시각(ms). 미지정 시 (b) 휴리스틱 비활성.
  * @returns {boolean}
  */
-export function pickIsAwaitingUser(activity, fallback, nowMs) {
+export function pickIsAwaitingUser(activity, fallback) {
   if (!pickIsBusy(activity, fallback)) return false;
   if (!Array.isArray(activity)) return false;
-
-  // (a) Notification 기반 — 정확하지만 5~10s 지연.
   let lastNotifIdx = -1;
   for (let i = activity.length - 1; i >= 0; i--) {
     if (activity[i]?.type === 'Notification') { lastNotifIdx = i; break; }
   }
-  if (lastNotifIdx !== -1) {
-    let dirty = false;
-    for (let i = lastNotifIdx + 1; i < activity.length; i++) {
-      if (activity[i]?.type) { dirty = true; break; }
-    }
-    if (!dirty) {
-      const msg = String(activity[lastNotifIdx].data?.payload?.message ?? '').toLowerCase();
-      if (msg.includes('permission') || msg.includes('input') || msg.includes('waiting')) {
-        return true;
-      }
-    }
+  if (lastNotifIdx === -1) return false;
+  for (let i = lastNotifIdx + 1; i < activity.length; i++) {
+    if (activity[i]?.type) return false;
   }
-
-  // (b) in-flight PreToolUse 휴리스틱 — Notification보다 빠른 조기 신호.
-  if (typeof nowMs !== 'number' || !Number.isFinite(nowMs)) return false;
-  const closed = new Set();
-  for (let i = activity.length - 1; i >= 0; i--) {
-    const ev = activity[i];
-    const t = ev?.type;
-    if (t === 'UserPromptSubmit' || t === 'Stop' || t === 'SessionEnd') break;
-    if (t === 'PostToolUse') {
-      const n = ev.data?.payload?.tool_name;
-      if (n) closed.add(n);
-      continue;
-    }
-    if (t !== 'PreToolUse') continue;
-    const name = ev.data?.payload?.tool_name;
-    if (!name || closed.has(name)) continue;
-    if (!_isPermissionProne(name)) continue;
-    const startedMs = Date.parse(ev.ts);
-    if (!Number.isFinite(startedMs)) continue;
-    if (nowMs - startedMs >= AWAITING_INFLIGHT_THRESHOLD_MS) return true;
-  }
-  return false;
+  const msg = String(activity[lastNotifIdx].data?.payload?.message ?? '').toLowerCase();
+  return msg.includes('permission') || msg.includes('input') || msg.includes('waiting');
 }
 
 /**

@@ -199,93 +199,55 @@ describe('pickLatestResponse', () => {
   });
 });
 
-describe('pickIsAwaitingUser — PreToolUse 휴리스틱', () => {
+describe('pickIsAwaitingUser', () => {
   const promptTs = '2026-04-30T00:00:00.000Z';
   const promptMs = Date.parse(promptTs);
+  const prompt = { ts: promptTs, type: 'UserPromptSubmit', data: { payload: { prompt: 'go' } } };
 
-  function pre(toolName, offsetMs) {
+  function notif(message, offsetMs) {
     return {
       ts: new Date(promptMs + offsetMs).toISOString(),
-      type: 'PreToolUse',
-      data: { payload: { tool_name: toolName } },
-    };
-  }
-  function post(toolName, offsetMs) {
-    return {
-      ts: new Date(promptMs + offsetMs).toISOString(),
-      type: 'PostToolUse',
-      data: { payload: { tool_name: toolName } },
+      type: 'Notification',
+      data: { payload: { message } },
     };
   }
 
-  it('권한 가능 도구 PreToolUse가 3s 이상 매칭 없음 → true', () => {
-    const activity = [
-      { ts: promptTs, type: 'UserPromptSubmit', data: { payload: { prompt: 'go' } } },
-      pre('Edit', 100),
-    ];
-    expect(pickIsAwaitingUser(activity, null, promptMs + 3500)).toBe(true);
-  });
-
-  it('PreToolUse가 임계값 미만 → false', () => {
-    const activity = [
-      { ts: promptTs, type: 'UserPromptSubmit', data: { payload: { prompt: 'go' } } },
-      pre('Edit', 100),
-    ];
-    expect(pickIsAwaitingUser(activity, null, promptMs + 1000)).toBe(false);
-  });
-
-  it('PostToolUse가 매칭되면 in-flight 아님 → false', () => {
-    const activity = [
-      { ts: promptTs, type: 'UserPromptSubmit', data: { payload: { prompt: 'go' } } },
-      pre('Edit', 100),
-      post('Edit', 200),
-    ];
-    expect(pickIsAwaitingUser(activity, null, promptMs + 10_000)).toBe(false);
-  });
-
-  it('Read 등 권한 비요구 도구는 무시 → false', () => {
-    const activity = [
-      { ts: promptTs, type: 'UserPromptSubmit', data: { payload: { prompt: 'go' } } },
-      pre('Read', 100),
-    ];
-    expect(pickIsAwaitingUser(activity, null, promptMs + 10_000)).toBe(false);
-  });
-
-  it('mcp__* 도구는 권한 가능 도구로 처리', () => {
-    const activity = [
-      { ts: promptTs, type: 'UserPromptSubmit', data: { payload: { prompt: 'go' } } },
-      pre('mcp__atlassian__jira_get_issue', 100),
-    ];
-    expect(pickIsAwaitingUser(activity, null, promptMs + 4000)).toBe(true);
-  });
-
-  it('Stop 이후 PreToolUse는 새 turn 시작 전 → 무시', () => {
-    const activity = [
-      { ts: promptTs, type: 'UserPromptSubmit', data: { payload: { prompt: 'go' } } },
-      pre('Edit', 100),
-      { ts: new Date(promptMs + 200).toISOString(), type: 'Stop', data: {} },
-    ];
-    expect(pickIsAwaitingUser(activity, null, promptMs + 10_000)).toBe(false);
-  });
-
-  it('Notification(permission) 단독 — nowMs 없이도 true (기존 경로)', () => {
-    const activity = [
-      { ts: promptTs, type: 'UserPromptSubmit', data: { payload: { prompt: 'go' } } },
-      {
-        ts: new Date(promptMs + 100).toISOString(),
-        type: 'Notification',
-        data: { payload: { message: 'Claude needs your permission to use Bash' } },
-      },
-    ];
+  it('busy 상태 + permission Notification이 마지막 → true', () => {
+    const activity = [prompt, notif('Claude needs your permission to use Bash', 100)];
     expect(pickIsAwaitingUser(activity, null)).toBe(true);
   });
 
-  it('busy 아님 (Stop이 최종) → 무조건 false', () => {
+  it('input/waiting 키워드도 인식', () => {
+    expect(pickIsAwaitingUser([prompt, notif('waiting for your input', 100)], null)).toBe(true);
+  });
+
+  it('Notification 이후 다른 hook이 떨어지면 해제 → false', () => {
     const activity = [
-      { ts: promptTs, type: 'UserPromptSubmit', data: { payload: { prompt: 'go' } } },
-      pre('Edit', 100),
+      prompt,
+      notif('Claude needs your permission to use Bash', 100),
+      { ts: new Date(promptMs + 200).toISOString(), type: 'PreToolUse', data: { payload: { tool_name: 'Bash' } } },
+    ];
+    expect(pickIsAwaitingUser(activity, null)).toBe(false);
+  });
+
+  it('Notification 없음 → false', () => {
+    const activity = [
+      prompt,
+      { ts: new Date(promptMs + 100).toISOString(), type: 'PreToolUse', data: { payload: { tool_name: 'Edit' } } },
+    ];
+    expect(pickIsAwaitingUser(activity, null)).toBe(false);
+  });
+
+  it('관련 없는 Notification 메시지 → false', () => {
+    expect(pickIsAwaitingUser([prompt, notif('build finished', 100)], null)).toBe(false);
+  });
+
+  it('busy 아님 (Stop이 최종) → false', () => {
+    const activity = [
+      prompt,
+      notif('Claude needs your permission to use Bash', 100),
       { ts: new Date(promptMs + 200).toISOString(), type: 'Stop', data: {} },
     ];
-    expect(pickIsAwaitingUser(activity, null, promptMs + 10_000)).toBe(false);
+    expect(pickIsAwaitingUser(activity, null)).toBe(false);
   });
 });

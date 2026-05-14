@@ -100,7 +100,7 @@ export default function WorktreeCard({ worktree }) {
   };
 
   const isBusy = pickIsBusy(activity, fallbackEvents);
-  const isAwaiting = pickIsAwaitingUser(activity, fallbackEvents, now);
+  const isAwaiting = pickIsAwaitingUser(activity, fallbackEvents);
   const lastActivityTs = pickLastActivityTs(activity);
   const toolCount = pickToolCallCount(activity);
 
