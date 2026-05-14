@@ -5,6 +5,7 @@ import {
   pickCurrentTool,
   pickActiveSubagent,
   pickBlockedFlag,
+  pickIsAwaitingUser,
 } from '../src/selectors/activity.js';
 
 const ts = '2026-04-30T00:00:00.000Z';
@@ -195,5 +196,96 @@ describe('pickLatestResponse', () => {
     ];
     const r = pickLatestResponse(activity);
     expect(r?.text).toBe('real reply');
+  });
+});
+
+describe('pickIsAwaitingUser — PreToolUse 휴리스틱', () => {
+  const promptTs = '2026-04-30T00:00:00.000Z';
+  const promptMs = Date.parse(promptTs);
+
+  function pre(toolName, offsetMs) {
+    return {
+      ts: new Date(promptMs + offsetMs).toISOString(),
+      type: 'PreToolUse',
+      data: { payload: { tool_name: toolName } },
+    };
+  }
+  function post(toolName, offsetMs) {
+    return {
+      ts: new Date(promptMs + offsetMs).toISOString(),
+      type: 'PostToolUse',
+      data: { payload: { tool_name: toolName } },
+    };
+  }
+
+  it('권한 가능 도구 PreToolUse가 3s 이상 매칭 없음 → true', () => {
+    const activity = [
+      { ts: promptTs, type: 'UserPromptSubmit', data: { payload: { prompt: 'go' } } },
+      pre('Edit', 100),
+    ];
+    expect(pickIsAwaitingUser(activity, null, promptMs + 3500)).toBe(true);
+  });
+
+  it('PreToolUse가 임계값 미만 → false', () => {
+    const activity = [
+      { ts: promptTs, type: 'UserPromptSubmit', data: { payload: { prompt: 'go' } } },
+      pre('Edit', 100),
+    ];
+    expect(pickIsAwaitingUser(activity, null, promptMs + 1000)).toBe(false);
+  });
+
+  it('PostToolUse가 매칭되면 in-flight 아님 → false', () => {
+    const activity = [
+      { ts: promptTs, type: 'UserPromptSubmit', data: { payload: { prompt: 'go' } } },
+      pre('Edit', 100),
+      post('Edit', 200),
+    ];
+    expect(pickIsAwaitingUser(activity, null, promptMs + 10_000)).toBe(false);
+  });
+
+  it('Read 등 권한 비요구 도구는 무시 → false', () => {
+    const activity = [
+      { ts: promptTs, type: 'UserPromptSubmit', data: { payload: { prompt: 'go' } } },
+      pre('Read', 100),
+    ];
+    expect(pickIsAwaitingUser(activity, null, promptMs + 10_000)).toBe(false);
+  });
+
+  it('mcp__* 도구는 권한 가능 도구로 처리', () => {
+    const activity = [
+      { ts: promptTs, type: 'UserPromptSubmit', data: { payload: { prompt: 'go' } } },
+      pre('mcp__atlassian__jira_get_issue', 100),
+    ];
+    expect(pickIsAwaitingUser(activity, null, promptMs + 4000)).toBe(true);
+  });
+
+  it('Stop 이후 PreToolUse는 새 turn 시작 전 → 무시', () => {
+    const activity = [
+      { ts: promptTs, type: 'UserPromptSubmit', data: { payload: { prompt: 'go' } } },
+      pre('Edit', 100),
+      { ts: new Date(promptMs + 200).toISOString(), type: 'Stop', data: {} },
+    ];
+    expect(pickIsAwaitingUser(activity, null, promptMs + 10_000)).toBe(false);
+  });
+
+  it('Notification(permission) 단독 — nowMs 없이도 true (기존 경로)', () => {
+    const activity = [
+      { ts: promptTs, type: 'UserPromptSubmit', data: { payload: { prompt: 'go' } } },
+      {
+        ts: new Date(promptMs + 100).toISOString(),
+        type: 'Notification',
+        data: { payload: { message: 'Claude needs your permission to use Bash' } },
+      },
+    ];
+    expect(pickIsAwaitingUser(activity, null)).toBe(true);
+  });
+
+  it('busy 아님 (Stop이 최종) → 무조건 false', () => {
+    const activity = [
+      { ts: promptTs, type: 'UserPromptSubmit', data: { payload: { prompt: 'go' } } },
+      pre('Edit', 100),
+      { ts: new Date(promptMs + 200).toISOString(), type: 'Stop', data: {} },
+    ];
+    expect(pickIsAwaitingUser(activity, null, promptMs + 10_000)).toBe(false);
   });
 });
