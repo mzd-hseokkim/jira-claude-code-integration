@@ -1870,6 +1870,8 @@ body > * { position: relative; z-index: 1; }
   .live-label                        { transition: none; }
   .wt-card--busy                     { animation: none; }
   .wt-card--awaiting                 { animation: none; }
+  .session-card--busy                { animation: none; }
+  .session-card--awaiting            { animation: none; }
   .activity-panel__pulse-dot         { animation: none; }
   .wt-card__active-dot               { animation: none; }
   .kitt-bar__scanner                 { animation: none; left: 50%; }
@@ -1983,6 +1985,40 @@ body > * { position: relative; z-index: 1; }
   box-shadow:
     0 0 0 1px rgba(167, 139, 250, 0.12) inset,
     0 6px 24px rgba(109, 40, 217, 0.18);
+}
+
+/* ===== SessionCard state: busy / awaiting — wt-card와 동일 시각 언어 ===== */
+.session-card--busy {
+  background: rgba(224, 242, 254, 0.95);
+  border-color: rgba(59, 130, 246, 0.85);
+  box-shadow:
+    0 0 0 2px rgba(59, 130, 246, 0.4),
+    0 0 24px 2px rgba(59, 130, 246, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 6px 20px -8px rgba(31, 41, 55, 0.12);
+  animation: wt-card-busy-pulse 1.6s ease-in-out infinite;
+}
+
+.session-card--awaiting {
+  background: rgba(254, 243, 199, 0.97);
+  border-color: rgba(217, 119, 6, 0.95);
+  box-shadow:
+    0 0 0 2px rgba(217, 119, 6, 0.5),
+    0 0 28px 4px rgba(245, 158, 11, 0.6),
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 6px 20px -8px rgba(31, 41, 55, 0.12);
+  animation: wt-card-awaiting-pulse 1.2s ease-in-out infinite;
+}
+
+.session-card__awaiting-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
 }
 
 .session-card__header {

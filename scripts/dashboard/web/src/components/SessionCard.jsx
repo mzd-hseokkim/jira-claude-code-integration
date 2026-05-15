@@ -1,5 +1,6 @@
 import React from 'react';
 import ActivityPanel from './ActivityPanel.jsx';
+import { pickIsBusy, pickIsAwaitingUser } from '../selectors/activity.js';
 
 const EMPTY = '—';
 
@@ -38,8 +39,19 @@ function shortId(sessionId) {
 export default function SessionCard({ session }) {
   const { sessionId, cwd, source, activity = [] } = session;
 
+  const isBusy = pickIsBusy(activity);
+  const isAwaiting = pickIsAwaitingUser(activity);
+
+  // 카드 활성 상태 클래스: awaiting(우선) > busy > idle.
+  const stateClass = isAwaiting
+    ? 'session-card--awaiting'
+    : isBusy
+      ? 'session-card--busy'
+      : '';
+  const cardClass = ['session-card', stateClass].filter(Boolean).join(' ');
+
   return (
-    <div className="session-card">
+    <div className={cardClass}>
       <div className="session-card__header">
         <span className="session-card__cwd" title={cwd ?? '(no cwd)'}>
           {cwdBasename(cwd)}
@@ -49,6 +61,7 @@ export default function SessionCard({ session }) {
             {source}
           </span>
         )}
+        {isAwaiting && <span className="session-card__awaiting-badge">⏵ 응답 대기</span>}
         <span className="session-card__sid" title={sessionId}>
           {shortId(sessionId)}
         </span>
