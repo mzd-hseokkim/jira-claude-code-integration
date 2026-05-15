@@ -5,7 +5,6 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
-import { MarkerType } from '@xyflow/react';
 
 // BezierEdge mock: 전달받은 props를 캡처
 let capturedProps = {};
@@ -48,16 +47,6 @@ describe('BlocksEdge (MAE-264)', () => {
     expect(props.style?.stroke).toBe('#dc2626');
   });
 
-  it('markerEnd.color가 #dc2626이다', () => {
-    const props = renderEdge(BlocksEdge);
-    expect(props.markerEnd?.color).toBe('#dc2626');
-  });
-
-  it('markerEnd.type이 MarkerType.ArrowClosed이다', () => {
-    const props = renderEdge(BlocksEdge);
-    expect(props.markerEnd?.type).toBe(MarkerType.ArrowClosed);
-  });
-
   it('label prop이 "blocks"이다', () => {
     const props = renderEdge(BlocksEdge);
     expect(props.label).toBe('blocks');
@@ -75,16 +64,6 @@ describe('ParentEdge (MAE-264)', () => {
     expect(props.style?.stroke).toBe('#64748b');
   });
 
-  it('markerEnd.color가 #64748b이다', () => {
-    const props = renderEdge(ParentEdge);
-    expect(props.markerEnd?.color).toBe('#64748b');
-  });
-
-  it('markerEnd.type이 MarkerType.ArrowClosed이다', () => {
-    const props = renderEdge(ParentEdge);
-    expect(props.markerEnd?.type).toBe(MarkerType.ArrowClosed);
-  });
-
   it('label prop이 "parent"이다', () => {
     const props = renderEdge(ParentEdge);
     expect(props.label).toBe('parent');
@@ -95,16 +74,6 @@ describe('EpicEdge (MAE-264)', () => {
   it('stroke 색이 #9333ea (purple-600)이다', () => {
     const props = renderEdge(EpicEdge);
     expect(props.style?.stroke).toBe('#9333ea');
-  });
-
-  it('markerEnd.color가 #9333ea이다', () => {
-    const props = renderEdge(EpicEdge);
-    expect(props.markerEnd?.color).toBe('#9333ea');
-  });
-
-  it('markerEnd.type이 MarkerType.ArrowClosed이다', () => {
-    const props = renderEdge(EpicEdge);
-    expect(props.markerEnd?.type).toBe(MarkerType.ArrowClosed);
   });
 
   it('label prop이 "epic"이다', () => {

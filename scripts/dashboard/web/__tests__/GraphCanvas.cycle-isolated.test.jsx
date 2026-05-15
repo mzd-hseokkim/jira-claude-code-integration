@@ -23,7 +23,7 @@ vi.mock('../src/hooks/useDashboardStream.js', () => ({
   useDashboardStream: () => {},
 }));
 vi.mock('../src/components/graph/useForceLayout.js', () => ({
-  useForceLayout: () => {},
+  useForceLayout: () => ({ pinNode: () => {}, unpinNode: () => {} }),
 }));
 
 // ReactFlow를 spy 가능한 stub으로 대체: nodes/edges prop을 노출시켜 검증.

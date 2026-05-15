@@ -27,9 +27,10 @@ vi.mock('../src/hooks/useDashboardStream.js', () => ({
   useDashboardStream: () => {},
 }));
 
-// useForceLayout을 no-op으로 mock — jsdom에서 d3-force 좌표 계산 불필요
+// useForceLayout을 no-op으로 mock — jsdom에서 d3-force 좌표 계산 불필요.
+// 실제 훅은 { pinNode, unpinNode }를 반환 — GraphCanvas가 구조분해하므로 동일 shape 유지.
 vi.mock('../src/components/graph/useForceLayout.js', () => ({
-  useForceLayout: () => {},
+  useForceLayout: () => ({ pinNode: () => {}, unpinNode: () => {} }),
 }));
 
 const GraphCanvas = (await import('../src/components/GraphCanvas.jsx')).default;
