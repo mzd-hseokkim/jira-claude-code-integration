@@ -57,17 +57,26 @@ export function pickCurrentTool(activity) {
     const ev = activity[i];
     const t = ev?.type;
     if (t === 'PostToolUse') {
-      const name = ev.data?.payload?.tool_name;
+      const name = _toolNameOf(ev);
       if (name) closedTools.add(name);
     } else if (t === 'UserPromptSubmit' || t === 'Stop' || t === 'SessionEnd') {
       sawTerminator = true;
     } else if (t === 'PreToolUse') {
-      const name = ev.data?.payload?.tool_name;
+      const name = _toolNameOf(ev);
       if (name && !closedTools.has(name) && !sawTerminator) {
         return { name, startedAt: ev.ts };
       }
     }
   }
+  return null;
+}
+
+// payload.tool_name이 드물게 객체({name: "..."}) 형태로 들어오는 경우 방어.
+// 항상 string으로 정규화해야 React 렌더에서 #31이 안 터진다.
+function _toolNameOf(ev) {
+  const raw = ev?.data?.payload?.tool_name;
+  if (typeof raw === 'string') return raw;
+  if (raw && typeof raw === 'object' && typeof raw.name === 'string') return raw.name;
   return null;
 }
 
