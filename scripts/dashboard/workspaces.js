@@ -267,6 +267,83 @@ function loadAndPrune(opts = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// Registry file watcher — detects external mutations (e.g. register-workspace.js
+// invoked from another Node process) and emits the same registered/unregistered
+// events that in-process register()/unregister() would emit.
+// ---------------------------------------------------------------------------
+
+/** @type {fs.FSWatcher | null} */
+let _watcher = null;
+/** @type {NodeJS.Timeout | null} */
+let _watchDebounce = null;
+/** @type {Set<string>} */
+let _knownPaths = new Set();
+
+function _diffAndEmit(logger) {
+  let entries;
+  try {
+    entries = readRegistry({ logger }).workspaces;
+  } catch (err) {
+    logger && logger.warn && logger.warn('[workspaces] watcher read failed', { err: err.message });
+    return;
+  }
+  const current = new Set(entries.map((e) => e.path));
+  for (const p of current) {
+    if (!_knownPaths.has(p)) events.emit('workspace.registered', { path: p });
+  }
+  for (const p of _knownPaths) {
+    if (!current.has(p)) events.emit('workspace.unregistered', { path: p });
+  }
+  _knownPaths = current;
+}
+
+/**
+ * Start watching the registry file for external changes. Idempotent.
+ * Initial known-set is seeded from current disk state so no spurious events fire.
+ *
+ * @param {{ logger?: { info?: Function, warn?: Function } }} [opts]
+ */
+function startWatcher(opts = {}) {
+  if (_watcher) return;
+  const logger = opts.logger || null;
+  const filePath = _getRegistryFile();
+  const dir = path.dirname(filePath);
+  const base = path.basename(filePath);
+
+  // Seed known paths from current state — avoid firing events for entries
+  // that were already present at startup.
+  try {
+    _knownPaths = new Set(readRegistry({ logger }).workspaces.map((e) => e.path));
+  } catch {
+    _knownPaths = new Set();
+  }
+
+  // Ensure dir exists so fs.watch doesn't ENOENT.
+  try { fs.mkdirSync(dir, { recursive: true, mode: 0o700 }); } catch { /* ignore */ }
+
+  try {
+    _watcher = fs.watch(dir, { persistent: false }, (_event, filename) => {
+      if (filename && filename !== base) return;
+      if (_watchDebounce) clearTimeout(_watchDebounce);
+      _watchDebounce = setTimeout(() => {
+        _watchDebounce = null;
+        _diffAndEmit(logger);
+      }, 100);
+    });
+    logger && logger.info && logger.info('[workspaces] registry watcher started', { file: filePath });
+  } catch (err) {
+    logger && logger.warn && logger.warn('[workspaces] watcher start failed', { err: err.message });
+    _watcher = null;
+  }
+}
+
+function stopWatcher() {
+  if (_watchDebounce) { clearTimeout(_watchDebounce); _watchDebounce = null; }
+  if (_watcher) { try { _watcher.close(); } catch { /* ignore */ } _watcher = null; }
+  _knownPaths = new Set();
+}
+
+// ---------------------------------------------------------------------------
 // Test-only helpers
 // ---------------------------------------------------------------------------
 
@@ -288,6 +365,8 @@ module.exports = {
   list,
   touch,
   loadAndPrune,
+  startWatcher,
+  stopWatcher,
   _setRegistryDirForTest,
   events,
 };

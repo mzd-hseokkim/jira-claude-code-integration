@@ -199,6 +199,18 @@ async function startServer(opts = {}) {
       logger && logger.error('server.workspace-registered-collect-error', { newRoot, error: err.message });
     }
   });
+
+  // Mirror: drop a removed workspace from the in-memory roots so the collector
+  // stops polling it and stale worktrees disappear on the next tick.
+  workspaces.events.on('workspace.unregistered', ({ path: oldRoot }) => {
+    const idx = workspaceRoots.indexOf(oldRoot);
+    if (idx >= 0) workspaceRoots.splice(idx, 1);
+    logger && logger.info('server.workspace-unregistered', { oldRoot });
+  });
+
+  // Watch the registry file so external mutations (register-workspace.js from
+  // another process, manual JSON edits) are picked up without a restart.
+  workspaces.startWatcher({ logger });
   // 마지막 jira-collector tick 시점/주기 — snapshot 이벤트에 포함시켜
   // 새 SSE 클라이언트도 즉시 polling 사이클 phase에 맞출 수 있게 한다.
   // (lastTickAt/lastTickMs는 위쪽 express 셋업 직전에 선언됨 — /workspaces route에서 capture)
@@ -231,6 +243,7 @@ async function startServer(opts = {}) {
       worktreeCollector.stop();
       jiraCollector.stop();
       sessionSweep.stop();
+      workspaces.stopWatcher();
       await new Promise((resolve) => httpServer.close(resolve));
       await logger.close();
     },
