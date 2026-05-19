@@ -50,6 +50,29 @@ function parseGitWorktreeList(stdout) {
  * @param {{ warn: Function }|null} [logger]
  * @returns {{ taskId: string|null, cachedIssue: object|null, lastFetchedAt: string|null, completedSteps: string[], summary: string|null, priority: string|null, status: string|null, epic: string|null }|null}
  */
+// 스킬이 mcp__atlassian__jira_get_issue 응답을 그대로 cachedIssue에 박는 경우
+// assignee/issuetype/status/priority가 raw 객체({name}, {display_name})로 남아
+// dashboard 렌더에서 React #31을 유발한다. 읽는 경계에서 string으로 정규화.
+function _pickName(v) {
+  if (v == null) return null;
+  if (typeof v === 'string') return v;
+  if (typeof v === 'object') {
+    return v.displayName || v.display_name || v.name || null;
+  }
+  return null;
+}
+
+function _normalizeCachedIssue(ci) {
+  if (!ci || typeof ci !== 'object') return ci;
+  const out = { ...ci };
+  if ('assignee' in out) out.assignee = _pickName(out.assignee);
+  if ('issuetype' in out) out.issuetype = _pickName(out.issuetype);
+  if ('status' in out) out.status = _pickName(out.status);
+  if ('priority' in out) out.priority = _pickName(out.priority);
+  if ('epic' in out && typeof out.epic === 'object') out.epic = out.epic?.key ?? null;
+  return out;
+}
+
 function readJiraContext(worktreePath, logger = null) {
   const ctxPath = path.join(worktreePath, '.jira-context.json');
   let raw;
@@ -63,7 +86,9 @@ function readJiraContext(worktreePath, logger = null) {
 
   try {
     const obj = JSON.parse(raw);
-    const ci = (obj.cachedIssue && typeof obj.cachedIssue === 'object') ? obj.cachedIssue : null;
+    const ci = (obj.cachedIssue && typeof obj.cachedIssue === 'object')
+      ? _normalizeCachedIssue(obj.cachedIssue)
+      : null;
     return {
       taskId: obj.taskId || null,
       cachedIssue: ci,

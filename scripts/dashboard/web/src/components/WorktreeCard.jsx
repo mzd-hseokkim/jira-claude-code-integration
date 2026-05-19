@@ -18,7 +18,12 @@ const EMPTY = '—';
  * @returns {string}
  */
 function fmt(val) {
-  return val ?? EMPTY;
+  if (val == null) return EMPTY;
+  if (typeof val === 'string' || typeof val === 'number') return val;
+  if (typeof val === 'object') {
+    return val.displayName || val.display_name || val.name || val.key || EMPTY;
+  }
+  return String(val);
 }
 
 /**
