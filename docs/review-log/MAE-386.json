@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MAE-386",
+  "entries": [
+    {
+      "taskId": "MAE-386",
+      "timestamp": "2026-05-21T11:23:55Z",
+      "reviewerVersion": "46deb58427a1",
+      "outcome": "fail",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "high",
+          "file": "scripts/dashboard/metrics-store.js",
+          "line": 174,
+          "category": "correctness",
+          "message": "throughput aggregation misses past/offline-resolved issues"
+        },
+        {
+          "id": "F-002",
+          "severity": "high",
+          "file": "scripts/dashboard/metrics-store.js",
+          "line": 170,
+          "category": "correctness",
+          "message": "weeks window keyed on snapshotDate"
+        },
+        {
+          "id": "F-003",
+          "severity": "info",
+          "file": "scripts/dashboard/web/src/styles.css",
+          "line": 0,
+          "category": "style",
+          "message": "no analytics CSS"
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 2,
+        "medium": 0,
+        "low": 0,
+        "info": 1
+      },
+      "falsePositive": null,
+      "userOverride": null
+    },
+    {
+      "taskId": "MAE-386",
+      "timestamp": "2026-05-21T11:43:57Z",
+      "reviewerVersion": "46deb58427a1",
+      "outcome": "pass",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "info",
+          "file": "web/src/styles.css",
+          "line": 0,
+          "category": "style",
+          "message": "Analytics CSS absent"
+        },
+        {
+          "id": "F-002",
+          "severity": "info",
+          "file": "collectors/jira-metrics.js",
+          "line": 0,
+          "category": "scope",
+          "message": "epic field null"
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 2
+      },
+      "falsePositive": null,
+      "userOverride": null
+    }
+  ]
+}
