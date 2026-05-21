@@ -12,8 +12,10 @@
   --font-sans: "Geist Variable", "Geist", system-ui, -apple-system, sans-serif;
   --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Surfaces & text (light) */
-  --bg:          #f9fafb;
+  /* Surfaces & text (light) — canvas is a touch cooler/grayer than the
+     white chrome (header/footer) so the two layers read distinctly. */
+  --bg:          #eef0f3;
+  --chrome:      #ffffff;
   --surface:     #ffffff;
   --surface-2:   #f3f4f6;
   --surface-3:   #eceef1;
@@ -185,10 +187,11 @@ body > * { position: relative; z-index: 1; }
   z-index: 80;
   width: 100%;
   padding: 12px 24px 10px;
-  background: rgba(249, 250, 251, 0.85);
-  border-bottom: 1px solid var(--hairline);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid var(--hairline-strong);
+  backdrop-filter: blur(10px) saturate(1.4);
+  -webkit-backdrop-filter: blur(10px) saturate(1.4);
+  box-shadow: 0 8px 24px -18px rgba(24, 24, 27, 0.4);
 }
 /* thin accent rule under header */
 .dashboard-header::after {
@@ -419,10 +422,11 @@ body > * { position: relative; z-index: 1; }
   gap: 8px;
   font-size: 10.5px;
   color: var(--text-3);
-  background: rgba(249, 250, 251, 0.88);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-top: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px) saturate(1.4);
+  -webkit-backdrop-filter: blur(10px) saturate(1.4);
+  border-top: 1px solid var(--hairline-strong);
+  box-shadow: 0 -8px 24px -18px rgba(24, 24, 27, 0.35);
   letter-spacing: 0.02em;
 }
 .dashboard-footer__brand { color: var(--text-2); }
