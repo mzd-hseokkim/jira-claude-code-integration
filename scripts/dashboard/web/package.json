@@ -9,6 +9,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.0.0",
+    "@fontsource-variable/geist-mono": "^5.0.0",
     "@xyflow/react": "^12.3.6",
     "d3-force": "^3.0.0",
     "react": "^18.3.1",

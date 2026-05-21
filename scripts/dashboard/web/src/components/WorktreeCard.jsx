@@ -8,6 +8,7 @@ import {
   pickToolCallCount,
 } from '../selectors/activity.js';
 import { formatRelative } from '../utils/relativeTime.js';
+import { IconTool, IconTrash, IconWarning } from './Icons.jsx';
 import { useNowTick } from '../hooks/useNowTick.js';
 
 /** 표시할 필드가 없을 때 사용하는 placeholder */
@@ -200,12 +201,12 @@ export default function WorktreeCard({ worktree }) {
         </span>
         {issueType && <span className="wt-card__issue-type">{issueType}</span>}
         {noContext && <span className="wt-card__no-context-badge" title={path}>no jira</span>}
-        {isAwaiting && <span className="wt-card__awaiting-badge">⏵ 응답 대기</span>}
+        {isAwaiting && <span className="wt-card__awaiting-badge">응답 대기</span>}
         {isStale && <span className="wt-card__stale-badge">stale</span>}
         <span className="wt-card__header-spacer" />
         {toolCount > 0 && (
           <span className="wt-card__tool-count" title={`이번 세션 도구 호출 ${toolCount}회`}>
-            ⚙ {toolCount}
+            <IconTool size={11} /> {toolCount}
           </span>
         )}
         {lastActivityTs && (
@@ -324,11 +325,11 @@ export default function WorktreeCard({ worktree }) {
           title={cleanupError ?? `${branch ?? path} 제거`}
           aria-label="worktree 및 branch 제거"
         >
-          {cleaning ? '정리 중…' : '🗑 정리'}
+          {cleaning ? '정리 중…' : <><IconTrash size={11} /> 정리</>}
         </button>
       )}
       {cleanupError && (
-        <span className="wt-card__cleanup-error" title={cleanupError}>⚠ {cleanupError}</span>
+        <span className="wt-card__cleanup-error" title={cleanupError}><IconWarning size={11} /> {cleanupError}</span>
       )}
     </div>
   );

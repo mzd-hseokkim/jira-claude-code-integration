@@ -61,7 +61,7 @@ export default function SessionCard({ session }) {
             {source}
           </span>
         )}
-        {isAwaiting && <span className="session-card__awaiting-badge">⏵ 응답 대기</span>}
+        {isAwaiting && <span className="session-card__awaiting-badge">응답 대기</span>}
         <span className="session-card__sid" title={sessionId}>
           {shortId(sessionId)}
         </span>

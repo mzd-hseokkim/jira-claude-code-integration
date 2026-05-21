@@ -10,6 +10,7 @@ import WorkspaceGroup from './components/WorkspaceGroup.jsx';
 import GraphCanvas from './components/GraphCanvas.jsx';
 import GraphErrorBoundary from './components/GraphErrorBoundary.jsx';
 import SessionCard from './components/SessionCard.jsx';
+import { IconSearch, IconInbox, IconHourglass } from './components/Icons.jsx';
 
 /**
  * 백슬래시 → 슬래시 (trailing slash는 그대로 — 백엔드 normalizePath와 동일 규칙).
@@ -340,7 +341,7 @@ function Dashboard() {
             })}
           </div>
           <div className="filter-input">
-            <span className="filter-input__icon" aria-hidden="true">🔍</span>
+            <span className="filter-input__icon" aria-hidden="true"><IconSearch size={13} /></span>
             <input
               type="search"
               className="filter-input__field"
@@ -371,7 +372,11 @@ function Dashboard() {
               <div className="dashboard-empty">
                 <div className="dashboard-empty__card" role="status">
                   <div className="dashboard-empty__icon" aria-hidden="true">
-                    {filter ? '🔍' : connState === 'connected' ? '📭' : '⏳'}
+                    {filter
+                      ? <IconSearch size={36} />
+                      : connState === 'connected'
+                        ? <IconInbox size={36} />
+                        : <IconHourglass size={36} />}
                   </div>
                   <p className="dashboard-empty__title">
                     {filter
