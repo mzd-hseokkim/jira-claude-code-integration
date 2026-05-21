@@ -834,17 +834,15 @@ body > * { position: relative; z-index: 1; }
 /* ===== SDLC Stepper ===== */
 .wt-stepper {
   display: flex;
-  flex-wrap: nowrap;
-  gap: 0;
+  flex-wrap: wrap;          /* 좁은 카드에서 끝 단계가 잘리지 않게 줄바꿈 */
+  row-gap: 3px;
   list-style: none;
   padding: 4px 0;
   margin: 0;
   align-items: center;
   font-size: 10.5px;
   letter-spacing: 0.01em;
-  justify-content: space-between;
-  overflow: hidden;
-  white-space: nowrap;
+  justify-content: flex-start;
 }
 .wt-stepper__step {
   display: inline-block;
