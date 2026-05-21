@@ -2010,6 +2010,39 @@ body > * { position: relative; z-index: 1; }
   animation: wt-card-awaiting-pulse 1.2s ease-in-out infinite;
 }
 
+/* busy/awaiting는 배경이 밝은 색으로 바뀌므로(어두운 base와 반대)
+   내부 텍스트를 어두운 색으로 override해야 시인성이 유지된다. */
+.session-card--busy .session-card__cwd,
+.session-card--awaiting .session-card__cwd {
+  color: #1e293b;
+}
+.session-card--busy .session-card__sid,
+.session-card--awaiting .session-card__sid {
+  color: #475569;
+}
+.session-card--busy .session-card__source-badge,
+.session-card--awaiting .session-card__source-badge {
+  color: #5b21b6;
+  background: rgba(139, 92, 246, 0.18);
+  border-color: rgba(109, 40, 217, 0.45);
+}
+.session-card--busy .activity-panel__title,
+.session-card--awaiting .activity-panel__title {
+  color: #5b21b6;
+}
+.session-card--busy .activity-panel__row dt,
+.session-card--awaiting .activity-panel__row dt {
+  color: #475569;
+}
+.session-card--busy .activity-panel__row dd,
+.session-card--awaiting .activity-panel__row dd {
+  color: #1f2937;
+}
+.session-card--busy .activity-panel__prompt,
+.session-card--awaiting .activity-panel__prompt {
+  color: #334155;
+}
+
 .session-card__awaiting-badge {
   font-size: 10px;
   font-weight: 700;
