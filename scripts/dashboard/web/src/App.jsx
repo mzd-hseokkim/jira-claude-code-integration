@@ -10,6 +10,7 @@ import WorkspaceGroup from './components/WorkspaceGroup.jsx';
 import GraphCanvas from './components/GraphCanvas.jsx';
 import GraphErrorBoundary from './components/GraphErrorBoundary.jsx';
 import SessionCard from './components/SessionCard.jsx';
+import AnalyticsView from './components/AnalyticsView.jsx';
 import { IconSearch, IconInbox, IconHourglass } from './components/Icons.jsx';
 
 /**
@@ -320,6 +321,15 @@ function Dashboard() {
             >
               그래프
             </button>
+            <button
+              type="button"
+              className={`view-toggle__btn${viewMode === 'analytics' ? ' view-toggle__btn--active' : ''}`}
+              role="radio"
+              aria-checked={viewMode === 'analytics'}
+              onClick={() => setViewMode('analytics')}
+            >
+              분석
+            </button>
           </div>
           <div className="sort-chips" role="toolbar" aria-label="정렬 기준">
             <span className="sort-chips__label">SORT</span>
@@ -361,7 +371,9 @@ function Dashboard() {
           </div>
         </div>
       </header>
-      {viewMode === 'graph' ? (
+      {viewMode === 'analytics' ? (
+        <AnalyticsView />
+      ) : viewMode === 'graph' ? (
         <GraphErrorBoundary onFallback={() => setViewMode('cards')}>
           <GraphCanvas worktrees={state.worktrees} />
         </GraphErrorBoundary>

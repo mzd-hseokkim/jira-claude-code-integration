@@ -8,11 +8,16 @@ const { createLogger } = require('./logger');
 const { loadCredentials } = require('./credentials');
 const { startWorktreeCollector } = require('./collectors/worktree');
 const { startJiraCollector } = require('./collectors/jira');
+const { startMetricsCollector } = require('./collectors/jira-metrics');
 const { createIngestRouter } = require('./routes/ingest');
 const { createCleanupRouter } = require('./routes/cleanup');
 const { createWorkspacesRouter } = require('./routes/workspaces');
+const { createSpacesRouter } = require('./routes/spaces');
+const { createMetricsRouter } = require('./routes/metrics');
 const { openBrowser } = require('./openBrowser');
 const workspaces = require('./workspaces');
+const { createMetricsStore } = require('./metrics-store');
+const { discoverSpaces } = require('./metrics-spaces');
 
 const DEFAULT_PORT = 8765;
 
@@ -70,6 +75,9 @@ async function startServer(opts = {}) {
   logger.info('server.credentials-loaded', { source: creds.source });
 
   const store = createStore();
+
+  // Metrics store (SQLite + JSON fallback)
+  const metricsStore = createMetricsStore();
 
   // Wire up SSE broadcasts from store events.
   /** @type {Set<import('node:http').ServerResponse>} */
@@ -129,6 +137,8 @@ async function startServer(opts = {}) {
       getLastTickAt: () => lastTickAt,
       pluginRoot: process.env.CLAUDE_PLUGIN_ROOT || null,
     }));
+    app.use('/spaces', createSpacesRouter(metricsStore, logger));
+    app.use('/metrics', createMetricsRouter(metricsStore, logger));
     app.use(express.static(path.join(__dirname, 'public')));
   } catch {
     // express not available — use raw http (minimal, for environments without npm install)
@@ -225,6 +235,23 @@ async function startServer(opts = {}) {
     },
   });
 
+  // Discover spaces and seed metrics store, then start periodic metrics collection
+  try {
+    const spaces = discoverSpaces(workspaces, { logger });
+    for (const space of spaces) {
+      metricsStore.upsertSpace(space);
+    }
+    logger.info('server.metrics-spaces-discovered', { count: spaces.length });
+  } catch (err) {
+    logger.warn('server.metrics-spaces-error', { error: err.message });
+  }
+
+  const metricsCollector = startMetricsCollector(metricsStore, {
+    getSpaces: () => metricsStore.listSpaces(),
+    getCredentials: () => loadCredentials({ workspaceRoot }),
+    logger,
+  });
+
   await new Promise((resolve, reject) => {
     httpServer.listen(port, '127.0.0.1', () => {
       logger.info('server.started', { port, workspaceRoots });
@@ -242,8 +269,10 @@ async function startServer(opts = {}) {
     async stop() {
       worktreeCollector.stop();
       jiraCollector.stop();
+      metricsCollector.stop();
       sessionSweep.stop();
       workspaces.stopWatcher();
+      try { metricsStore.close(); } catch { /* ignore */ }
       await new Promise((resolve) => httpServer.close(resolve));
       await logger.close();
     },
