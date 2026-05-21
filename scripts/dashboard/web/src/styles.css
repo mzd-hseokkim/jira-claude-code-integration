@@ -2026,22 +2026,8 @@ body > * { position: relative; z-index: 1; }
   background: rgba(139, 92, 246, 0.18);
   border-color: rgba(109, 40, 217, 0.45);
 }
-.session-card--busy .activity-panel__title,
-.session-card--awaiting .activity-panel__title {
-  color: #5b21b6;
-}
-.session-card--busy .activity-panel__row dt,
-.session-card--awaiting .activity-panel__row dt {
-  color: #475569;
-}
-.session-card--busy .activity-panel__row dd,
-.session-card--awaiting .activity-panel__row dd {
-  color: #1f2937;
-}
-.session-card--busy .activity-panel__prompt,
-.session-card--awaiting .activity-panel__prompt {
-  color: #334155;
-}
+/* ActivityPanel 텍스트 override는 base .session-card .activity-panel__* 규칙
+   바로 뒤에 배치(동일 specificity → 후순위 승) — 파일 하단 참조. */
 
 .session-card__awaiting-badge {
   font-size: 10px;
@@ -2116,4 +2102,24 @@ body > * { position: relative; z-index: 1; }
 }
 .session-card .activity-panel__prompt {
   color: rgba(221, 214, 254, 0.9);
+}
+
+/* busy/awaiting는 카드 배경이 밝게 뒤집히므로 위 밝은-텍스트 override를
+   다시 어두운 색으로 덮는다. base 규칙과 동일 specificity이므로 반드시
+   뒤에 와야 적용된다. */
+.session-card--busy .activity-panel__title,
+.session-card--awaiting .activity-panel__title {
+  color: #5b21b6;
+}
+.session-card--busy .activity-panel__row dt,
+.session-card--awaiting .activity-panel__row dt {
+  color: #475569;
+}
+.session-card--busy .activity-panel__row dd,
+.session-card--awaiting .activity-panel__row dd {
+  color: #1f2937;
+}
+.session-card--busy .activity-panel__prompt,
+.session-card--awaiting .activity-panel__prompt {
+  color: #334155;
 }
