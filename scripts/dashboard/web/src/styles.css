@@ -37,8 +37,10 @@
   /* Functional state hues (kept distinct from accent) */
   --busy:        #3f78c4;   /* Claude responding — desaturated blue */
   --busy-weak:   rgba(63, 120, 196, 0.08);
+  --busy-tint:   #e6f0fb;   /* card bg when busy — clearly tinted */
   --awaiting:    #b27d2e;   /* awaiting user — brass amber */
   --awaiting-weak: rgba(178, 125, 46, 0.10);
+  --awaiting-tint: #fbeec4; /* card bg when awaiting — clearly amber */
   --ok:          #2f8f5b;   /* live / active green (desaturated) */
   --danger:      #c0413b;
 
@@ -1118,26 +1120,26 @@ body > * { position: relative; z-index: 1; }
 
 /* ===== Card state: busy (Claude responding) — subtle blue, no neon ===== */
 .wt-card--busy {
-  background: var(--busy-weak);
+  background: var(--busy-tint);
   border-color: var(--busy);
-  box-shadow: 0 0 0 1px var(--busy), var(--shadow-card);
+  box-shadow: 0 0 0 1.5px var(--busy), var(--shadow-card);
   animation: wt-card-busy-pulse 1.8s ease-in-out infinite;
 }
 @keyframes wt-card-busy-pulse {
-  0%, 100% { box-shadow: 0 0 0 1px var(--busy), var(--shadow-card); }
-  50%      { box-shadow: 0 0 0 1px var(--busy), 0 0 0 4px var(--busy-weak), var(--shadow-card); }
+  0%, 100% { box-shadow: 0 0 0 1.5px var(--busy), var(--shadow-card); }
+  50%      { box-shadow: 0 0 0 1.5px var(--busy), 0 0 0 5px var(--busy-weak), var(--shadow-card); }
 }
 
 /* ===== Card state: awaiting (user input) — subtle amber ===== */
 .wt-card--awaiting {
-  background: var(--awaiting-weak);
+  background: var(--awaiting-tint);
   border-color: var(--awaiting);
-  box-shadow: 0 0 0 1px var(--awaiting), var(--shadow-card);
+  box-shadow: 0 0 0 1.5px var(--awaiting), var(--shadow-card);
   animation: wt-card-awaiting-pulse 1.4s ease-in-out infinite;
 }
 @keyframes wt-card-awaiting-pulse {
-  0%, 100% { box-shadow: 0 0 0 1px var(--awaiting), var(--shadow-card); }
-  50%      { box-shadow: 0 0 0 1px var(--awaiting), 0 0 0 4px var(--awaiting-weak), var(--shadow-card); }
+  0%, 100% { box-shadow: 0 0 0 1.5px var(--awaiting), var(--shadow-card); }
+  50%      { box-shadow: 0 0 0 1.5px var(--awaiting), 0 0 0 5px var(--awaiting-weak), var(--shadow-card); }
 }
 
 /* ===== Card state: stale ===== */
@@ -1342,15 +1344,15 @@ body > * { position: relative; z-index: 1; }
 
 /* busy / awaiting — subtle, no neon */
 .session-card--busy {
-  background: var(--busy-weak);
+  background: var(--busy-tint);
   border-color: var(--busy);
-  box-shadow: 0 0 0 1px var(--busy), var(--shadow-card);
+  box-shadow: 0 0 0 1.5px var(--busy), var(--shadow-card);
   animation: wt-card-busy-pulse 1.8s ease-in-out infinite;
 }
 .session-card--awaiting {
-  background: var(--awaiting-weak);
+  background: var(--awaiting-tint);
   border-color: var(--awaiting);
-  box-shadow: 0 0 0 1px var(--awaiting), var(--shadow-card);
+  box-shadow: 0 0 0 1.5px var(--awaiting), var(--shadow-card);
   animation: wt-card-awaiting-pulse 1.4s ease-in-out infinite;
 }
 
