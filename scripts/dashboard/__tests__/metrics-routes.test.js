@@ -87,6 +87,10 @@ function makeStore(overrides = {}) {
       { week: '2024-01', completed: 2 },
     ]),
     getWip: overrides.getWip ?? (() => 3),
+    getLeadTime: overrides.getLeadTime ?? (() => ({ median: 10, p75: 15, p95: 20, distribution: [{ issueKey: 'MAE-1', days: 10 }] })),
+    getCycleTime: overrides.getCycleTime ?? (() => ({ median: 5, p75: 8, p95: 12, distribution: [{ issueKey: 'MAE-1', days: 5 }], note: '근사값' })),
+    getPerAssignee: overrides.getPerAssignee ?? (() => [{ assignee: 'alice', completed: 2, wip: 1 }]),
+    getAgingWip: overrides.getAgingWip ?? (() => [{ issueKey: 'MAE-2', summary: 'Old issue', assignee: 'bob', created: '2024-01-01', ageDays: 30 }]),
   };
 }
 
@@ -189,4 +193,82 @@ test('T3: GET /spaces returns 500 when store throws', () => {
 
   assert.equal(res._status, 500);
   assert.ok(res._body.error, 'error field should exist');
+});
+
+// ---------------------------------------------------------------------------
+// MAE-387 T5: 신규 4필드 존재 + 기존 4필드 유지 (하위 호환)
+// ---------------------------------------------------------------------------
+
+test('T5: GET /metrics response includes MAE-387 new fields (leadTime, cycleTime, perAssignee, agingWip)', () => {
+  const store = makeStore();
+  const router = createMetricsRouter(store);
+  const handler = getHandler(router);
+
+  const req = makeReq({ space: 'sp1' });
+  const res = makeRes();
+
+  handler(req, res);
+
+  assert.equal(res._status, 200);
+
+  // 기존 4필드 (하위 호환)
+  assert.ok('statusDistribution' in res._body, 'statusDistribution should exist');
+  assert.ok('wip' in res._body, 'wip should exist');
+  assert.ok('throughput' in res._body, 'throughput should exist');
+  assert.ok('spaceId' in res._body, 'spaceId should exist');
+
+  // 신규 4필드 (MAE-387)
+  assert.ok('leadTime' in res._body, 'leadTime should exist');
+  assert.ok('cycleTime' in res._body, 'cycleTime should exist');
+  assert.ok('perAssignee' in res._body, 'perAssignee should exist');
+  assert.ok('agingWip' in res._body, 'agingWip should exist');
+});
+
+test('T5: GET /metrics leadTime field has correct shape', () => {
+  const store = makeStore();
+  const router = createMetricsRouter(store);
+  const handler = getHandler(router);
+
+  handler(makeReq({ space: 'sp1' }), makeRes());
+  const res = makeRes();
+  handler(makeReq({ space: 'sp1' }), res);
+
+  const lt = res._body.leadTime;
+  assert.ok(lt !== undefined, 'leadTime should not be undefined');
+  assert.ok('median' in lt, 'leadTime.median should exist');
+  assert.ok('distribution' in lt, 'leadTime.distribution should exist');
+  assert.ok(Array.isArray(lt.distribution), 'leadTime.distribution should be array');
+});
+
+test('T5: GET /metrics perAssignee field is an array', () => {
+  const store = makeStore();
+  const router = createMetricsRouter(store);
+  const handler = getHandler(router);
+
+  const res = makeRes();
+  handler(makeReq({ space: 'sp1' }), res);
+
+  assert.ok(Array.isArray(res._body.perAssignee), 'perAssignee should be array');
+  if (res._body.perAssignee.length > 0) {
+    const first = res._body.perAssignee[0];
+    assert.ok('assignee' in first, 'entry has assignee field');
+    assert.ok('completed' in first, 'entry has completed field');
+    assert.ok('wip' in first, 'entry has wip field');
+  }
+});
+
+test('T5: GET /metrics agingWip field is an array', () => {
+  const store = makeStore();
+  const router = createMetricsRouter(store);
+  const handler = getHandler(router);
+
+  const res = makeRes();
+  handler(makeReq({ space: 'sp1' }), res);
+
+  assert.ok(Array.isArray(res._body.agingWip), 'agingWip should be array');
+  if (res._body.agingWip.length > 0) {
+    const first = res._body.agingWip[0];
+    assert.ok('issueKey' in first, 'entry has issueKey field');
+    assert.ok('ageDays' in first, 'entry has ageDays field');
+  }
 });

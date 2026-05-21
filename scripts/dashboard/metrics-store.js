@@ -195,6 +195,104 @@ function createSqliteStore(db) {
       return row ? row.count : 0;
     },
 
+    getLeadTime(spaceId) {
+      // lead time = resolutiondate - created (일 단위), resolved 이슈만
+      const rows = db.prepare(`
+        SELECT issueKey,
+               CAST((julianday(substr(resolutiondate,1,10)) - julianday(substr(created,1,10))) AS INTEGER) AS days
+        FROM issue_current
+        WHERE spaceId = ?
+          AND resolutiondate IS NOT NULL
+          AND created IS NOT NULL
+        ORDER BY days ASC
+      `).all(spaceId);
+      if (rows.length === 0) return { median: null, p75: null, p95: null, distribution: [] };
+      const days = rows.map((r) => r.days);
+      const median = days[Math.floor(days.length / 2)];
+      const p75 = days[Math.floor(days.length * 0.75)];
+      const p95 = days[Math.floor(days.length * 0.95)];
+      return { median, p75, p95, distribution: rows };
+    },
+
+    getCycleTime(spaceId) {
+      // cycle time(근사) = snapshot 최초 indeterminate 날짜 → resolutiondate, 일 단위
+      const rows = db.prepare(`
+        SELECT ic.issueKey,
+               MIN(sn.snapshotDate) AS firstInProgressDate,
+               ic.resolutiondate
+        FROM issue_current ic
+        JOIN issue_snapshot sn
+          ON sn.issueKey = ic.issueKey
+         AND sn.statusCategory = 'indeterminate'
+        WHERE ic.spaceId = ?
+          AND ic.resolutiondate IS NOT NULL
+        GROUP BY ic.issueKey
+      `).all(spaceId);
+      if (rows.length === 0) return { median: null, p75: null, p95: null, distribution: [], note: '근사값' };
+      const computed = rows.map((r) => {
+        const days = Math.max(0, Math.round(
+          (new Date(r.resolutiondate.slice(0, 10)) - new Date(r.firstInProgressDate)) / 86400000
+        ));
+        return { issueKey: r.issueKey, days };
+      }).sort((a, b) => a.days - b.days);
+      const days = computed.map((r) => r.days);
+      const median = days[Math.floor(days.length / 2)];
+      const p75 = days[Math.floor(days.length * 0.75)];
+      const p95 = days[Math.floor(days.length * 0.95)];
+      return { median, p75, p95, distribution: computed, note: '근사값' };
+    },
+
+    getPerAssignee(spaceId, weeks = 8) {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - weeks * 7);
+      const startStr = startDate.toISOString().slice(0, 10);
+
+      // 주간 완료 수
+      const completedRows = db.prepare(`
+        SELECT COALESCE(assignee, '__unassigned__') AS assignee,
+               COUNT(*) AS completed
+        FROM issue_current
+        WHERE spaceId = ?
+          AND resolutiondate IS NOT NULL
+          AND substr(resolutiondate, 1, 10) >= ?
+        GROUP BY assignee
+      `).all(spaceId, startStr);
+
+      // 현재 WIP
+      const wipRows = db.prepare(`
+        SELECT COALESCE(assignee, '__unassigned__') AS assignee,
+               COUNT(*) AS wip
+        FROM issue_current
+        WHERE spaceId = ?
+          AND statusCategory = 'indeterminate'
+        GROUP BY assignee
+      `).all(spaceId);
+
+      const result = {};
+      for (const r of completedRows) {
+        result[r.assignee] = { assignee: r.assignee, completed: r.completed, wip: 0 };
+      }
+      for (const r of wipRows) {
+        if (!result[r.assignee]) result[r.assignee] = { assignee: r.assignee, completed: 0, wip: 0 };
+        result[r.assignee].wip = r.wip;
+      }
+      return Object.values(result).sort((a, b) => b.completed - a.completed);
+    },
+
+    getAgingWip(spaceId) {
+      const today = new Date().toISOString().slice(0, 10);
+      const rows = db.prepare(`
+        SELECT issueKey, summary, assignee, created,
+               CAST((julianday(?) - julianday(substr(created,1,10))) AS INTEGER) AS ageDays
+        FROM issue_current
+        WHERE spaceId = ?
+          AND statusCategory = 'indeterminate'
+          AND created IS NOT NULL
+        ORDER BY ageDays DESC
+      `).all(today, spaceId);
+      return rows;
+    },
+
     close() {
       try { db.close(); } catch { /* ignore */ }
     },
@@ -312,6 +410,90 @@ function createJsonStore(jsonFile) {
       return Object.values(data.issues).filter(
         (i) => i.spaceId === spaceId && i.statusCategory === 'indeterminate'
       ).length;
+    },
+
+    getLeadTime(spaceId) {
+      const resolved = Object.values(data.issues).filter(
+        (i) => i.spaceId === spaceId && i.resolutiondate && i.created
+      );
+      if (resolved.length === 0) return { median: null, p75: null, p95: null, distribution: [] };
+      const items = resolved.map((i) => ({
+        issueKey: i.issueKey,
+        days: Math.max(0, Math.round(
+          (new Date(i.resolutiondate.slice(0, 10)) - new Date(i.created.slice(0, 10))) / 86400000
+        )),
+      })).sort((a, b) => a.days - b.days);
+      const days = items.map((r) => r.days);
+      const median = days[Math.floor(days.length / 2)];
+      const p75 = days[Math.floor(days.length * 0.75)];
+      const p95 = days[Math.floor(days.length * 0.95)];
+      return { median, p75, p95, distribution: items };
+    },
+
+    getCycleTime(spaceId) {
+      // cycle time(근사): snapshot 최초 indeterminate 날짜 → resolutiondate
+      const snapshots = Object.values(data.snapshots);
+      const firstInProgress = {};
+      for (const sn of snapshots) {
+        if (sn.statusCategory !== 'indeterminate') continue;
+        const issue = data.issues[sn.issueKey];
+        if (!issue || issue.spaceId !== spaceId) continue;
+        if (!firstInProgress[sn.issueKey] || sn.snapshotDate < firstInProgress[sn.issueKey]) {
+          firstInProgress[sn.issueKey] = sn.snapshotDate;
+        }
+      }
+      const computed = [];
+      for (const [issueKey, firstDate] of Object.entries(firstInProgress)) {
+        const issue = data.issues[issueKey];
+        if (!issue || !issue.resolutiondate) continue;
+        const days = Math.max(0, Math.round(
+          (new Date(issue.resolutiondate.slice(0, 10)) - new Date(firstDate)) / 86400000
+        ));
+        computed.push({ issueKey, days });
+      }
+      if (computed.length === 0) return { median: null, p75: null, p95: null, distribution: [], note: '근사값' };
+      computed.sort((a, b) => a.days - b.days);
+      const days = computed.map((r) => r.days);
+      const median = days[Math.floor(days.length / 2)];
+      const p75 = days[Math.floor(days.length * 0.75)];
+      const p95 = days[Math.floor(days.length * 0.95)];
+      return { median, p75, p95, distribution: computed, note: '근사값' };
+    },
+
+    getPerAssignee(spaceId, weeks = 8) {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - weeks * 7);
+      const startStr = startDate.toISOString().slice(0, 10);
+
+      const result = {};
+      for (const issue of Object.values(data.issues)) {
+        if (issue.spaceId !== spaceId) continue;
+        const key = issue.assignee || '__unassigned__';
+        if (!result[key]) result[key] = { assignee: key, completed: 0, wip: 0 };
+        if (issue.resolutiondate && issue.resolutiondate.slice(0, 10) >= startStr) {
+          result[key].completed++;
+        }
+        if (issue.statusCategory === 'indeterminate') {
+          result[key].wip++;
+        }
+      }
+      return Object.values(result).sort((a, b) => b.completed - a.completed);
+    },
+
+    getAgingWip(spaceId) {
+      const today = new Date().toISOString().slice(0, 10);
+      return Object.values(data.issues)
+        .filter((i) => i.spaceId === spaceId && i.statusCategory === 'indeterminate' && i.created)
+        .map((i) => ({
+          issueKey: i.issueKey,
+          summary: i.summary,
+          assignee: i.assignee,
+          created: i.created,
+          ageDays: Math.max(0, Math.round(
+            (new Date(today) - new Date(i.created.slice(0, 10))) / 86400000
+          )),
+        }))
+        .sort((a, b) => b.ageDays - a.ageDays);
     },
 
     close() { /* no-op */ },

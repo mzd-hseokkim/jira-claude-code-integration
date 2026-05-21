@@ -105,6 +105,10 @@ export function useMetrics(spaceId, { weeks = 8, intervalMs = DEFAULT_METRICS_IN
         statusDistribution: json.statusDistribution || [],
         wip: json.wip ?? 0,
         throughput: json.throughput || [],
+        leadTime: json.leadTime || { median: null, p75: null, p95: null, distribution: [] },
+        cycleTime: json.cycleTime || { median: null, p75: null, p95: null, distribution: [], note: '근사값' },
+        perAssignee: json.perAssignee || [],
+        agingWip: json.agingWip || [],
       });
       setError(null);
     } catch (e) {
