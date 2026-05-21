@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useSpaces, useMetrics } from '../hooks/useMetrics.js';
 import StatusChart from './charts/StatusChart.jsx';
 import ThroughputChart from './charts/ThroughputChart.jsx';
+import TimeDistChart from './charts/TimeDistChart.jsx';
+import PerAssigneeTable from './charts/PerAssigneeTable.jsx';
+import AgingWipTable from './charts/AgingWipTable.jsx';
 
 /**
  * Analytics 뷰.
@@ -117,6 +120,51 @@ export default function AnalyticsView() {
               <h3 className="analytics-section__title">주별 Throughput (완료/주)</h3>
               <div className="analytics-section__body analytics-section__body--throughput">
                 <ThroughputChart throughput={data.throughput} />
+              </div>
+            </div>
+
+            {/* Lead Time 분포 */}
+            <div className="analytics-section">
+              <h3 className="analytics-section__title">Lead Time 분포 (일)</h3>
+              <div className="analytics-section__body">
+                <TimeDistChart
+                  distribution={data.leadTime.distribution}
+                  median={data.leadTime.median}
+                  p75={data.leadTime.p75}
+                  p95={data.leadTime.p95}
+                  label="Lead Time"
+                />
+              </div>
+            </div>
+
+            {/* Cycle Time 분포 */}
+            <div className="analytics-section">
+              <h3 className="analytics-section__title">Cycle Time 분포 (일, 근사)</h3>
+              <div className="analytics-section__body">
+                <TimeDistChart
+                  distribution={data.cycleTime.distribution}
+                  median={data.cycleTime.median}
+                  p75={data.cycleTime.p75}
+                  p95={data.cycleTime.p95}
+                  label="Cycle Time"
+                  note={data.cycleTime.note}
+                />
+              </div>
+            </div>
+
+            {/* 사람별 처리량 */}
+            <div className="analytics-section">
+              <h3 className="analytics-section__title">사람별 처리량</h3>
+              <div className="analytics-section__body">
+                <PerAssigneeTable perAssignee={data.perAssignee} weeks={8} />
+              </div>
+            </div>
+
+            {/* Aging WIP */}
+            <div className="analytics-section">
+              <h3 className="analytics-section__title">Aging WIP (경과일순)</h3>
+              <div className="analytics-section__body">
+                <AgingWipTable agingWip={data.agingWip} />
               </div>
             </div>
           </>
