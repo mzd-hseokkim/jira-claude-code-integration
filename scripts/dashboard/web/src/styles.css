@@ -500,14 +500,14 @@ body > * { position: relative; z-index: 1; }
 /* ===== Grid ===== */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  /* 카드 최소 폭을 SDLC stepper 한 줄이 들어갈 크기로 보장하고
+     열 수는 화면 폭에 맞춰 자동 조정. min()으로 모바일 가로 오버플로 방지. */
+  grid-template-columns: repeat(auto-fill, minmax(min(400px, 100%), 1fr));
+  gap: 12px;
   padding: 14px 20px 64px;
   align-content: start;
   flex: 1 1 auto;
 }
-@media (max-width: 1100px) { .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 720px)  { .dashboard-grid { grid-template-columns: 1fr; } }
 
 /* ===== Marching Ants Edge Animation ===== */
 @keyframes marching-ants-flow {
@@ -834,15 +834,17 @@ body > * { position: relative; z-index: 1; }
 /* ===== SDLC Stepper ===== */
 .wt-stepper {
   display: flex;
-  flex-wrap: wrap;          /* 좁은 카드에서 끝 단계가 잘리지 않게 줄바꿈 */
-  row-gap: 3px;
+  flex-wrap: nowrap;
   list-style: none;
   padding: 4px 0;
   margin: 0;
   align-items: center;
   font-size: 10.5px;
   letter-spacing: 0.01em;
-  justify-content: flex-start;
+  justify-content: space-between;
+  white-space: nowrap;
+  /* 카드 최소 폭(400px)이 한 줄을 보장 — 클리핑 방지용 안전망만 둔다. */
+  overflow: hidden;
 }
 .wt-stepper__step {
   display: inline-block;
@@ -1237,8 +1239,8 @@ body > * { position: relative; z-index: 1; }
 .dashboard-grid--grouped .workspace-group { display: block; margin-bottom: 20px; }
 .dashboard-grid--grouped .workspace-group__cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(min(400px, 100%), 1fr));
+  gap: 12px;
   padding: 12px 0 0;
 }
 
