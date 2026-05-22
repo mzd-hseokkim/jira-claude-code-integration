@@ -147,8 +147,43 @@ function _moveToBak(filePath, logger) {
 // ---------------------------------------------------------------------------
 
 /**
+ * If `dir` is a linked git worktree, return its main repo root; otherwise return
+ * `dir` unchanged. A worktree has `.git` as a FILE containing
+ * `gitdir: <mainRepo>/.git/worktrees/<name>`; the main root is the segment before
+ * `/.git/worktrees/`. This keeps the dashboard from registering a worktree dir
+ * (e.g. `<repo>_worktree/MAE-386`) as a standalone workspace.
+ *
+ * @param {string} dir  resolved absolute path
+ * @returns {string}
+ */
+function _resolveWorktreeToMainRoot(dir) {
+  const gitPath = path.join(dir, '.git');
+  let stat;
+  try {
+    stat = fs.statSync(gitPath);
+  } catch {
+    return dir;
+  }
+  if (stat.isDirectory()) return dir; // normal repo
+  let content;
+  try {
+    content = fs.readFileSync(gitPath, 'utf8');
+  } catch {
+    return dir;
+  }
+  const m = content.match(/gitdir:\s*(.+)/);
+  if (!m) return dir;
+  const gitdir = m[1].trim().replace(/[\\/]/g, path.sep);
+  const marker = `${path.sep}.git${path.sep}worktrees${path.sep}`;
+  const idx = gitdir.indexOf(marker);
+  if (idx === -1) return dir;
+  return gitdir.slice(0, idx);
+}
+
+/**
  * Register a workspace path.
  * If the path is already registered, only lastSeenAt is updated (idempotent).
+ * A linked git worktree is normalized to its main repo root before registering.
  *
  * @param {string} workspacePath
  * @param {{ now?: Date }} [opts]  - `now` is injectable for tests
@@ -158,7 +193,7 @@ function register(workspacePath, opts = {}) {
   if (typeof workspacePath !== 'string' || !workspacePath.trim()) {
     throw new TypeError('workspacePath must be a non-empty string');
   }
-  const resolved = path.resolve(workspacePath);
+  const resolved = _resolveWorktreeToMainRoot(path.resolve(workspacePath));
   const now = (opts.now instanceof Date ? opts.now : new Date()).toISOString();
 
   const registry = readRegistry();

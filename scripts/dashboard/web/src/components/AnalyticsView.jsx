@@ -5,6 +5,10 @@ import ThroughputChart from './charts/ThroughputChart.jsx';
 import TimeDistChart from './charts/TimeDistChart.jsx';
 import PerAssigneeTable from './charts/PerAssigneeTable.jsx';
 import AgingWipTable from './charts/AgingWipTable.jsx';
+import FunnelChart from './charts/FunnelChart.jsx';
+import PriorityChart from './charts/PriorityChart.jsx';
+import EpicProgressTable from './charts/EpicProgressTable.jsx';
+import AgentThroughputTable from './charts/AgentThroughputTable.jsx';
 
 /**
  * Analytics 뷰.
@@ -165,6 +169,38 @@ export default function AnalyticsView() {
               <h3 className="analytics-section__title">Aging WIP (경과일순)</h3>
               <div className="analytics-section__body">
                 <AgingWipTable agingWip={data.agingWip} />
+              </div>
+            </div>
+
+            {/* SDLC 퍼널 */}
+            <div className="analytics-section">
+              <h3 className="analytics-section__title">SDLC 단계 퍼널 (로컬 worktree 기준)</h3>
+              <div className="analytics-section__body">
+                <FunnelChart funnel={data.sdlcFunnel} />
+              </div>
+            </div>
+
+            {/* 에이전트 처리량 */}
+            <div className="analytics-section">
+              <h3 className="analytics-section__title">에이전트 처리량 (이슈 단위, 근사)</h3>
+              <div className="analytics-section__body">
+                <AgentThroughputTable agentThroughput={data.agentThroughput} />
+              </div>
+            </div>
+
+            {/* Priority 분포 */}
+            <div className="analytics-section">
+              <h3 className="analytics-section__title">Priority 분포</h3>
+              <div className="analytics-section__body">
+                <PriorityChart distribution={data.priorityDistribution} />
+              </div>
+            </div>
+
+            {/* Epic별 진행률 */}
+            <div className="analytics-section">
+              <h3 className="analytics-section__title">Epic별 진행률</h3>
+              <div className="analytics-section__body">
+                <EpicProgressTable epicProgress={data.epicProgress} />
               </div>
             </div>
           </>

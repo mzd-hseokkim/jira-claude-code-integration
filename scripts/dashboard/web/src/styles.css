@@ -1399,3 +1399,28 @@ body > * { position: relative; z-index: 1; }
   color: var(--text-4);
   letter-spacing: 0;
 }
+
+/* ── analytics-table (Phase 3: EpicProgressTable, AgentThroughputTable) ─ */
+.analytics-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.analytics-table__th {
+  text-align: left; padding: 4px 8px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-3, #94a3b8);
+  border-bottom: 1px solid var(--hairline, rgba(255,255,255,0.08));
+}
+.analytics-table__th--num { text-align: right; }
+.analytics-table__th--bar { width: 100px; }
+.analytics-table__row:hover { background: var(--surface-2, rgba(255,255,255,0.04)); }
+.analytics-table__td { padding: 4px 8px; color: var(--text, #e2e8f0); }
+.analytics-table__td--label { font-family: var(--font-mono); font-size: 11px; }
+.analytics-table__td--num { text-align: right; font-variant-numeric: tabular-nums; }
+.analytics-table__td--bar { padding: 4px 8px; }
+.analytics-table__note { padding: 6px 8px; color: var(--text-4, #64748b); font-size: 10px; font-style: italic; }
+
+/* ── progress-bar ─────────────────────────────────────────────────────────── */
+.progress-bar {
+  width: 80px; height: 10px; border-radius: 5px;
+  background: var(--chart-bg, rgba(255,255,255,0.06));
+  overflow: hidden;
+}
+.progress-bar__fill { height: 100%; border-radius: 5px; transition: width 0.3s ease; }

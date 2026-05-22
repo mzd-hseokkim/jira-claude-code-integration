@@ -91,6 +91,18 @@ function makeStore(overrides = {}) {
     getCycleTime: overrides.getCycleTime ?? (() => ({ median: 5, p75: 8, p95: 12, distribution: [{ issueKey: 'MAE-1', days: 5 }], note: '근사값' })),
     getPerAssignee: overrides.getPerAssignee ?? (() => [{ assignee: 'alice', completed: 2, wip: 1 }]),
     getAgingWip: overrides.getAgingWip ?? (() => [{ issueKey: 'MAE-2', summary: 'Old issue', assignee: 'bob', created: '2024-01-01', ageDays: 30 }]),
+    getPriorityDistribution: overrides.getPriorityDistribution ?? (() => [{ priority: 'High', count: 4 }, { priority: '(없음)', count: 1 }]),
+    getEpicProgress: overrides.getEpicProgress ?? (() => [{ epic: 'MAE-100', total: 4, done: 2, pct: 50 }]),
+  };
+}
+
+// MAE-388: worktree store stub for SDLC funnel / agent throughput
+function makeWorktreeStore(overrides = {}) {
+  return {
+    getWorktreeActivityByTask: overrides.getWorktreeActivityByTask ?? (() => [
+      { taskId: 'MAE-1', toolCallCount: 12, completedSteps: ['start', 'approach', 'impl'] },
+      { taskId: 'MAE-2', toolCallCount: 3, completedSteps: ['start'] },
+    ]),
   };
 }
 
@@ -271,4 +283,58 @@ test('T5: GET /metrics agingWip field is an array', () => {
     assert.ok('issueKey' in first, 'entry has issueKey field');
     assert.ok('ageDays' in first, 'entry has ageDays field');
   }
+});
+
+// ---------------------------------------------------------------------------
+// MAE-388 T6: priority/epic 파생 + SDLC 퍼널 + 에이전트 처리량
+// ---------------------------------------------------------------------------
+
+test('T6: GET /metrics includes priorityDistribution + epicProgress derived fields', () => {
+  const store = makeStore();
+  const router = createMetricsRouter(store);
+  const handler = getHandler(router);
+
+  const res = makeRes();
+  handler(makeReq({ space: 'sp1' }), res);
+
+  assert.equal(res._status, 200);
+  assert.ok(Array.isArray(res._body.priorityDistribution), 'priorityDistribution should be array');
+  assert.ok('priority' in res._body.priorityDistribution[0], 'entry has priority field');
+  assert.ok('count' in res._body.priorityDistribution[0], 'entry has count field');
+
+  assert.ok(Array.isArray(res._body.epicProgress), 'epicProgress should be array');
+  const epic = res._body.epicProgress[0];
+  assert.ok('epic' in epic && 'total' in epic && 'done' in epic && 'pct' in epic, 'epic entry has full shape');
+});
+
+test('T6: GET /metrics sdlcFunnel + agentThroughput from worktree store', () => {
+  const store = makeStore();
+  const worktreeStore = makeWorktreeStore();
+  const router = createMetricsRouter(store, null, worktreeStore);
+  const handler = getHandler(router);
+
+  const res = makeRes();
+  handler(makeReq({ space: 'sp1' }), res);
+
+  assert.equal(res._status, 200);
+  assert.ok(Array.isArray(res._body.sdlcFunnel), 'sdlcFunnel should be array');
+  const startStep = res._body.sdlcFunnel.find((s) => s.step === 'start');
+  assert.ok(startStep, 'sdlcFunnel has start step');
+  assert.equal(startStep.count, 2, 'both tasks counted at start step');
+
+  assert.ok(Array.isArray(res._body.agentThroughput), 'agentThroughput should be array');
+  assert.equal(res._body.agentThroughput[0].taskId, 'MAE-1', 'sorted by toolCallCount desc');
+});
+
+test('T6: GET /metrics sdlcFunnel empty when no worktree store provided', () => {
+  const store = makeStore();
+  const router = createMetricsRouter(store);
+  const handler = getHandler(router);
+
+  const res = makeRes();
+  handler(makeReq({ space: 'sp1' }), res);
+
+  assert.equal(res._status, 200);
+  assert.deepEqual(res._body.sdlcFunnel, [], 'sdlcFunnel empty without worktree store');
+  assert.deepEqual(res._body.agentThroughput, [], 'agentThroughput empty without worktree store');
 });

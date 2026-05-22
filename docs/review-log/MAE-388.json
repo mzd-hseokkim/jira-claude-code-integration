@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MAE-388",
+  "entries": [
+    {
+      "taskId": "MAE-388",
+      "timestamp": "2026-05-22T13:55:20Z",
+      "reviewerVersion": "46deb58427a1",
+      "outcome": "fail",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "high",
+          "file": "scripts/dashboard/web/src/styles.css",
+          "line": 0,
+          "category": "syntax",
+          "message": "stray trailing } at end of file"
+        },
+        {
+          "id": "F-002",
+          "severity": "high",
+          "file": "scripts/dashboard/collectors/jira-metrics.js",
+          "line": 144,
+          "category": "dead-code",
+          "message": "customfield_10014 not in FIELDS, epic extraction path always null"
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 2,
+        "medium": 0,
+        "low": 0,
+        "info": 0
+      },
+      "falsePositive": null,
+      "userOverride": null
+    },
+    {
+      "taskId": "MAE-388",
+      "timestamp": "2026-05-22T14:04:26Z",
+      "reviewerVersion": "46deb58427a1",
+      "outcome": "pass",
+      "findings": [],
+      "severityCounts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 0
+      },
+      "falsePositive": null,
+      "userOverride": null
+    }
+  ]
+}
