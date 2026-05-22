@@ -1424,4 +1424,3 @@ body > * { position: relative; z-index: 1; }
   overflow: hidden;
 }
 .progress-bar__fill { height: 100%; border-radius: 5px; transition: width 0.3s ease; }
-}

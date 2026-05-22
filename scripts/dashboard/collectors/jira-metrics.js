@@ -139,12 +139,10 @@ function issueToRow(issue, spaceId) {
     resolutiondate: f.resolutiondate || null,
     updated: f.updated || null,
     parent: f.parent && f.parent.key ? f.parent.key : null,
-    // Epic: customfield_10014 우선, 없으면 parent 체인 폴백 (hierarchyLevel 1 = Epic).
-    // 이 Jira 인스턴스처럼 Epic 계층이 없으면 null.
-    epic: (f.customfield_10014 || null) ||
-      (f.parent && f.parent.fields && f.parent.fields.issuetype &&
-       f.parent.fields.issuetype.hierarchyLevel === 1 ? f.parent.key : null) ||
-      null,
+    // Epic: parent가 Epic(hierarchyLevel 1)이면 그 key, 아니면 null.
+    // 이 Jira 인스턴스는 Epic 계층이 없어 실질적으로 항상 null (graceful degrade).
+    epic: (f.parent && f.parent.fields && f.parent.fields.issuetype &&
+       f.parent.fields.issuetype.hierarchyLevel === 1 ? f.parent.key : null),
     fetchedAt: new Date().toISOString(),
   };
 }
