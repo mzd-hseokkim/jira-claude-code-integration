@@ -175,3 +175,45 @@ test('U6: unregister on unknown path returns false and causes no error', () => {
     teardown(reg);
   }
 });
+
+// ---------------------------------------------------------------------------
+// U7: 링크된 git worktree를 register → main repo root로 정규화 등록
+// (worktree dir이 단독 workspace로 잡혀 그룹명이 TASK-ID로 표시되던 버그 방지)
+// ---------------------------------------------------------------------------
+test('U7: registering a linked worktree resolves to main repo root', () => {
+  const reg = setupIsolatedEnv();
+  const mainRoot = makeTmpWorkspace('mae386-main-');
+  const wt = makeTmpWorkspace('mae386-wt-');
+  try {
+    // worktree는 .git이 파일이며 gitdir: <main>/.git/worktrees/<name>를 가리킨다.
+    const gitdir = path.join(mainRoot, '.git', 'worktrees', 'MAE-386');
+    fs.writeFileSync(path.join(wt, '.git'), `gitdir: ${gitdir}\n`, 'utf8');
+
+    const entry = register(wt);
+    assert.equal(entry.path, path.resolve(mainRoot), 'should register main root, not worktree dir');
+
+    const entries = list();
+    assert.equal(entries.length, 1);
+    assert.equal(entries[0].path, path.resolve(mainRoot));
+  } finally {
+    teardown(reg);
+    fs.rmSync(mainRoot, { recursive: true, force: true });
+    fs.rmSync(wt, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// U8: 일반 레포(.git이 디렉토리)는 그대로 등록 (정규화 영향 없음)
+// ---------------------------------------------------------------------------
+test('U8: normal repo with .git directory is registered as-is', () => {
+  const reg = setupIsolatedEnv();
+  const ws = makeTmpWorkspace('mae386-normal-');
+  try {
+    fs.mkdirSync(path.join(ws, '.git'));
+    const entry = register(ws);
+    assert.equal(entry.path, path.resolve(ws));
+  } finally {
+    teardown(reg);
+    fs.rmSync(ws, { recursive: true, force: true });
+  }
+});

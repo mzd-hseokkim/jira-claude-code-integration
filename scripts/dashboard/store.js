@@ -267,6 +267,32 @@ function createStore(opts = {}) {
     },
 
     /**
+     * Return agent activity summary keyed by taskId.
+     * toolCallCount = count of PostToolUse events in the ring buffer (근사값).
+     * completedSteps = cachedIssue.completedSteps if available.
+     *
+     * @returns {Array<{ taskId: string, path: string, toolCallCount: number, completedSteps: string[] }>}
+     */
+    getWorktreeActivityByTask() {
+      const result = [];
+      for (const record of _map.values()) {
+        const { state, activity } = record;
+        if (!state.taskId) continue;
+        const toolCallCount = activity.toArray().filter((ev) => ev && ev.type === 'PostToolUse').length;
+        const completedSteps = (state.cachedIssue && Array.isArray(state.cachedIssue.completedSteps))
+          ? state.cachedIssue.completedSteps
+          : [];
+        result.push({
+          taskId: state.taskId,
+          path: state.path,
+          toolCallCount,
+          completedSteps,
+        });
+      }
+      return result;
+    },
+
+    /**
      * Subscribe to store events.
      * @param {'worktree.changed'|'worktree.added'|'worktree.removed'|'session.added'|'session.changed'|'session.removed'} event
      * @param {Function} listener

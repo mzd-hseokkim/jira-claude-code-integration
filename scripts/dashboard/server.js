@@ -138,7 +138,7 @@ async function startServer(opts = {}) {
       pluginRoot: process.env.CLAUDE_PLUGIN_ROOT || null,
     }));
     app.use('/spaces', createSpacesRouter(metricsStore, logger));
-    app.use('/metrics', createMetricsRouter(metricsStore, logger));
+    app.use('/metrics', createMetricsRouter(metricsStore, logger, store));
     app.use(express.static(path.join(__dirname, 'public')));
   } catch {
     // express not available — use raw http (minimal, for environments without npm install)

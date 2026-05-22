@@ -109,6 +109,10 @@ export function useMetrics(spaceId, { weeks = 8, intervalMs = DEFAULT_METRICS_IN
         cycleTime: json.cycleTime || { median: null, p75: null, p95: null, distribution: [], note: '근사값' },
         perAssignee: json.perAssignee || [],
         agingWip: json.agingWip || [],
+        sdlcFunnel: json.sdlcFunnel || [],
+        agentThroughput: json.agentThroughput || [],
+        priorityDistribution: json.priorityDistribution || [],
+        epicProgress: json.epicProgress || [],
       });
       setError(null);
     } catch (e) {

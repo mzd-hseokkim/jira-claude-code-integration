@@ -139,7 +139,12 @@ function issueToRow(issue, spaceId) {
     resolutiondate: f.resolutiondate || null,
     updated: f.updated || null,
     parent: f.parent && f.parent.key ? f.parent.key : null,
-    epic: null, // Phase 1: epic 별도 추론 생략
+    // Epic: customfield_10014 우선, 없으면 parent 체인 폴백 (hierarchyLevel 1 = Epic).
+    // 이 Jira 인스턴스처럼 Epic 계층이 없으면 null.
+    epic: (f.customfield_10014 || null) ||
+      (f.parent && f.parent.fields && f.parent.fields.issuetype &&
+       f.parent.fields.issuetype.hierarchyLevel === 1 ? f.parent.key : null) ||
+      null,
     fetchedAt: new Date().toISOString(),
   };
 }

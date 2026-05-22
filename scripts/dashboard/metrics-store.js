@@ -293,6 +293,36 @@ function createSqliteStore(db) {
       return rows;
     },
 
+    getPriorityDistribution(spaceId) {
+      const rows = db.prepare(`
+        SELECT COALESCE(priority, '(없음)') AS priority, COUNT(*) AS count
+        FROM issue_current
+        WHERE spaceId = ?
+        GROUP BY priority
+        ORDER BY count DESC
+      `).all(spaceId);
+      return rows;
+    },
+
+    getEpicProgress(spaceId) {
+      // epic이 null인 이슈는 '(없음)' 그룹으로 표시
+      const rows = db.prepare(`
+        SELECT COALESCE(epic, '(없음)') AS epic,
+               COUNT(*) AS total,
+               SUM(CASE WHEN statusCategory = 'done' THEN 1 ELSE 0 END) AS done
+        FROM issue_current
+        WHERE spaceId = ?
+        GROUP BY epic
+        ORDER BY total DESC
+      `).all(spaceId);
+      return rows.map((r) => ({
+        epic: r.epic,
+        total: r.total,
+        done: r.done,
+        pct: r.total > 0 ? Math.round((r.done / r.total) * 100) : 0,
+      }));
+    },
+
     close() {
       try { db.close(); } catch { /* ignore */ }
     },
@@ -494,6 +524,34 @@ function createJsonStore(jsonFile) {
           )),
         }))
         .sort((a, b) => b.ageDays - a.ageDays);
+    },
+
+    getPriorityDistribution(spaceId) {
+      const counts = {};
+      for (const issue of Object.values(data.issues)) {
+        if (issue.spaceId !== spaceId) continue;
+        const key = issue.priority || '(없음)';
+        if (!counts[key]) counts[key] = { priority: key, count: 0 };
+        counts[key].count++;
+      }
+      return Object.values(counts).sort((a, b) => b.count - a.count);
+    },
+
+    getEpicProgress(spaceId) {
+      const groups = {};
+      for (const issue of Object.values(data.issues)) {
+        if (issue.spaceId !== spaceId) continue;
+        const key = issue.epic || '(없음)';
+        if (!groups[key]) groups[key] = { epic: key, total: 0, done: 0 };
+        groups[key].total++;
+        if (issue.statusCategory === 'done') groups[key].done++;
+      }
+      return Object.values(groups)
+        .sort((a, b) => b.total - a.total)
+        .map((g) => ({
+          ...g,
+          pct: g.total > 0 ? Math.round((g.done / g.total) * 100) : 0,
+        }));
     },
 
     close() { /* no-op */ },
