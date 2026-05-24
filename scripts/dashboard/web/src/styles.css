@@ -1485,24 +1485,22 @@ body > * { position: relative; z-index: 1; }
   font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--text-3);
 }
-.analytics-spaces__list { display: flex; gap: 6px; flex-wrap: wrap; }
-.analytics-space-btn {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 4px 12px;
-  border: 1px solid var(--hairline-strong); border-radius: 999px;
-  background: var(--surface); color: var(--text-2);
+.analytics-spaces__select {
+  padding: 5px 30px 5px 12px;
+  border: 1px solid var(--hairline-strong); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text);
   font-size: 12px; font-family: var(--font-mono); cursor: pointer;
-  transition: background var(--motion-dur-short) var(--motion-ease-out),
-              border-color var(--motion-dur-short) var(--motion-ease-out),
-              color var(--motion-dur-short) var(--motion-ease-out);
+  max-width: 360px; text-overflow: ellipsis;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='%238a8a8a' d='M3 4.5 6 8l3-3.5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 11px;
+  transition: background-color var(--motion-dur-short) var(--motion-ease-out),
+              border-color var(--motion-dur-short) var(--motion-ease-out);
 }
-.analytics-space-btn:hover { background: var(--surface-2); }
-.analytics-space-btn--active {
-  background: var(--accent-weak); border-color: var(--accent-line);
-  color: var(--accent-text); font-weight: 600;
+.analytics-spaces__select:hover { background-color: var(--surface-2); }
+.analytics-spaces__select:focus-visible {
+  outline: none; border-color: var(--accent-line);
 }
-.analytics-space-btn--no-creds { opacity: 0.5; cursor: not-allowed; }
-.analytics-space-btn__badge { color: var(--danger); font-weight: 700; }
 
 /* WIP badge */
 .analytics-wip { display: flex; align-items: baseline; gap: 6px; }

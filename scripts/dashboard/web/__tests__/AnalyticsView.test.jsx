@@ -114,14 +114,14 @@ describe('AnalyticsView — T6 loading/empty/error states (MAE-386)', () => {
 
     render(<AnalyticsView />);
 
-    // 스페이스 선택기 (radiogroup)
-    const radiogroup = screen.getByRole('radiogroup', { name: /스페이스 선택/i });
-    expect(radiogroup).toBeTruthy();
+    // 스페이스 선택기 (dropdown)
+    const select = screen.getByRole('combobox', { name: /스페이스 선택/i });
+    expect(select).toBeTruthy();
 
-    // 스페이스 버튼 (projectKey 표시)
-    const spaceBtn = screen.getByRole('radio', { name: /MAE/i });
-    expect(spaceBtn).toBeTruthy();
-    expect(spaceBtn).toHaveAttribute('aria-checked', 'true');
+    // 스페이스 옵션 (projectKey 표시) + 선택됨
+    const option = screen.getByRole('option', { name: /MAE/i });
+    expect(option).toBeTruthy();
+    expect(option.selected).toBe(true);
   });
 
   it('T6-normal: metricsLoading=true while space selected → loading indicator', () => {
@@ -131,8 +131,23 @@ describe('AnalyticsView — T6 loading/empty/error states (MAE-386)', () => {
     render(<AnalyticsView />);
 
     // The view renders and spaces selector still visible
-    const radiogroup = screen.getByRole('radiogroup', { name: /스페이스 선택/i });
-    expect(radiogroup).toBeTruthy();
+    const select = screen.getByRole('combobox', { name: /스페이스 선택/i });
+    expect(select).toBeTruthy();
+  });
+
+  it('T6-order: 최근 추가된 스페이스가 맨 위 + 자동 선택된다', () => {
+    const spaces = [
+      { id: 'old', site: 'https://x.atlassian.net', projectKey: 'OLD', credsOk: true, addedAt: '2024-01-01' },
+      { id: 'new', site: 'https://x.atlassian.net', projectKey: 'NEW', credsOk: true, addedAt: '2024-06-01' },
+    ];
+    useSpaces.mockReturnValue({ spaces, loading: false, error: null });
+    useMetrics.mockReturnValue(defaultMetrics);
+
+    render(<AnalyticsView />);
+
+    const options = screen.getAllByRole('option');
+    expect(options[0]).toHaveTextContent('NEW');
+    expect(options[0].selected).toBe(true);
   });
 
   it('T6-normal: credsOk=false space is disabled', () => {
@@ -144,9 +159,9 @@ describe('AnalyticsView — T6 loading/empty/error states (MAE-386)', () => {
 
     render(<AnalyticsView />);
 
-    const spaceBtn = screen.getByRole('radio', { name: /NOCREDS/i });
-    expect(spaceBtn).toBeTruthy();
-    expect(spaceBtn).toBeDisabled();
+    const option = screen.getByRole('option', { name: /NOCREDS/i });
+    expect(option).toBeTruthy();
+    expect(option).toBeDisabled();
   });
 });
 

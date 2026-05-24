@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSpaces, useMetrics } from '../hooks/useMetrics.js';
 import CountUp from './CountUp.jsx';
 import StatusChart from './charts/StatusChart.jsx';
@@ -20,12 +20,19 @@ export default function AnalyticsView() {
   const { spaces, loading: spacesLoading, error: spacesError } = useSpaces();
   const [selectedSpaceId, setSelectedSpaceId] = useState(null);
 
-  // 첫 스페이스 자동 선택
+  // 최근 추가된 스페이스가 맨 위로 (addedAt 내림차순)
+  const sortedSpaces = useMemo(
+    () => spaces.slice().sort((a, b) => (b.addedAt || '').localeCompare(a.addedAt || '')),
+    [spaces],
+  );
+
+  // 첫 스페이스 자동 선택 (인증 가능한 것 우선)
   React.useEffect(() => {
-    if (!selectedSpaceId && spaces.length > 0) {
-      setSelectedSpaceId(spaces[0].id);
+    if (!selectedSpaceId && sortedSpaces.length > 0) {
+      const first = sortedSpaces.find((s) => s.credsOk) ?? sortedSpaces[0];
+      setSelectedSpaceId(first.id);
     }
-  }, [spaces, selectedSpaceId]);
+  }, [sortedSpaces, selectedSpaceId]);
 
   const { data, loading: metricsLoading, error: metricsError, refresh } = useMetrics(selectedSpaceId);
 
@@ -71,24 +78,20 @@ export default function AnalyticsView() {
       {/* 헤더: 스페이스 선택기 + WIP */}
       <div className="analytics-header">
       <div className="analytics-spaces">
-        <span className="analytics-spaces__label">SPACE</span>
-        <div className="analytics-spaces__list" role="radiogroup" aria-label="스페이스 선택">
-          {spaces.map((sp) => (
-            <button
-              key={sp.id}
-              type="button"
-              role="radio"
-              aria-checked={sp.id === selectedSpaceId}
-              className={`analytics-space-btn${sp.id === selectedSpaceId ? ' analytics-space-btn--active' : ''}${!sp.credsOk ? ' analytics-space-btn--no-creds' : ''}`}
-              onClick={() => setSelectedSpaceId(sp.id)}
-              title={sp.credsOk ? sp.site : `${sp.site} (인증 정보 없음)`}
-              disabled={!sp.credsOk}
-            >
-              {sp.projectKey}
-              {!sp.credsOk && <span className="analytics-space-btn__badge">!</span>}
-            </button>
+        <label className="analytics-spaces__label" htmlFor="analytics-space-select">SPACE</label>
+        <select
+          id="analytics-space-select"
+          className="analytics-spaces__select"
+          aria-label="스페이스 선택"
+          value={selectedSpaceId ?? ''}
+          onChange={(e) => setSelectedSpaceId(e.target.value)}
+        >
+          {sortedSpaces.map((sp) => (
+            <option key={sp.id} value={sp.id} disabled={!sp.credsOk}>
+              {sp.projectKey} — {sp.site}{!sp.credsOk ? ' (인증 정보 없음)' : ''}
+            </option>
           ))}
-        </div>
+        </select>
       </div>
       {data && (
         <div className="analytics-wip">
