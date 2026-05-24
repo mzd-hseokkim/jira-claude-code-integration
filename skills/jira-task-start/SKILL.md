@@ -92,6 +92,22 @@ git rev-parse --verify master 2>/dev/null   # 3rd
 git worktree add -b "feature/<TASK-ID>" "$WORKTREE_BASE/<TASK-ID>" <base-branch>
 ```
 
+worktree 생성 직후, 메인 레포의 atlassian MCP 설정을 worktree로 전파한다 (worktree는 별도 프로젝트 루트로 인식되어 MCP 설정이 자동 상속되지 않음 — init Step 5.5와 동일). 스크립트 경로 결정은 `Read skills/_shared/script-lookup.md` 후 lookup 블록 실행:
+
+```bash
+REPO_ROOT_ABS="<REPO_ROOT 절대경로>"
+WORKTREE_ABS="<워크트리 절대경로>"
+
+SCRIPT_NAME="propagate-mcp-config.sh" OUT_VAR="PROPAGATE_SH"
+# Read skills/_shared/script-lookup.md and execute its lookup block here
+
+if [ -n "$PROPAGATE_SH" ]; then
+  bash "$PROPAGATE_SH" "$REPO_ROOT_ABS" "$WORKTREE_ABS"
+else
+  echo "propagate-mcp-config.sh not found — skipping MCP propagation. Run /jira setup in the worktree if needed." >&2
+fi
+```
+
 ### Step 4: Generate Task Context README (fresh mode only)
 
 **post-init 모드면 본 Step 스킵.** init이 이미 만든 `TASK-README.md`를 덮어쓰지 않는다. 보강이 필요하면 사용자가 직접 수정.
