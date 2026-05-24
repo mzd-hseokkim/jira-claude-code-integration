@@ -237,10 +237,8 @@ async function startServer(opts = {}) {
 
   // Discover spaces and seed metrics store, then start periodic metrics collection
   try {
-    const spaces = discoverSpaces(workspaces, { logger });
-    for (const space of spaces) {
-      metricsStore.upsertSpace(space);
-    }
+    const spaces = discoverSpaces(workspaces, { logger, site: creds.jiraUrl });
+    metricsStore.replaceSpaces(spaces);
     logger.info('server.metrics-spaces-discovered', { count: spaces.length });
   } catch (err) {
     logger.warn('server.metrics-spaces-error', { error: err.message });

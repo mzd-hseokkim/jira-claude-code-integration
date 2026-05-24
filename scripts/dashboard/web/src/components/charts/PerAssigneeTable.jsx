@@ -23,8 +23,8 @@ export default function PerAssigneeTable({ perAssignee, weeks = 8 }) {
         </tr>
       </thead>
       <tbody>
-        {perAssignee.map((row) => (
-          <tr key={row.assignee} className="per-assignee-table__row">
+        {perAssignee.map((row, i) => (
+          <tr key={row.assignee} className="per-assignee-table__row" style={{ animationDelay: `${i * 40}ms` }}>
             <td className="per-assignee-table__td">
               {row.assignee === '__unassigned__'
                 ? <span className="per-assignee-table__unassigned">무할당</span>

@@ -149,6 +149,32 @@ function createSqliteStore(db) {
       }));
     },
 
+    replaceSpaces(spaces) {
+      const keepIds = spaces.map((s) => s.id);
+      const tx = db.transaction(() => {
+        if (keepIds.length > 0) {
+          const ph = keepIds.map(() => '?').join(',');
+          db.prepare(`DELETE FROM spaces WHERE id NOT IN (${ph})`).run(...keepIds);
+          db.prepare(`DELETE FROM issue_current WHERE spaceId NOT IN (${ph})`).run(...keepIds);
+          db.prepare(`DELETE FROM issue_snapshot WHERE spaceId NOT IN (${ph})`).run(...keepIds);
+        } else {
+          db.prepare('DELETE FROM spaces').run();
+          db.prepare('DELETE FROM issue_current').run();
+          db.prepare('DELETE FROM issue_snapshot').run();
+        }
+        for (const space of spaces) {
+          upsertSpace.run({
+            id: space.id,
+            site: space.site,
+            projectKey: space.projectKey,
+            credsOk: space.credsOk ? 1 : 0,
+            addedAt: space.addedAt || new Date().toISOString(),
+          });
+        }
+      });
+      tx();
+    },
+
     upsertIssues(issues) {
       upsertIssuesBatch(issues);
     },
@@ -380,6 +406,25 @@ function createJsonStore(jsonFile) {
       return data.spaces.slice();
     },
 
+    replaceSpaces(spaces) {
+      const keep = new Set(spaces.map((s) => s.id));
+      // stale space 및 그에 속한 issue/snapshot 제거
+      data.spaces = data.spaces.filter((s) => keep.has(s.id));
+      for (const [k, row] of Object.entries(data.issues)) {
+        if (!keep.has(row.spaceId)) delete data.issues[k];
+      }
+      for (const [k, snap] of Object.entries(data.snapshots)) {
+        if (!keep.has(snap.spaceId)) delete data.snapshots[k];
+      }
+      // 현재 스페이스 upsert
+      for (const space of spaces) {
+        const idx = data.spaces.findIndex((s) => s.id === space.id);
+        if (idx >= 0) data.spaces[idx] = { ...data.spaces[idx], ...space };
+        else data.spaces.push({ addedAt: new Date().toISOString(), ...space });
+      }
+      save();
+    },
+
     upsertIssues(issues) {
       const today = new Date().toISOString().slice(0, 10);
       for (const row of issues) {
@@ -567,7 +612,7 @@ function createJsonStore(jsonFile) {
  *
  * @param {{ dbFile?: string, jsonFile?: string, _forceJson?: boolean }} [opts]
  *   _forceJson: test hook to force JSON fallback without touching native modules
- * @returns {{ type: string, upsertSpace, listSpaces, upsertIssues,
+ * @returns {{ type: string, upsertSpace, replaceSpaces, listSpaces, upsertIssues,
  *             getStatusDistribution, getThroughput, getWip, close }}
  */
 function createMetricsStore(opts = {}) {

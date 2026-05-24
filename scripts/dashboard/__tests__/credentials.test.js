@@ -134,6 +134,36 @@ test('U10: walk-up finds .claude/settings.local.json from a subdirectory', () =>
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+// U11: ~/.claude.json projects[] key matches workspaceRoot across path separators
+// (registry는 '\', claude.json projects 키는 '/'를 쓸 수 있다)
+test('U11: claudeJson projects[] matches workspaceRoot across path separators', () => {
+  const home = tmpDir();
+  const wsSlash = 'C:/fake/ws/llm-router';
+  const wsBackslash = 'C:\\fake\\ws\\llm-router';
+  fs.writeFileSync(path.join(home, '.claude.json'), JSON.stringify({
+    projects: {
+      [wsSlash]: {
+        mcpServers: {
+          atlassian: { env: { JIRA_URL: 'https://proj.example.com', JIRA_USERNAME: 'u@e.com', JIRA_API_TOKEN: 'tok' } },
+        },
+      },
+    },
+  }));
+
+  const origHome = os.homedir;
+  os.homedir = () => home;
+  try {
+    withCleanEnv(() => {
+      const creds = loadCredentials({ workspaceRoot: wsBackslash, force: true });
+      assert.equal(creds.source, 'claudeJsonProj');
+      assert.equal(creds.jiraUrl, 'https://proj.example.com');
+    });
+  } finally {
+    os.homedir = origHome;
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+});
+
 // U8: second call returns cached result without re-reading fs (mock spy)
 test('U8: second call uses cache (no extra fs.readFileSync calls)', () => {
   const dir = tmpDir();

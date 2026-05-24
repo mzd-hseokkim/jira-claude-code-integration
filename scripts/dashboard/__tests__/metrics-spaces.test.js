@@ -12,7 +12,7 @@ const path = require('node:path');
 const os = require('node:os');
 const fs = require('node:fs');
 
-const { discoverSpaces, inferProjectKey, hasResolvableCredentials } = require('../metrics-spaces');
+const { discoverSpaces, inferProjectKey } = require('../metrics-spaces');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -71,35 +71,61 @@ test('T1: discoverSpaces deduplicate (site, projectKey) pairs', () => {
   }
 });
 
-test('T1: discoverSpaces marks credsOk=false when no credentials available', () => {
+test('T1: discoverSpaces marks credsOk=false when resolver returns null', () => {
   const dir = tmpDir();
+  fs.writeFileSync(
+    path.join(dir, '.jira-context.json'),
+    JSON.stringify({ taskId: 'ATL-491' }),
+    'utf8'
+  );
   const mod = makeWorkspacesModule([{ path: dir }]);
 
-  // Remove all creds env vars
-  const saved = {};
-  for (const k of ['JIRA_URL', 'JIRA_USERNAME', 'JIRA_API_TOKEN', 'JIRA_DEFAULT_PROJECT']) {
-    saved[k] = process.env[k];
-    delete process.env[k];
-  }
+  // 결정성: credential resolver를 주입해 home 전역 설정 의존 제거
+  const spaces = discoverSpaces(mod, {
+    site: 'https://test.atlassian.net',
+    resolveCreds: () => null,
+  });
+  assert.equal(spaces.length, 1, 'projectKey resolves → space included even without creds');
+  assert.equal(spaces[0].projectKey, 'ATL');
+  assert.equal(spaces[0].credsOk, false, 'no creds → credsOk should be false');
+  assert.equal(spaces[0].site, 'https://test.atlassian.net', 'falls back to opts.site');
+});
+
+test('T1: discoverSpaces skips workspaces with no inferrable projectKey', () => {
+  const dir = tmpDir(); // no .jira-context.json
+  const mod = makeWorkspacesModule([{ path: dir }]);
+  const orig = process.env.JIRA_DEFAULT_PROJECT;
+  delete process.env.JIRA_DEFAULT_PROJECT;
   try {
-    const spaces = discoverSpaces(mod);
-    if (spaces.length > 0) {
-      // may or may not have projectKey, but credsOk should be false
-      assert.equal(spaces[0].credsOk, false, 'no creds → credsOk should be false');
-    }
-    // If no projectKey inferred, spaces may be empty or have 'unknown' — both valid
+    const spaces = discoverSpaces(mod, { resolveCreds: () => null });
+    assert.deepEqual(spaces, [], 'unresolved projectKey → not registered');
   } finally {
-    for (const [k, v] of Object.entries(saved)) {
-      if (v !== undefined) process.env[k] = v;
-    }
+    if (orig !== undefined) process.env.JIRA_DEFAULT_PROJECT = orig;
   }
+});
+
+test('T1: discoverSpaces resolves distinct projects per workspace (MAE + ATL)', () => {
+  const maeDir = tmpDir();
+  const atlDir = tmpDir();
+  fs.writeFileSync(path.join(maeDir, '.jira-context.json'),
+    JSON.stringify({ tasks: [{ taskId: 'MAE-1' }] }), 'utf8');
+  fs.writeFileSync(path.join(atlDir, '.jira-context.json'),
+    JSON.stringify({ tasks: [{ taskId: 'ATL-491' }] }), 'utf8');
+  const mod = makeWorkspacesModule([{ path: maeDir }, { path: atlDir }]);
+
+  const spaces = discoverSpaces(mod, {
+    site: 'https://test.atlassian.net',
+    resolveCreds: () => ({ jiraUrl: 'https://test.atlassian.net' }),
+  });
+  const keys = spaces.map((s) => s.projectKey).sort();
+  assert.deepEqual(keys, ['ATL', 'MAE'], 'each workspace resolves to its own project');
 });
 
 // ---------------------------------------------------------------------------
 // inferProjectKey
 // ---------------------------------------------------------------------------
 
-test('T1: inferProjectKey uses JIRA_DEFAULT_PROJECT env first', () => {
+test('T1: inferProjectKey falls back to JIRA_DEFAULT_PROJECT env when no context', () => {
   const orig = process.env.JIRA_DEFAULT_PROJECT;
   try {
     process.env.JIRA_DEFAULT_PROJECT = 'MYPROJ';
@@ -107,6 +133,33 @@ test('T1: inferProjectKey uses JIRA_DEFAULT_PROJECT env first', () => {
   } finally {
     if (orig === undefined) delete process.env.JIRA_DEFAULT_PROJECT;
     else process.env.JIRA_DEFAULT_PROJECT = orig;
+  }
+});
+
+test('T1: inferProjectKey context wins over JIRA_DEFAULT_PROJECT env', () => {
+  const dir = tmpDir();
+  fs.writeFileSync(path.join(dir, '.jira-context.json'),
+    JSON.stringify({ taskId: 'ATL-491' }), 'utf8');
+  const orig = process.env.JIRA_DEFAULT_PROJECT;
+  try {
+    process.env.JIRA_DEFAULT_PROJECT = 'MAE';
+    assert.equal(inferProjectKey(dir), 'ATL', 'per-workspace context overrides global env');
+  } finally {
+    if (orig === undefined) delete process.env.JIRA_DEFAULT_PROJECT;
+    else process.env.JIRA_DEFAULT_PROJECT = orig;
+  }
+});
+
+test('T1: inferProjectKey reads aggregate tasks[] format', () => {
+  const dir = tmpDir();
+  fs.writeFileSync(path.join(dir, '.jira-context.json'),
+    JSON.stringify({ tasks: [{ taskId: 'ATL-491' }, { taskId: 'ATL-492' }] }), 'utf8');
+  const orig = process.env.JIRA_DEFAULT_PROJECT;
+  delete process.env.JIRA_DEFAULT_PROJECT;
+  try {
+    assert.equal(inferProjectKey(dir), 'ATL');
+  } finally {
+    if (orig !== undefined) process.env.JIRA_DEFAULT_PROJECT = orig;
   }
 });
 
@@ -136,26 +189,6 @@ test('T1: inferProjectKey returns null when no env or context file', () => {
     assert.equal(inferProjectKey(dir), null);
   } finally {
     if (orig !== undefined) process.env.JIRA_DEFAULT_PROJECT = orig;
-  }
-});
-
-// ---------------------------------------------------------------------------
-// hasResolvableCredentials
-// ---------------------------------------------------------------------------
-
-test('T1: hasResolvableCredentials returns true when env vars set', () => {
-  const saved = {};
-  for (const k of ['JIRA_URL', 'JIRA_USERNAME', 'JIRA_API_TOKEN']) saved[k] = process.env[k];
-  try {
-    process.env.JIRA_URL = 'https://x.atlassian.net';
-    process.env.JIRA_USERNAME = 'u@example.com';
-    process.env.JIRA_API_TOKEN = 'tok';
-    assert.equal(hasResolvableCredentials('/any/path'), true);
-  } finally {
-    for (const [k, v] of Object.entries(saved)) {
-      if (v !== undefined) process.env[k] = v;
-      else delete process.env[k];
-    }
   }
 });
 

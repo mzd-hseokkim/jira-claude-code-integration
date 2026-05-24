@@ -33,21 +33,26 @@ function makeAuthHeader(creds) {
 /**
  * Jira JQL 검색 (단일 페이지).
  *
+ * 신 enhanced search 엔드포인트(`/rest/api/3/search/jql`)를 사용한다.
+ * 구 `/rest/api/3/search`는 Jira Cloud에서 폐기되어 410 Gone을 반환한다.
+ * 페이지네이션은 startAt/total이 아닌 nextPageToken 기반.
+ *
  * @param {object} creds
  * @param {string} jql
- * @param {number} startAt
- * @returns {Promise<{ issues: object[], total: number, maxResults: number }>}
+ * @param {string|null} nextPageToken
+ * @returns {Promise<{ issues: object[], nextPageToken?: string, isLast?: boolean }>}
  */
-async function fetchJqlPage(creds, jql, startAt = 0) {
+async function fetchJqlPage(creds, jql, nextPageToken = null) {
   const base = creds.jiraUrl.replace(/\/$/, '');
-  const url = `${base}/rest/api/3/search`;
+  const url = `${base}/rest/api/3/search/jql`;
 
-  const body = JSON.stringify({
+  const payload = {
     jql,
-    startAt,
     maxResults: PAGE_SIZE,
     fields: FIELDS.split(','),
-  });
+  };
+  if (nextPageToken) payload.nextPageToken = nextPageToken;
+  const body = JSON.stringify(payload);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -89,27 +94,27 @@ async function fetchAllIssues(creds, jql, opts = {}) {
   const backoffBaseMs = opts.backoffBaseMs || DEFAULT_BACKOFF_BASE_MS;
   const logger = opts.logger || null;
 
-  let startAt = 0;
+  let nextPageToken = null;
   const allIssues = [];
 
   while (true) {
     let page;
     try {
-      page = await fetchJqlPage(creds, jql, startAt);
+      page = await fetchJqlPage(creds, jql, nextPageToken);
     } catch (err) {
       if (err.status === 429 || err.status === 401 || err.status === 403) {
         throw err; // 호출측에서 tick abort
       }
-      logger && logger.warn('jira-metrics.page-error', { jql, startAt, error: err.message });
+      logger && logger.warn('jira-metrics.page-error', { jql, error: err.message });
       // 일시 오류 — 이 페이지 건너뜀 (partial result)
       break;
     }
 
-    if (!Array.isArray(page.issues) || page.issues.length === 0) break;
-    allIssues.push(...page.issues);
+    if (Array.isArray(page.issues)) allIssues.push(...page.issues);
 
-    if (startAt + page.issues.length >= page.total) break;
-    startAt += page.issues.length;
+    // nextPageToken 부재 또는 isLast면 마지막 페이지
+    if (page.isLast || !page.nextPageToken) break;
+    nextPageToken = page.nextPageToken;
 
     // rate-limit 방지용 작은 지연
     await sleep(backoffBaseMs);
