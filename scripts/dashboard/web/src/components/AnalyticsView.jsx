@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSpaces, useMetrics } from '../hooks/useMetrics.js';
+import CountUp from './CountUp.jsx';
 import StatusChart from './charts/StatusChart.jsx';
 import ThroughputChart from './charts/ThroughputChart.jsx';
 import TimeDistChart from './charts/TimeDistChart.jsx';
@@ -67,7 +68,8 @@ export default function AnalyticsView() {
 
   return (
     <div className="analytics-view">
-      {/* 스페이스 선택기 */}
+      {/* 헤더: 스페이스 선택기 + WIP */}
+      <div className="analytics-header">
       <div className="analytics-spaces">
         <span className="analytics-spaces__label">SPACE</span>
         <div className="analytics-spaces__list" role="radiogroup" aria-label="스페이스 선택">
@@ -88,9 +90,16 @@ export default function AnalyticsView() {
           ))}
         </div>
       </div>
+      {data && (
+        <div className="analytics-wip">
+          <span className="analytics-wip__label">WIP</span>
+          <span className="analytics-wip__count"><CountUp value={data.wip} /></span>
+        </div>
+      )}
+      </div>
 
-      {/* 메트릭스 패널 */}
-      <div className="analytics-metrics">
+      {/* 메트릭스 패널 (스페이스 전환 시 remount → 애니메이션 재생) */}
+      <div className="analytics-metrics" key={selectedSpaceId}>
         {metricsLoading && !data ? (
           <div className="analytics-loading" role="status" aria-busy="true">
             데이터 로딩 중…
@@ -105,12 +114,6 @@ export default function AnalyticsView() {
           </div>
         ) : data ? (
           <>
-            {/* WIP 배지 */}
-            <div className="analytics-wip">
-              <span className="analytics-wip__label">WIP</span>
-              <span className="analytics-wip__count">{data.wip}</span>
-            </div>
-
             {/* Status 분포 */}
             <div className="analytics-section">
               <h3 className="analytics-section__title">Status 분포</h3>

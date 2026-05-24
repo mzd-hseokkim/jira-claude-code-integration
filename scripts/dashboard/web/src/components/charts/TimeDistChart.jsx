@@ -1,4 +1,5 @@
 import React from 'react';
+import CountUp from '../CountUp.jsx';
 
 /**
  * 리드타임/사이클타임 분포 차트 (경량 SVG bar chart).
@@ -43,17 +44,32 @@ export default function TimeDistChart({ distribution, median, p75, p95, label, n
   return (
     <div className="time-dist-chart">
       {(median !== null || p75 !== null || p95 !== null) && (
-        <div className="time-dist-chart__stats">
-          {median !== null && <span className="time-dist-chart__stat">중앙값 <strong>{median}d</strong></span>}
-          {p75 !== null && <span className="time-dist-chart__stat">P75 <strong>{p75}d</strong></span>}
-          {p95 !== null && <span className="time-dist-chart__stat">P95 <strong>{p95}d</strong></span>}
-          {note && <span className="time-dist-chart__note">({note})</span>}
+        <div className="kpi-row">
+          {median !== null && (
+            <div className="kpi">
+              <span className="kpi__label">중앙값</span>
+              <span className="kpi__value"><CountUp value={median} /><span className="kpi__unit">d</span></span>
+            </div>
+          )}
+          {p75 !== null && (
+            <div className="kpi">
+              <span className="kpi__label">P75</span>
+              <span className="kpi__value"><CountUp value={p75} /><span className="kpi__unit">d</span></span>
+            </div>
+          )}
+          {p95 !== null && (
+            <div className="kpi">
+              <span className="kpi__label">P95</span>
+              <span className="kpi__value"><CountUp value={p95} /><span className="kpi__unit">d</span></span>
+            </div>
+          )}
         </div>
       )}
+      {note && <p className="time-dist-chart__note">({note})</p>}
       <svg
         className="time-dist-chart__svg"
-        width={SVG_W}
-        height={SVG_H}
+        viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+        width="100%"
         role="img"
         aria-label={`${label} 분포 차트`}
         style={{ overflow: 'visible' }}
@@ -68,7 +84,8 @@ export default function TimeDistChart({ distribution, median, p75, p95, label, n
               <rect x={0} y={0} width={BAR_W} height={CHART_H} rx={2}
                 fill="var(--chart-bg, rgba(255,255,255,0.06))" />
               {d.count > 0 && (
-                <rect x={0} y={barY} width={BAR_W} height={barH} rx={2}
+                <rect x={0} y={barY} width={BAR_W} height={barH} rx={2} className="ax-bar-v"
+                  style={{ animationDelay: `${i * 60}ms` }}
                   fill="var(--chart-lead, #34d399)" opacity={0.85} />
               )}
               {d.count > 0 && (

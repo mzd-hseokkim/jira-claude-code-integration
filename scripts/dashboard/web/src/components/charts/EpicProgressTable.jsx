@@ -22,8 +22,8 @@ export default function EpicProgressTable({ epicProgress }) {
         </tr>
       </thead>
       <tbody>
-        {epicProgress.map((row) => (
-          <tr key={row.epic} className="analytics-table__row">
+        {epicProgress.map((row, i) => (
+          <tr key={row.epic} className="analytics-table__row" style={{ animationDelay: `${i * 40}ms` }}>
             <td className="analytics-table__td analytics-table__td--label">{row.epic}</td>
             <td className="analytics-table__td analytics-table__td--num">{row.total}</td>
             <td className="analytics-table__td analytics-table__td--num">{row.done}</td>

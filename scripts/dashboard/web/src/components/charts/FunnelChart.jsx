@@ -32,8 +32,8 @@ export default function FunnelChart({ funnel }) {
   return (
     <svg
       className="funnel-chart"
-      width={SVG_W}
-      height={SVG_H}
+      viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+      width="100%"
       role="img"
       aria-label="SDLC 퍼널 차트"
     >
@@ -67,6 +67,8 @@ export default function FunnelChart({ funnel }) {
                 width={barW}
                 height={BAR_HEIGHT}
                 rx={3}
+                className="ax-bar-h"
+                style={{ animationDelay: `${i * 50}ms` }}
                 fill="var(--chart-wip, #60a5fa)"
                 opacity={0.85}
               />

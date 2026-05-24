@@ -29,8 +29,8 @@ export default function AgingWipTable({ agingWip }) {
         </tr>
       </thead>
       <tbody>
-        {agingWip.map((row) => (
-          <tr key={row.issueKey} className="aging-wip-table__row">
+        {agingWip.map((row, i) => (
+          <tr key={row.issueKey} className="aging-wip-table__row" style={{ animationDelay: `${i * 40}ms` }}>
             <td className="aging-wip-table__td aging-wip-table__td--key">{row.issueKey}</td>
             <td className="aging-wip-table__td aging-wip-table__td--summary" title={row.summary}>
               {row.summary || '—'}

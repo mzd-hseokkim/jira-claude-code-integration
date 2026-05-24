@@ -86,18 +86,22 @@ function readJiraContext(worktreePath, logger = null) {
 
   try {
     const obj = JSON.parse(raw);
-    const ci = (obj.cachedIssue && typeof obj.cachedIssue === 'object')
-      ? _normalizeCachedIssue(obj.cachedIssue)
-      : null;
+    // aggregate 포맷: 활성 작업 정보가 top-level이 아닌 activeTask에 들어있다.
+    const at = (obj.activeTask && typeof obj.activeTask === 'object') ? obj.activeTask : null;
+    const rawCi = obj.cachedIssue || (at && at.cachedIssue) || null;
+    const ci = (rawCi && typeof rawCi === 'object') ? _normalizeCachedIssue(rawCi) : null;
+    const steps = Array.isArray(obj.completedSteps) ? obj.completedSteps
+      : (at && Array.isArray(at.completedSteps)) ? at.completedSteps
+      : [];
     return {
-      taskId: obj.taskId || null,
+      taskId: obj.taskId || at?.taskId || null,
       cachedIssue: ci,
       lastFetchedAt: ci && ci.fetchedAt ? ci.fetchedAt : null,
-      completedSteps: Array.isArray(obj.completedSteps) ? obj.completedSteps : [],
-      summary: obj.summary || ci?.summary || null,
-      priority: obj.priority || ci?.priority || null,
-      status: obj.status || ci?.status || null,
-      epic: obj.epic || ci?.epic || null,
+      completedSteps: steps,
+      summary: obj.summary || at?.summary || ci?.summary || null,
+      priority: obj.priority || at?.priority || ci?.priority || null,
+      status: obj.status || at?.status || ci?.status || null,
+      epic: obj.epic || at?.epic || ci?.epic || null,
     };
   } catch (err) {
     logger && logger.warn('jira-context.parse-error', { path: ctxPath, error: err.message });

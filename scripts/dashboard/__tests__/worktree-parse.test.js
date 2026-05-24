@@ -132,6 +132,33 @@ test('U17: completedSteps defaults to [] when not an array', () => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+// U19: aggregate 포맷(activeTask)에서 summary/steps/cachedIssue 폴백
+test('U19: reads activeTask when top-level fields absent (aggregate format)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mae235-wt-'));
+  const ctx = {
+    initialized: '2026-05-22T00:00:00Z',
+    activeTask: {
+      taskId: 'ATL-493',
+      summary: 'Helm chart 마무리',
+      status: '완료',
+      completedSteps: ['start', 'approach', 'impl', 'test', 'review', 'merge', 'done'],
+      cachedIssue: { summary: 'Helm chart 마무리', priority: '주요', fetchedAt: '2026-05-22T11:39:00.000Z' },
+    },
+    tasks: [],
+  };
+  fs.writeFileSync(path.join(dir, '.jira-context.json'), JSON.stringify(ctx));
+
+  const result = readJiraContext(dir);
+  assert.equal(result.taskId, 'ATL-493');
+  assert.equal(result.summary, 'Helm chart 마무리');
+  assert.equal(result.status, '완료');
+  assert.equal(result.priority, '주요');
+  assert.deepEqual(result.completedSteps, ['start', 'approach', 'impl', 'test', 'review', 'merge', 'done']);
+  assert.equal(result.lastFetchedAt, '2026-05-22T11:39:00.000Z');
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 // U18: 모든 신규 필드 부재 시 기본값
 test('U18: all new fields default to null/[] when absent from top-level and cachedIssue', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mae235-wt-'));

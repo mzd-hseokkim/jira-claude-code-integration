@@ -120,7 +120,12 @@ function tryClaudeJson(workspaceRoot) {
   if (topCreds) return { ...topCreds, source: 'claudeJsonTop' };
 
   // Step 4: projects[workspaceRoot].mcpServers
-  const projEntry = data.projects && data.projects[workspaceRoot];
+  // path separator 정규화 — registry는 '\', ~/.claude.json projects 키는 '/'를 쓸 수 있다.
+  const projects = data.projects || {};
+  const projEntry =
+    projects[workspaceRoot] ||
+    projects[workspaceRoot.replace(/\\/g, '/')] ||
+    projects[workspaceRoot.replace(/\//g, '\\')];
   if (projEntry) {
     const projCreds = extractFromMcpServers(projEntry.mcpServers);
     if (projCreds) return { ...projCreds, source: 'claudeJsonProj' };
@@ -162,22 +167,34 @@ function trySettingsGlobal() {
  * @returns {{ jiraUrl: string, email: string, apiToken: string, source: string }}
  * @throws {CredentialsNotFoundError}
  */
-function loadCredentials(opts = {}) {
-  if (_cache && !opts.force) return _cache;
-
+/**
+ * Run the 5-step priority chain without caching or throwing.
+ * Returns null on miss. Use this for per-workspace resolution where the
+ * shared loadCredentials cache must not be touched.
+ *
+ * @param {{ workspaceRoot?: string }} [opts]
+ * @returns {{ jiraUrl: string, email: string, apiToken: string, source: string }|null}
+ */
+function resolveCredentials(opts = {}) {
   const workspaceRoot = opts.workspaceRoot || process.cwd();
-
-  const result =
+  return (
     tryEnv() ||
     tryMcpJson(workspaceRoot) ||
     tryClaudeJson(workspaceRoot) ||
     trySettingsLocal(workspaceRoot) ||
-    trySettingsGlobal();
+    trySettingsGlobal() ||
+    null
+  );
+}
 
+function loadCredentials(opts = {}) {
+  if (_cache && !opts.force) return _cache;
+
+  const result = resolveCredentials(opts);
   if (!result) throw new CredentialsNotFoundError();
 
   _cache = result;
   return _cache;
 }
 
-module.exports = { loadCredentials, CredentialsNotFoundError };
+module.exports = { loadCredentials, resolveCredentials, CredentialsNotFoundError };
