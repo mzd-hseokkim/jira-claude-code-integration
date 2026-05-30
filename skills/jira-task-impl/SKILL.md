@@ -29,13 +29,28 @@ allowed-tools:
 1. Read `.jira-context.json` for active task info
 2. **Cache-first**: `.jira-context.json`의 `cachedIssue`를 먼저 확인 (CLAUDE.md "Issue Cache" 참고). hit이면 호출 생략. miss이면 `mcp__atlassian__jira_get_issue` 호출 (`fields="summary,status,description,issuetype"`, `comment_limit=0` — 구현은 approach 문서가 1차 소스이므로 이슈 본문은 최소만) 후 cache 갱신.
 3. Read `docs/approach/<TASK-ID>.approach.md` if it exists
+4. **Level 판정**: `.jira-context.json.breakdownLevel` → 없으면 `cachedIssue.issuetype` 폴백 (approach Step 0 동일 규칙: Subtask/Task/Bug→L1, Story→L2, Epic→L3, 그 외→L1). 판정 결과를 이후 단계에서 사용.
 
 ### Step 2: Implement Based on Approach Document
 
-`docs/approach/<TASK-ID>.approach.md`의 Implementation Plan(L2) 또는 5줄 요약(L1)에 따라 구현. L3 Epic은 child Story가 구현 책임을 가지므로 본 단계의 입력으로 쓰지 않는다.
+Step 1에서 판정한 레벨에 따라 분기:
+
+#### L1 (Subtask/Task/Bug 등 단일 변경)
+
+approach 문서의 5줄 요약을 입력으로 사용. 추가 설계 문서 없이 직접 구현. 산출물 최소화 — Jira 코멘트는 인라인 요약으로 대체 가능, 별도 문서 생성 불필요.
+
+#### L2 (Story — 현행)
+
+`docs/approach/<TASK-ID>.approach.md`의 Implementation Plan 순서를 따름.
+
+#### L3 (Epic)
+
+child Story가 구현 책임을 가지므로 본 단계의 입력으로 쓰지 않는다. L3 Epic에서 이 스킬이 호출되면 "child Story 단위로 실행할 것"을 안내하고 조기 종료.
+
+---
 
 구현 원칙:
-1. Implementation Plan의 순서를 따름
+1. 위 레벨별 분기 순서를 따름
 2. 기존 코드 컨벤션과 패턴을 준수
 3. Approach 문서의 Risks/Key Decisions 반영
 4. 각 단계 완료 시 **타입체크/컴파일 등 syntactic 검증만** 수행 (테스트 실행 금지)

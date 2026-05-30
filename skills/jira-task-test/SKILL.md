@@ -30,7 +30,15 @@ allowed-tools:
 - `fields="summary,status,issuetype"`
 - `comment_limit=0`
 
-### Step 1: Detect Test Environment
+### Step 1: Detect Test Environment & Level
+
+**Level 판정**: `.jira-context.json.breakdownLevel` → 없으면 `cachedIssue.issuetype` 폴백 (approach Step 0 동일 규칙: Subtask/Task/Bug→L1, Story→L2, Epic→L3, 그 외→L1). 판정 결과를 이후 단계에서 사용.
+
+| Level | 동작 |
+|-------|------|
+| L1 | 경량 검증 — 핵심 동작만 확인, report 인라인/파일 생략 허용 |
+| L2 | 현행 유지 — 전체 test suite 실행 + report 파일 생성 |
+| L3 | child Story별 책임 — 본 스킬이 L3 Epic에서 호출되면 "child Story 단위로 실행할 것" 안내 후 조기 종료 |
 
 Scan the project to determine the test setup:
 
@@ -136,6 +144,12 @@ For failed tests, capture:
 - Screenshot path (Playwright auto-captures on failure)
 
 ### Step 4: Generate Test Report
+
+#### L1 — 경량 산출물
+
+파일 생성 없이 Jira 코멘트 인라인에 결과 요약 포함 가능. 핵심 동작 확인 결과(통과/실패/케이스 수)만 기록. `docs/test/` 파일 생성은 선택 사항이며, 생략해도 워크플로를 계속 진행한다.
+
+#### L2 — 전체 리포트 (현행)
 
 Create a test report at `docs/test/<TASK-ID>.test-report.md`.
 
