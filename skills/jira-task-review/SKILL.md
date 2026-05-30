@@ -32,6 +32,14 @@ Mode A/B 분기 규칙과 Mode A subagent prompt 전문은 `Read skills/jira-tas
 
 ### Step 1: Prepare Context (main 세션)
 
+**Level 판정**: `.jira-context.json.breakdownLevel` → 없으면 `cachedIssue.issuetype` 폴백 (approach Step 0 동일 규칙: Subtask/Task/Bug→L1, Story→L2, Epic→L3, 그 외→L1). 판정 결과를 이후 단계에서 사용.
+
+| Level | 동작 |
+|-------|------|
+| L1 | 경량 리뷰 — 핵심 findings만 (gap-analysis 경량, report 인라인/파일 생략 허용) |
+| L2 | 현행 유지 — 전체 gap-analysis + 리뷰 report 파일 생성 |
+| L3 | child Story별 책임 — 본 스킬이 L3 Epic에서 호출되면 "child Story 단위로 실행할 것" 안내 후 조기 종료 |
+
 리뷰 컨텍스트를 준비한다 — main 세션이 한다.
 
 ```bash
@@ -77,6 +85,12 @@ self-mode에서도 Edit/Write로 코드를 직접 수정하지 마라 — 리뷰
 만약 subagent 호출이 실패하거나(타임아웃, 권한 거부 등) 결과가 명확히 부족하면, **재시도 또는 사용자에게 보고**. main 세션이 fallback으로 직접 리뷰하지 않는다.
 
 ### Step 4: Save Review Report (main 세션)
+
+#### L1 — 경량 산출물
+
+파일 생성 없이 Jira 코멘트 인라인에 핵심 findings만 포함 가능. gap-analysis는 변경 파일 대비 핵심 항목(Critical/Warning)만 열거. `docs/review/` 파일 생성은 선택 사항이며, 생략해도 워크플로를 계속 진행한다.
+
+#### L2 — 전체 리포트 (현행)
 
 subagent 반환값을 `docs/review/<TASK-ID>.review.md`에 저장. template contract를 따라 정형화한다.
 

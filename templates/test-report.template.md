@@ -14,6 +14,10 @@ Section contract:
 - 옵셔널(optional): Test Strategy, Test Environment, Skipped Tests, Acceptance Criteria 매핑, Raw Output, Out of Scope
 
 가변 섹션 마커 규약: `<!-- optional: <조건 또는 사유> -->` (헤더 직전 줄). 자동 처리 X, 사람/LLM 참고용.
+
+L1 경량 경로 계약:
+- L1 task에서 이 파일을 생성하지 않고 Jira 코멘트에 인라인 요약으로 대체하는 것이 허용됨.
+- 파일을 생성하는 경우에도 Summary + 1개 분류 헤더 + Failed Tests Detail 만으로 축약 가능 (나머지 필수 섹션은 "해당 없음" 또는 생략 허용).
 -->
 
 ## Summary
