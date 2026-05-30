@@ -55,7 +55,7 @@ git -C "<repoRoot>" rev-parse --verify main 2>/dev/null
 git -C "<repoRoot>" rev-parse --verify master 2>/dev/null
 ```
 
-### Step 2: Pre-flight Checks
+### Step 2: Pre-flight Checks & Auto-commit
 
 ```bash
 # 1. feature 브랜치 존재 확인
@@ -65,53 +65,36 @@ git branch --list "feature/<TASK-ID>"
 git -C "<worktreePath>" status --porcelain
 ```
 
-미커밋 변경사항이 있으면 사용자에게 알리고 중단. 계속할지 확인 후 진행.
+미커밋 변경사항이 있으면 **사용자에게 묻지 않고 스마트 커밋**한다. merge 요청 자체가 "커밋도 끝났길 바란다"는 의도이므로 흐름을 끊지 않는다.
 
-### Step 3: Choose Merge Strategy
+- 쓸데없는 파일(로그·임시·OS 아티팩트)은 스테이징에서 제외. `.gitignore`가 이미 거르는 항목(`.jira-context.json`, `TASK-README.md` 등)은 자연히 빠진다.
+- 의미 있는 변경(소스·문서·설정)만 스테이징 후 이슈 summary 기반 메시지로 커밋.
 
-사용자에게 병합 전략 선택 요청:
-
+```bash
+cd "<worktreePath>"
+# junk 제외하고 의미 있는 변경만 스테이징
+git add -A -- . \
+  ':(exclude,glob)**/*.log' ':(exclude,glob)**/*.tmp' ':(exclude,glob)**/*.swp' \
+  ':(exclude)nul' ':(exclude)**/.DS_Store' ':(exclude)**/Thumbs.db'
+# 스테이징된 변경이 있을 때만 커밋
+if ! git diff --cached --quiet; then
+  git commit -m "feat(<TASK-ID>): <issue summary>"
+fi
 ```
-병합 전략을 선택하세요:
 
-1. --no-ff (기본 권장)
-   merge commit을 생성, feature 브랜치 히스토리가 그대로 보존됨
-   GitHub "Create a merge commit"과 동일
+스테이징할 의미 있는 변경이 없으면 커밋을 생략하고 다음 단계로 진행한다.
 
-2. --squash
-   feature 브랜치의 모든 커밋을 하나로 합쳐 병합
-   GitHub "Squash and merge"와 동일
+### Step 3: Merge Strategy (고정: --no-ff)
 
-3. rebase
-   feature 브랜치 커밋을 base 브랜치 위에 재배치, 선형 히스토리
-   GitHub "Rebase and merge"와 동일
-```
+병합 전략은 **항상 `--no-ff`** (merge commit 생성, feature 브랜치 히스토리 보존)로 고정한다. 사용자에게 묻지 않는다 — merge를 요청했다는 것은 전략이 이미 정해져 있다는 의미다.
 
 ### Step 4: Perform Merge
 
 **`.jira-context.json`의 `repoRoot`를 사용**한다. `git rev-parse --show-toplevel`은 워크트리 안에서 실행하면 워크트리 경로를 반환하므로 사용하지 않음.
 
-#### 전략별 명령:
-
-**--no-ff (기본)**
 ```bash
 git -C "<repoRoot>" checkout <baseBranch>
 git -C "<repoRoot>" merge --no-ff feature/<TASK-ID> -m "Merge feature/<TASK-ID>: <issue summary>"
-```
-
-**--squash**
-```bash
-git -C "<repoRoot>" checkout <baseBranch>
-git -C "<repoRoot>" merge --squash feature/<TASK-ID>
-git -C "<repoRoot>" commit -m "feat(<TASK-ID>): <issue summary>"
-```
-
-**rebase**
-```bash
-git -C "<repoRoot>" checkout feature/<TASK-ID>
-git -C "<repoRoot>" rebase <baseBranch>
-git -C "<repoRoot>" checkout <baseBranch>
-git -C "<repoRoot>" merge --ff-only feature/<TASK-ID>
 ```
 
 merge 충돌 발생 시 사용자에게 알리고 중단. 충돌 해결 후 재실행 안내.
@@ -124,7 +107,7 @@ merge 충돌 발생 시 사용자에게 알리고 중단. 충돌 해결 후 재�
 ## Task Merged Locally: <TASK-ID>
 
 **브랜치**: feature/<TASK-ID> → <baseBranch>
-**전략**: <merge strategy>
+**전략**: --no-ff
 **커밋 수**: <count>개
 **변경 파일**: <count>개 (+<추가> -<삭제>)
 
@@ -189,7 +172,7 @@ python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> merge "<final-jira-status>" \
 ---
 ✅ **Local Merge Complete** — <TASK-ID>
 
-- 병합: feature/<TASK-ID> → <baseBranch> (<strategy>)
+- 병합: feature/<TASK-ID> → <baseBranch> (--no-ff)
 - Jira 상태: In Review
 - Worktree 정리: 세션 종료 후 수동 실행 필요 (위 안내 참고)
 - feature 브랜치(feature/<TASK-ID>)는 PR 생성을 위해 보존됨

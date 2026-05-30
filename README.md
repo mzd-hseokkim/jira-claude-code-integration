@@ -148,7 +148,7 @@ claude
 > /jira-task impl       # Implement based on approach
 > /jira-task test       # Run tests + post report to Jira
 > /jira-task review     # Gap analysis + code review
-> /jira-task merge      # Merge locally (choose strategy)
+> /jira-task merge      # Auto-commit pending changes + no-ff merge
 
 # 6. Back in the main repo
 > cd ../your-project
@@ -230,7 +230,7 @@ claude
 | `/jira-task impl [ID]` | worktree | Implement based on approach doc |
 | `/jira-task test [ID]` | worktree | Run tests + post report to Jira |
 | `/jira-task review [ID]` | worktree | Gap analysis + code review → Jira |
-| `/jira-task merge [ID]` | worktree | Merge locally (strategy: ff/squash/rebase) |
+| `/jira-task merge [ID]` | worktree | Auto-commit pending changes (junk excluded) + `--no-ff` local merge |
 | `/jira-task pr [ID]` | main repo | Push branch + create GitHub PR |
 | `/jira-task done [ID]` | main repo | Transition Done + post summary |
 | `/jira-task clean <ID...>\|--all\|--list` | main repo | Remove worktree, delete branch, clean MCP config + context |
@@ -411,13 +411,10 @@ git diff --name-only main feature/PROJ-101
 git diff --name-only main feature/PROJ-102
 ```
 
-Available merge strategies when running `/jira-task merge`:
+`/jira-task merge` is intentionally non-interactive — requesting a merge implies the work is ready and the strategy is decided:
 
-| Strategy | Description | Equivalent GitHub option |
-|---|---|---|
-| `--no-ff` (default) | Merge commit, preserves branch history | Create a merge commit |
-| `--squash` | Squash all commits into one | Squash and merge |
-| `rebase` | Linear history, no merge commit | Rebase and merge |
+- **Auto-commit**: any uncommitted changes in the worktree are smart-committed first. Junk (`*.log`, `*.tmp`, `*.swp`, `nul`, `.DS_Store`, `Thumbs.db`) and `.gitignore`d files (`.jira-context.json`, `TASK-README.md`) are excluded; only meaningful source/doc/config changes are committed.
+- **Strategy**: always `--no-ff` (merge commit, preserves branch history — equivalent to GitHub "Create a merge commit"). No prompt.
 
 ---
 
