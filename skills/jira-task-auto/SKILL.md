@@ -2,7 +2,7 @@
 name: jira-task-auto
 description: "Auto-execute the full Jira task workflow (start → approach → impl → test → review) sequentially. Triggers: jira-task auto, auto run; 자동 실행, 전체 워크플로 자동."
 user-invocable: false
-argument-hint: "<TASK-ID>"
+argument-hint: "<TASK-ID> [--skip <단계,...>]"
 allowed-tools:
   - Read
   - Edit
@@ -32,33 +32,59 @@ allowed-tools:
 
 **실행 대상 단계**: `["start", "approach", "impl", "test", "review"]`
 
-이미 완료된 단계를 제외한 나머지를 실행 계획으로 결정.
+### 1-a. 사용자 명시 스킵 파싱
+
+인자(ARGUMENTS)를 파싱하여 사용자가 명시한 스킵 단계를 확인한다.
+
+지원 형식:
+- `--skip test` — 단일 단계
+- `--skip test,review` — 쉼표 구분 복수
+- 자연어: "test 스킵", "test 빼고", "test 제외" 등 → `--skip test`와 동일하게 처리
+
+파싱 결과를 `USER_SKIP_STEPS` 목록으로 저장.
+
+**스킵 가능 단계**: `approach`, `impl`, `test`, `review` (start는 스킵 불가 — 브랜치/worktree 셋업 필수).
+
+유효하지 않은 단계명이 포함되면 해당 항목을 무시하고 경고 한 줄 출력:
+```
+⚠ 알 수 없는 단계 '<X>'는 스킵 목록에서 제외됩니다.
+```
+
+### 1-b. 실행 계획 결정
+
+이미 완료된 단계(completedSteps)와 사용자 명시 스킵(USER_SKIP_STEPS)을 **모두 제외**한 나머지를 실행 계획으로 결정.
 
 사용자에게 실행 계획을 보여준다:
 
 ```
 🚀 Auto 모드: <TASK-ID>
 
-실행할 단계: start → approach → impl → test → review
+실행할 단계: <실행할 단계 목록, → 구분>
 완료된 단계: <completedSteps 목록 또는 "없음">
-건너뛸 단계: <이미 완료된 단계 목록 또는 "없음">
+건너뛸 단계 (완료): <이미 완료된 단계 목록 또는 "없음">
+건너뛸 단계 (사용자 요청): <USER_SKIP_STEPS 목록 또는 "없음">
 
 각 단계를 독립 sub-agent로 순차 실행합니다 (모델 차등 적용).
-PDCA 권고는 자동 적용됩니다 — 변경하려면 auto 종료 후 단계별로 실행하세요.
+PDCA 권고는 자동 적용됩니다 — 단, 사용자 명시 스킵이 PDCA 권고보다 우선합니다.
 ```
 
 ### Step 1.5: start 권고 반영 (PDCA 스킵)
 
-start sub-agent 완료 후 응답 본문에 "PDCA 권고" 블록이 있으면, "스킵 가능" 목록에 포함된 단계는 **sub-agent 호출 없이** 한 줄 사유만 출력하고 다음 단계로 진행한다. main session(본 오케스트레이터)이 텍스트를 직접 읽어 판단한다 — 별도 파싱 로직이나 저장 스키마 없음.
+start sub-agent 완료 후 응답 본문에 "PDCA 권고" 블록이 있으면, "스킵 가능" 목록에 포함된 단계 중 **`USER_SKIP_STEPS`에 없는** 단계를 PDCA 기반으로 스킵 판단한다.
 
-규칙:
+우선순위:
+1. **사용자 명시 스킵(USER_SKIP_STEPS)이 최우선** — PDCA 권고와 무관하게 무조건 스킵.
+2. PDCA 권고 "스킵 가능" 단계는 그 다음 — USER_SKIP_STEPS에 없는 단계에만 적용.
+3. 사용자가 자연어("test는 넣어줘")로 PDCA 권고를 뒤집으면 그대로 따른다 — 단, USER_SKIP_STEPS로 명시된 것은 번복 불가 (실행 계획 확정 후 재요청 필요).
+
+추가 규칙:
 - 스킵된 단계는 `completedSteps`에 추가하지 않는다 (실행한 게 아님).
-- 권고 블록이 없거나 "스킵 가능: 없음"이면 전 단계 정상 실행.
-- 사용자가 자연어("test는 넣어줘")로 권고를 뒤집으면 그대로 따른다 — 권고는 강제가 아니라 제안.
+- 권고 블록이 없거나 "스킵 가능: 없음"이고 USER_SKIP_STEPS도 없으면 전 단계 정상 실행.
 
 출력 예 (스킵 시):
 ```
-⏭ test 스킵 (start 권고: 동작 변경 없는 텍스트 변경)
+⏭ test 스킵 (사용자 명시)
+⏭ review 스킵 (start 권고: 동작 변경 없는 텍스트 변경)
 ```
 
 ## Step 2: Sequential Execution
