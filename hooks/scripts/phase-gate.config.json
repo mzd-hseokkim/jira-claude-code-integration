@@ -1,6 +1,6 @@
 {
-  "version": "1.0",
-  "_comment": "Phase gate dependency graph. Customize: copy this file and edit `phases.<name>.requires`/`artifacts`/`enforced` for your team's workflow. {TASK_ID} in fileGlob is replaced at runtime.",
+  "version": "1.1",
+  "_comment": "Phase gate dependency graph. Customize: copy this file and edit `phases.<name>.requires`/`artifacts`/`enforced` for your team's workflow. {TASK_ID} in fileGlob is replaced at runtime. Note: L1 tasks (breakdownLevel=L1 or Subtask/Task/Bug issuetype) receive advisory warnings instead of hard-blocks regardless of `enforced`.",
   "phases": {
     "discover": {
       "requires": [],

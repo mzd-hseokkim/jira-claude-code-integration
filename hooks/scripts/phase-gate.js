@@ -20,6 +20,9 @@ const MAX_UPWARD_LEVELS = 6;
 const SKILL_PATTERN = /^(?:jira-integration:)?jira-task-([a-z]+)$/;
 const BYPASS_ENV_VAR = 'JIRA_PHASE_GATE_BYPASS';
 
+// Issuetype names that map to L1 (single task-level work)
+const L1_ISSUETYPES = new Set(['subtask', 'task', 'bug', '작업', '버그', '하위 작업']);
+
 function isEnvTruthy(value) {
   if (typeof value !== 'string') return false;
   const trimmed = value.trim();
@@ -27,6 +30,33 @@ function isEnvTruthy(value) {
   const lower = trimmed.toLowerCase();
   if (lower === '0' || lower === 'false') return false;
   return true;
+}
+
+/**
+ * Determine breakdown level from context.
+ * Priority: context.breakdownLevel → cachedIssue.issuetype fallback.
+ * Returns "L1" | "L2" | "L3".
+ */
+function detectLevel(context) {
+  if (context && typeof context.breakdownLevel === 'string') {
+    const bl = context.breakdownLevel.trim().toUpperCase();
+    if (bl === 'L1' || bl === 'L2' || bl === 'L3') return bl;
+  }
+  // Fallback: derive from cachedIssue.issuetype (flat string per cache convention)
+  const rawIssuetype =
+    context && context.cachedIssue
+      ? (typeof context.cachedIssue.issuetype === 'string'
+          ? context.cachedIssue.issuetype
+          : context.cachedIssue.issue_type && typeof context.cachedIssue.issue_type.name === 'string'
+            ? context.cachedIssue.issue_type.name
+            : '')
+      : '';
+  const issuetype = rawIssuetype.toLowerCase();
+  if (issuetype === 'epic') return 'L3';
+  if (issuetype === 'story') return 'L2';
+  if (L1_ISSUETYPES.has(issuetype)) return 'L1';
+  // Unknown → L2 (fail-safe: hard-block until level is explicitly set)
+  return 'L2';
 }
 
 function isBypassed(env, context) {
@@ -164,6 +194,29 @@ function formatBlockMessage(phase, result) {
   return lines.join('\n');
 }
 
+function formatAdvisoryMessage(phase, result) {
+  const taskId = result.taskId || '<TASK-ID>';
+  const lines = [];
+  lines.push(`⚠️ phase gate advisory (L1): '${phase}' 단계의 선행 요건이 충족되지 않았지만 L1 작업이므로 진행을 허용합니다 (${taskId})`);
+  if (result.reason === 'missing-requires') {
+    const missing = result.requiredPhases.join(', ');
+    lines.push(`미완료 선행 단계: ${missing}`);
+  } else if (result.reason === 'missing-artifact') {
+    lines.push(`누락된 산출물:`);
+    for (const p of result.missingArtifacts) lines.push(`  - ${p}`);
+  }
+  lines.push(`hard-block 적용: L2 이상 작업만 해당됩니다.`);
+  return lines.join('\n');
+}
+
+function emitAdvisory(message) {
+  try {
+    process.stderr.write(message + '\n');
+  } catch {
+    // ignore
+  }
+}
+
 function emitDeny(message) {
   const payload = {
     hookSpecificOutput: {
@@ -250,6 +303,14 @@ function main() {
     return;
   }
 
+  // L1 작업은 hard-block 대신 advisory warning으로 낮춤
+  const level = detectLevel(context);
+  if (level === 'L1') {
+    emitAdvisory(formatAdvisoryMessage(phase, result));
+    process.exit(0);
+    return;
+  }
+
   emitDeny(formatBlockMessage(phase, result));
   process.exit(2);
 }
@@ -267,7 +328,9 @@ module.exports = {
   findContextFile,
   loadConfig,
   validate,
+  detectLevel,
   formatBlockMessage,
+  formatAdvisoryMessage,
   isBypassed,
   isEnvTruthy,
 };
