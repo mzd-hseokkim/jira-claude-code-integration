@@ -95,6 +95,7 @@ start sub-agent 완료 후 응답 본문에 "PDCA 권고" 블록이 있으면, "
 **logical 단계 → sub-agent 매핑**: start, approach, review는 각 1개 agent. **impl과 test는 하나의 agent 호출로 묶는다** (아래 모델 표 3행 `impl+test`). 즉 Step 1-b 계획에 impl/test가 둘 다 남아 있으면 `Agent`를 2번이 아니라 **1번** 호출하고, `<SUBSTEPS>`에 `impl, test`를 전달한다. 한쪽만 남았으면(스킵·resume) 그 하나만 전달.
 
 **중요 규칙:**
+- ⛔ **한 메시지에 `Agent` 도구를 두 번 이상 호출하지 마라.** 단계 간에는 데이터 의존성이 있다(impl/test 산출물을 review가 검토). 한 턴에는 **오직 한 개의 `Agent` 호출**만 emit하고, 그 결과가 반환된 뒤 `.jira-context.json`을 다시 읽어 다음 단계 Agent를 별도 턴에서 호출한다. impl+test와 review를 같은 메시지에 묶어 보내면 "개발도 안 끝난 코드를 리뷰"하는 잘못된 병렬 실행이 된다 — 절대 금지.
 - 각 단계 호출 전, `.jira-context.json`을 `Read`로 다시 읽어 이미 완료되었으면 건너뜀
 - 각 Agent는 foreground 실행 (결과를 받아야 다음 단계 진행 가능)
 - Agent 완료 후, `.jira-context.json`을 `Read`로 다시 읽어 `completedSteps`에 추가되었는지 확인
