@@ -13,6 +13,8 @@ allowed-tools:
   - mcp__atlassian__jira_get_transitions
   - mcp__atlassian__jira_add_comment
   - mcp__atlassian__jira_search
+  - mcp__atlassian__jira_get_user_profile
+  - mcp__atlassian__jira_update_issue
 ---
 
 # jira-task-start: Start Working on a Jira Task
@@ -60,6 +62,22 @@ Display to the user:
 - **Acceptance Criteria**: If present in description
 - **Sub-tasks**: If any
 - **Linked Issues**: If any
+
+### Step 1.5: Self-Assign (현재 토큰 사용자로 담당자 지정)
+
+작업을 시작하는 계정으로 이슈 담당자를 지정한다.
+
+1. `mcp__atlassian__jira_get_user_profile`을 **`account_id` 없이** 호출 → 현재 JIRA API Token이 인증한 사용자(=start를 실행한 계정)의 `accountId`와 표시명을 얻는다.
+2. `cachedIssue.assignee`(또는 Step 1의 현재 담당자)가 이미 이 사용자면 **호출 생략** (중복 write 방지).
+3. 다르면 `mcp__atlassian__jira_update_issue` 호출:
+   - `issue_key`: `<TASK-ID>`
+   - `fields`: `{"assignee": "<accountId>"}`
+4. 성공 시 `cachedIssue.assignee`를 이 사용자 표시명으로 갱신한다 (Step 1 캐시 patch에 반영 → 이후 Display·README가 본인으로 보이도록).
+
+**비차단**: 권한 부족 등으로 실패하면 한 줄 경고만 출력하고 워크플로를 계속한다 (transition 단계와 동일 정책).
+```
+⚠ 담당자 자동 지정 실패 (<사유>) — 수동으로 할당하세요.
+```
 
 ### Step 2: Transition to "In Progress"
 
@@ -191,6 +209,7 @@ Completion Summary 직전에 다음 형식의 권고 블록을 출력한다. 이
 ✅ **Start Complete** — <TASK-ID>
 
 - 이슈 상태: In Progress
+- 담당자: <본인 표시명> (자동 지정)
 - 브랜치: feature/<TASK-ID>
 - Worktree: <path>
 - Jira 코멘트 게시됨
