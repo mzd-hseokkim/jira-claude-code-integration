@@ -51,6 +51,7 @@ Display the available workflow commands:
 | `/jira-task create [힌트]` | 신규 Jira 이슈를 대화형으로 생성 (서브태스크/의존성/에픽 연결 포함) |
 | `/jira-task init [N]` | Fetch my top N assigned tasks and create worktrees for each |
 | `/jira-task auto <TASK-ID>` | Auto-execute full workflow (start → approach → impl → test → review) |
+| `/jira-task loop` | Drain the init'ed task queue — auto + local merge per task, rebase between tasks |
 | `/jira-task start <TASK-ID>` | Start working on a task (fetch context, create branch, transition to In Progress) |
 | `/jira-task approach <TASK-ID>` | Generate a level-aware approach document (plan + design 통합) |
 | `/jira-task impl <TASK-ID>` | Implement based on approach document |

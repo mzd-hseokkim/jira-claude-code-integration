@@ -50,7 +50,9 @@ cache miss면 `mcp__atlassian__jira_get_issue` 호출:
 - `fields="summary,status,priority,assignee,issuetype,description,subtasks,issuelinks"`
 - `comment_limit=0` (start 단계에서는 코멘트 이력 불필요)
 
-호출 후 결과를 `.jira-context.json`의 `cachedIssue`에 저장한다 (CLAUDE.md "Issue Cache" 참고 — 후속 단계가 재조회를 생략할 수 있게). `fetchedAt`은 반드시 `new Date().toISOString()` (UTC `Z`) 형식.
+호출 후 결과를 **worktree-local** `.jira-context.json`의 `cachedIssue`에 저장한다 (CLAUDE.md "Issue Cache" 참고 — 후속 단계가 재조회를 생략할 수 있게). `fetchedAt`은 반드시 `new Date().toISOString()` (UTC `Z`) 형식.
+
+> ⛔ **fresh 모드에서는 이 시점에 worktree-local 파일이 아직 없다 — cwd 파일에 쓰지 말고 메모리로만 유지**했다가 Step 6에서 worktree-local context를 생성할 때 기록한다. cwd의 `.jira-context.json`이 aggregate(`tasks[]` 존재)인 경우 거기에 `cachedIssue`를 쓰면 최상위가 오염된다 (절대 금지).
 
 Display to the user:
 - **Key**: Issue key

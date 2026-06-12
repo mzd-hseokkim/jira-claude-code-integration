@@ -84,5 +84,72 @@ class MigrateApproachTest(unittest.TestCase):
         )
 
 
+class StripAggregatePollutionTest(unittest.TestCase):
+    def _write(self, content: dict) -> Path:
+        f = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8"
+        )
+        json.dump(content, f, ensure_ascii=False)
+        f.close()
+        return Path(f.name)
+
+    def test_polluted_aggregate_is_self_healed_on_update(self):
+        path = self._write(
+            {
+                "initialized": "2026-01-01T00:00:00Z",
+                "repoRoot": "/repo",
+                "baseBranch": "main",
+                "worktreeBase": "/repo_worktree",
+                # worktree-local pollution at top level
+                "status": "In Progress",
+                "completedSteps": ["start", "design"],
+                "startedAt": "2026-01-01T00:00:00Z",
+                "cachedIssue": {"key": "T-1"},
+                "parentEpic": "T-0",
+                "tasks": [{"taskId": "T-1", "completedSteps": ["init"]}],
+            }
+        )
+        result = module.update_context(str(path), "T-1", "start", "In Progress", "2026-01-02T00:00:00Z")
+        self.assertIn("aggregate updated", result)
+        with open(path, encoding="utf-8") as f:
+            ctx = json.load(f)
+        for key in ("status", "completedSteps", "startedAt", "cachedIssue", "parentEpic"):
+            self.assertNotIn(key, ctx)
+        # legit aggregate fields preserved, task entry updated normally
+        self.assertEqual(ctx["initialized"], "2026-01-01T00:00:00Z")
+        self.assertEqual(ctx["tasks"][0]["completedSteps"], ["init", "start"])
+
+    def test_pollution_stripped_even_when_task_id_not_found(self):
+        path = self._write(
+            {
+                "repoRoot": "/repo",
+                "cachedIssue": {"key": "T-9"},
+                "tasks": [{"taskId": "T-1"}],
+            }
+        )
+        result = module.update_context(str(path), "T-9", "start", "-", "2026-01-02T00:00:00Z")
+        self.assertIn("skipped", result)
+        with open(path, encoding="utf-8") as f:
+            ctx = json.load(f)
+        self.assertNotIn("cachedIssue", ctx)
+
+    def test_clean_aggregate_and_worktree_files_untouched_by_strip(self):
+        agg = self._write(
+            {"repoRoot": "/repo", "tasks": [{"taskId": "T-1", "deferred": True, "deferredReason": "x"}]}
+        )
+        module.update_context(str(agg), "T-1", "start", "-", "2026-01-02T00:00:00Z")
+        with open(agg, encoding="utf-8") as f:
+            ctx = json.load(f)
+        # loop's per-task deferred fields survive (unknown-key preservation)
+        self.assertTrue(ctx["tasks"][0]["deferred"])
+        # worktree-local file: top-level step fields are the schema, never stripped
+        wt = self._write({"taskId": "T-1", "status": "To Do", "completedSteps": []})
+        module.update_context(str(wt), "T-1", "start", "In Progress", "2026-01-02T00:00:00Z")
+        with open(wt, encoding="utf-8") as f:
+            ctx = json.load(f)
+        self.assertEqual(ctx["status"], "In Progress")
+        self.assertEqual(ctx["completedSteps"], ["start"])
+
+
 if __name__ == "__main__":
     unittest.main()

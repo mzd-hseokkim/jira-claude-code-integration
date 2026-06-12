@@ -86,7 +86,7 @@ function main() {
   const lines = [];
 
   lines.push('Jira integration plugin active. Use /jira to check connection status.');
-  lines.push('Available commands: /jira [setup] (status/wizard), /jira-task [discover|create|init|start|plan|design|impl|test|review|pr|done|report|status|auto] <TASK-ID>');
+  lines.push('Available commands: /jira [setup] (status/wizard), /jira-task [discover|create|init|start|approach|impl|test|review|merge|pr|done|report|status|auto|loop|clean] <TASK-ID>');
 
   // Check for active task context
   const contextPath = path.join(process.cwd(), '.jira-context.json');

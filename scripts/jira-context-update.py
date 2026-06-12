@@ -76,18 +76,50 @@ def _apply_step(target: dict, step: str, status: str, ts: str) -> None:
         ci["fetchedAt"] = ts
 
 
+# Worktree-local fields that must never appear at the aggregate top level.
+# A skill running with main-repo cwd can leak these into the aggregate
+# (schema pollution); stripped on every aggregate update (self-healing).
+# Step timestamps ("<step>At") are covered by the endswith check — the
+# aggregate's own timestamp is "initialized" (no "At" suffix).
+_AGGREGATE_POLLUTION_KEYS = frozenset({
+    "taskId", "branch", "worktreePath", "summary", "priority",
+    "status", "completedSteps", "cachedIssue", "parentEpic", "parentStory",
+})
+
+
+def _strip_aggregate_pollution(ctx: dict) -> list[str]:
+    removed = sorted(
+        k for k in ctx
+        if k in _AGGREGATE_POLLUTION_KEYS or k.endswith("At")
+    )
+    for k in removed:
+        del ctx[k]
+    return removed
+
+
 def update_context(ctx_file: str, task_id: str, step: str, status: str, ts: str) -> str:
     if not os.path.isfile(ctx_file):
         return f"missing: {ctx_file}"
     with open(ctx_file, "r", encoding="utf-8") as f:
         ctx = json.load(f)
     if isinstance(ctx.get("tasks"), list):
+        removed = _strip_aggregate_pollution(ctx)
+        if removed:
+            print(
+                f"warn: stripped worktree-local fields from aggregate top level: {removed}",
+                file=sys.stderr,
+            )
+        updated = False
         for t in ctx["tasks"]:
             if t.get("taskId") == task_id:
                 _apply_step(t, step, status, ts)
-                with open(ctx_file, "w", encoding="utf-8") as f:
-                    json.dump(ctx, f, indent=2, ensure_ascii=False)
-                return f"aggregate updated ({task_id}): {ctx_file}"
+                updated = True
+                break
+        if updated or removed:
+            with open(ctx_file, "w", encoding="utf-8") as f:
+                json.dump(ctx, f, indent=2, ensure_ascii=False)
+        if updated:
+            return f"aggregate updated ({task_id}): {ctx_file}"
         return f"no {task_id} in aggregate, skipped: {ctx_file}"
     _apply_step(ctx, step, status, ts)
     with open(ctx_file, "w", encoding="utf-8") as f:

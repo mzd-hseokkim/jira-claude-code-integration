@@ -44,17 +44,21 @@ graph LR
     I --> J["/jira-task done\nDone"]
 
     AUTO["⚡ /jira-task auto\nstart→review (auto)"]
+    LOOP["🔁 /jira-task loop\nqueue: auto→merge per task"]
 
     style DSC fill:#A0522D,color:#fff
     style N fill:#8B4513,color:#fff
     style A fill:#2B50D4,color:#fff
     style J fill:#156030,color:#fff
     style AUTO fill:#7B2D8B,color:#fff
+    style LOOP fill:#B8336A,color:#fff
 ```
 
 > **Discover (optional first step)**: `/jira-task discover "<topic>"` turns a free-form topic into a structured `docs/requirements/<slug>.requirements.md`, which `/jira-task create --from-requirements <file>` can then consume to bulk-register Epic/Story/Sub-tasks.
 
 > **Shortcut**: `/jira-task auto <ID>` runs `start → approach → impl → test → review` automatically. Each step runs as an isolated sub-agent, and already-completed steps are skipped. If review fails, it auto-fixes and retries (up to 2×).
+
+> **Queue drain**: `/jira-task loop` runs `auto` + local merge for **every** init'ed task sequentially, rebasing the remaining worktrees onto the updated base after each merge. Tasks end up in "In Review" — verify on main, then `/jira-task done` each.
 
 Each step automatically posts a comment and/or attachment to the Jira issue and transitions its status.
 
@@ -74,6 +78,12 @@ Each step automatically posts a comment and/or attachment to the Jira issue and 
 - **Iterative review**: When review finds issues (gap analysis or code quality), auto-fix → test → review retries up to 2 times before stopping.
 - **Smart resume**: Already-completed steps are skipped based on `.jira-context.json`.
 - **Scope boundary**: `merge`, `pr`, `done` are excluded (cross-worktree / externally visible actions require manual confirmation).
+
+**Loop Mode** *(v0.46.0)*
+`/jira-task loop` drains the entire init'ed task queue: per task, it runs `auto` then a local merge (Jira → In Review), one task at a time.
+- **Base freshness**: After each merge, remaining worktree branches are rebased onto the updated base; a task whose rebase fails (conflict, dirty worktree) is deferred (not failed) and retried on the next loop run.
+- **Fail-fast**: Any `auto`/merge failure stops the whole loop with a resume-ready report — re-running `/jira-task loop` skips completed tasks.
+- **Human gate preserved**: `done` stays manual — verify the merged result on the base branch, then complete each task.
 
 **Interactive Setup Wizard** *(v0.6.0)*
 `/jira setup` guides you through prerequisites (uv, Python 3.10+), credential collection, MCP server registration, and connection validation — no manual CLI commands needed.
@@ -138,11 +148,14 @@ claude
 # 4b. Fetch your top tasks and set up worktrees
 > /jira-task init 5
 
-# 5a. Auto mode — run the full pipeline in one command
+# 5a. Loop mode — drain the whole queue in one command
+> /jira-task loop       # per task: auto → local merge (In Review), rebase the rest
+
+# 5b. Auto mode — run the full pipeline for one task
 > cd ../your-project_worktree/PROJ-123
 > /jira-task auto       # start → approach → impl → test → review
 
-# 5b. Or step-by-step (TASK-ID is auto-detected from branch/directory)
+# 5c. Or step-by-step (TASK-ID is auto-detected from branch/directory)
 > /jira-task start      # Transition to In Progress
 > /jira-task approach   # Generate approach doc (L1/L2/L3)
 > /jira-task impl       # Implement based on approach
@@ -225,6 +238,7 @@ claude
 | `/jira-task create [hint]` | anywhere | **Interactively create a new Jira issue** with optional sub-tasks, dependency links, and epic linking |
 | `/jira-task init [N\|KEY\|desc]` | main repo | Fetch tasks + create worktrees (count, issue key, or natural language) |
 | `/jira-task auto <ID>` | worktree | **Auto-run full pipeline** with sub-agent isolation + iterative review |
+| `/jira-task loop` | main repo | **Drain the init'ed task queue** — auto + local merge per task, rebase between tasks |
 | `/jira-task start [ID]` | worktree | Start task (branch, In Progress) |
 | `/jira-task approach [ID]` | worktree | Generate `docs/approach/<ID>.approach.md` (L1/L2/L3 level-aware; replaces plan+design) |
 | `/jira-task impl [ID]` | worktree | Implement based on approach doc |

@@ -2,7 +2,7 @@
 name: jira-task
 description: Main workflow command for Jira-integrated development. Routes to specialized skills based on the action argument. Usage /jira-task [action] [TASK-ID]. Actions create, discover, init, start, approach, impl, test, review, merge, pr, done, report, status, clean. Triggers jira-task, jira task, create task, new task, discover requirements, init tasks, setup tasks, start task, begin task, approach task, implement task, test task, review task, create PR, complete task, task report, clean worktree, 태스크 생성, 이슈 등록, 요구사항 수집, 현황 리포트, 작업 환경 세팅, 작업 시작, 접근 설계, 구현 시작, 테스트 실행, 코드 리뷰, PR 만들어, 작업 완료, 워크트리 정리
 user-invocable: true
-argument-hint: "[create|discover|init|start|approach|impl|test|review|pr|merge|done|report|auto|clean] [TASK-ID 또는 힌트/주제]"
+argument-hint: "[create|discover|init|start|approach|impl|test|review|pr|merge|done|report|auto|loop|clean] [TASK-ID 또는 힌트/주제]"
 allowed-tools:
   - Read
   - Write
@@ -22,8 +22,8 @@ Parse the user's argument to determine the action and task ID, then execute the 
 
 The argument format is: `[action] [TASK-ID 또는 힌트]`
 
-- **action**: One of `create`, `discover`, `init`, `start`, `approach`, `impl`, `test`, `review`, `pr`, `merge`, `done`, `report`, `status`, `auto`, `clean`. `plan`/`design`은 `approach`의 deprecated alias로 허용된다 (자동 라우팅).
-- **TASK-ID**: Jira issue key (e.g., `PROJ-123`). Optional — if omitted, auto-detect from context. Not required for `create`, `discover`, `init`, `report`, `status`.
+- **action**: One of `create`, `discover`, `init`, `start`, `approach`, `impl`, `test`, `review`, `pr`, `merge`, `done`, `report`, `status`, `auto`, `loop`, `clean`. `plan`/`design`은 `approach`의 deprecated alias로 허용된다 (자동 라우팅).
+- **TASK-ID**: Jira issue key (e.g., `PROJ-123`). Optional — if omitted, auto-detect from context. Not required for `create`, `discover`, `init`, `report`, `status`, `loop`.
 - For `create`, any text after the action is treated as an initial hint (자연어 설명) and passed to the skill as-is.
 - For `discover`, any text after the action (자연어 주제) 및 `--lite`, `--from <파일경로>` 등의 플래그는 원문 그대로 스킬에 위임된다.
 
@@ -126,6 +126,11 @@ Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-done", args: "
 Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-auto", args: "<TASK-ID>" })`
 
 `start → approach → impl → test → review`를 자동으로 연결하여 순차 실행. 이미 완료된 단계는 건너뜀. `merge/pr/done`은 포함하지 않음.
+
+### `loop [--skip <단계,...>]`
+Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-loop", args: "<loop 이후의 전체 인자를 그대로 전달>" })`
+
+init된 태스크 큐 전체를 순차 소진 — 태스크마다 `auto` + local merge(In Review)를 실행하고 잔여 worktree를 rebase. TASK-ID 불필요 (aggregate `.jira-context.json`의 큐 사용). `done`은 포함하지 않음 (main 확인 후 수동).
 
 ### `clean [TASK-ID ...] | --all | --list`
 Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-clean", args: "<TASK-ID(s) 또는 --all 또는 --list>" })`
