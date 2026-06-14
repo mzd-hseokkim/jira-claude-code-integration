@@ -105,7 +105,9 @@ export default function WorktreeCard({ worktree }) {
     lastStopEvent: worktree.lastStopEvent ?? null,
   };
 
-  const isBusy = pickIsBusy(activity, fallbackEvents);
+  // worktree 카드: loop/auto sub-agent 위임 시 top-level prompt/Stop이 없으므로
+  // 진행 중 tool을 busy 신호로 본다 (toolImpliesBusy).
+  const isBusy = pickIsBusy(activity, fallbackEvents, { toolImpliesBusy: true });
   const isAwaiting = pickIsAwaitingUser(activity, fallbackEvents);
   const lastActivityTs = pickLastActivityTs(activity);
   const toolCount = pickToolCallCount(activity);

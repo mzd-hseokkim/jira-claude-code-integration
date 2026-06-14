@@ -16,7 +16,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 
-const { createIngestRouter, lookupWorktree, findGitRoot, shouldRejectAutoRegister } = require('../routes/ingest');
+const {
+  createIngestRouter, lookupWorktree, findGitRoot, shouldRejectAutoRegister,
+  parseTaskIdFromPrompt, worktreePathForTask, createAgentTracker,
+} = require('../routes/ingest');
 const { createStore } = require('../store');
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -603,4 +606,155 @@ test('SE2: SessionEnd with unknown session_id → no-op, still 200', async () =>
   });
   assert.equal(status, 200);
   assert.equal(store.getSessionsSnapshot().length, 0);
+});
+
+// ─── Agent routing: loop/auto sub-agent activity → worktree (MAE-445) ────────
+//
+// 배경: loop/auto는 메인 세션 cwd(repo root)에서 단계를 sub-agent로 위임한다.
+// sub-agent hook의 cwd는 메인 dir라 cwd로는 worktree에 안 붙지만, payload의
+// agent_id로 sub-agent를 식별하고 메인 Agent-spawn prompt의 TASK-ID로 worktree를
+// 연결한다. 아래는 그 라우팅 계약.
+
+test('parseTaskIdFromPrompt: extracts TASK-ID from auto standard prompt', () => {
+  assert.equal(
+    parseTaskIdFromPrompt('Jira task MAE-445의 approach 단계를 수행하라.'),
+    'MAE-445',
+  );
+  assert.equal(parseTaskIdFromPrompt('no task here'), null);
+  assert.equal(parseTaskIdFromPrompt(null), null);
+  assert.equal(parseTaskIdFromPrompt(undefined), null);
+  // 첫 매칭 TASK-ID를 취한다.
+  assert.equal(parseTaskIdFromPrompt('do MAE-445 then PROJ-12'), 'MAE-445');
+});
+
+test('worktreePathForTask: resolves worktree path by taskId', () => {
+  const store = makeStore([
+    { path: '/wt/MAE-445', taskId: 'MAE-445' },
+    { path: '/wt/MAE-446', taskId: 'MAE-446' },
+  ]);
+  assert.equal(worktreePathForTask(store, 'MAE-445'), '/wt/MAE-445');
+  assert.equal(worktreePathForTask(store, 'MAE-999'), null);
+  assert.equal(worktreePathForTask(store, null), null);
+});
+
+test('createAgentTracker: FIFO binds new agent_id to oldest pending spawn', () => {
+  const t = createAgentTracker();
+  const now = 1000;
+  t.enqueueSpawn('MAE-445', '/wt/MAE-445', now);
+  // 처음 보는 agent_id → 가장 오래된 pending에 바인딩
+  const r1 = t.resolve('agent-A', now + 1);
+  assert.deepEqual(r1, { taskId: 'MAE-445', worktreePath: '/wt/MAE-445' });
+  // 같은 agent_id 후속 → 동일 바인딩 유지 (pending 소비 없음)
+  const r2 = t.resolve('agent-A', now + 2);
+  assert.deepEqual(r2, { taskId: 'MAE-445', worktreePath: '/wt/MAE-445' });
+  // pending 비었고 미바인딩 agent → null
+  assert.equal(t.resolve('agent-B', now + 3), null);
+});
+
+test('createAgentTracker: release frees binding', () => {
+  const t = createAgentTracker();
+  t.enqueueSpawn('MAE-445', '/wt/MAE-445', 1000);
+  t.resolve('agent-A', 1001);
+  assert.equal(t._bound.has('agent-A'), true);
+  t.release('agent-A');
+  assert.equal(t._bound.has('agent-A'), false);
+});
+
+// grace-TTL: 매칭될 agent_id가 안 온 stale pending은 폐기되어 다음 무관
+// sub-agent를 오염시키지 않는다 (jira-reviewer Warning 대응).
+test('createAgentTracker: stale pending (grace 경과) does not bind later agent', () => {
+  const t = createAgentTracker();
+  t.enqueueSpawn('MAE-445', '/wt/MAE-445', 1000);
+  // 11초 뒤 무관한 sub-agent의 첫 hook 도착 (grace 10초 경과) → stale pending 폐기.
+  const r = t.resolve('agent-Z', 1000 + 11_000);
+  assert.equal(r, null, 'stale pending must not bind an unrelated agent');
+  assert.equal(t._pending.length, 0, 'stale pending evicted');
+});
+
+test('createAgentTracker: pending within grace still binds', () => {
+  const t = createAgentTracker();
+  t.enqueueSpawn('MAE-445', '/wt/MAE-445', 1000);
+  // 1초 뒤 도착 (grace 이내) → 정상 바인딩.
+  const r = t.resolve('agent-A', 1000 + 1000);
+  assert.deepEqual(r, { taskId: 'MAE-445', worktreePath: '/wt/MAE-445' });
+});
+
+// AR1: end-to-end — 메인 Agent spawn → sub-agent tool hooks → SubagentStop이
+//      모두 worktree activity로 라우팅된다 (cwd가 worktree가 아니어도).
+test('AR1: loop sub-agent hooks routed to worktree via agent_id', async () => {
+  const store = createStore();
+  // worktree는 init 시 등록됨 (taskId 보유).
+  store.upsertWorktree({ path: '/wt/MAE-445', taskId: 'MAE-445', branch: 'feature/MAE-445' });
+  const router = createIngestRouter(store);
+  const express = require('express');
+  const app = express();
+  app.use('/ingest', router);
+
+  const REPO = '/repo/root'; // 메인 세션 cwd — worktree 아님
+
+  // (1) 메인이 Agent로 approach sub-agent를 띄움 (agent_id 없음, prompt에 TASK-ID).
+  let r = await post(app, '/ingest?hook=PreToolUse', {
+    cwd: REPO, session_id: 'main-sess', tool_name: 'Agent',
+    tool_input: { prompt: 'Jira task MAE-445의 approach 단계를 수행하라.' },
+  });
+  // 메인 자신의 Agent 호출은 worktree에 안 붙음 (cwd=repo root) → session
+  assert.equal(r.body.label, 'session');
+
+  // (2) sub-agent의 Bash 호출 (agent_id 보유, cwd 여전히 repo root).
+  r = await post(app, '/ingest?hook=PreToolUse', {
+    cwd: REPO, session_id: 'main-sess', agent_id: 'agent-A', tool_name: 'Bash',
+    tool_input: { command: 'echo hi' },
+  });
+  assert.equal(r.body.label, 'mapped');
+  assert.equal(r.body.taskId, 'MAE-445');
+
+  // (3) SubagentStop → 라우팅 후 바인딩 해제.
+  r = await post(app, '/ingest?hook=SubagentStop', {
+    cwd: REPO, session_id: 'main-sess', agent_id: 'agent-A',
+  });
+  assert.equal(r.body.label, 'mapped');
+  assert.equal(r.body.taskId, 'MAE-445');
+
+  // worktree activity에 sub-agent 이벤트가 쌓였는지 확인.
+  const snap = store.getSnapshot().find((w) => w.path === '/wt/MAE-445');
+  const types = snap.activity.map((a) => a.type);
+  assert.ok(types.includes('PreToolUse'), 'sub-agent PreToolUse on worktree');
+  assert.ok(types.includes('SubagentStop'), 'SubagentStop on worktree');
+});
+
+// AR2: agent_id가 있어도 매핑할 pending이 없으면 cwd 기반 fallback (regression 안전망).
+test('AR2: agent_id with no pending spawn falls back to cwd lookup', async () => {
+  const store = createStore();
+  store.upsertWorktree({ path: '/wt/MAE-445', taskId: 'MAE-445' });
+  const router = createIngestRouter(store);
+  const express = require('express');
+  const app = express();
+  app.use('/ingest', router);
+
+  // pending 없이 agent_id hook 도착, cwd는 worktree 내부 → cwd로 매핑되어야 함.
+  const r = await post(app, '/ingest?hook=PreToolUse', {
+    cwd: '/wt/MAE-445/src', session_id: 's', agent_id: 'orphan', tool_name: 'Read',
+  });
+  assert.equal(r.body.label, 'mapped');
+  assert.equal(r.body.taskId, 'MAE-445');
+});
+
+// AR3: spawn prompt의 TASK-ID가 등록된 worktree와 매칭 안 되면 pending 적재 안 함.
+test('AR3: spawn for unknown task does not enqueue; sub-agent falls back', async () => {
+  const store = createStore();
+  store.upsertWorktree({ path: '/wt/MAE-445', taskId: 'MAE-445' });
+  const router = createIngestRouter(store);
+  const express = require('express');
+  const app = express();
+  app.use('/ingest', router);
+
+  await post(app, '/ingest?hook=PreToolUse', {
+    cwd: '/repo', session_id: 's', tool_name: 'Agent',
+    tool_input: { prompt: 'Jira task MAE-999의 approach 단계를 수행하라.' },
+  });
+  // 미등록 task → pending 없음 → sub-agent는 cwd fallback (repo root, 미매핑) → session.
+  const r = await post(app, '/ingest?hook=PreToolUse', {
+    cwd: '/repo', session_id: 's', agent_id: 'agent-X', tool_name: 'Bash',
+  });
+  assert.equal(r.body.label, 'session');
 });

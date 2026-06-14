@@ -48,9 +48,11 @@ export function pickLatestPrompt(activity, fallbackEvent) {
 export function pickCurrentTool(activity) {
   if (!Array.isArray(activity)) return null;
   // Walk newest→oldest. Track PostToolUse closures.
-  // 사용자 인터럽트(UserPromptSubmit) 또는 turn 종료(Stop/SessionEnd)가
+  // 사용자 인터럽트(UserPromptSubmit) 또는 turn 종료(Stop/SessionEnd/SubagentStop)가
   // PreToolUse보다 나중에 일어났다면 그 도구 호출은 취소된 것으로 간주.
-  // (취소된 호출엔 PostToolUse 훅이 안 떨어져 영원히 in-flight로 보이는 문제 방지)
+  // (취소된 호출엔 PostToolUse 훅이 안 떨어져 영원히 in-flight로 보이는 문제 방지.
+  // SubagentStop 포함: sub-agent의 마지막 PostToolUse가 유실된 채 SubagentStop만
+  // 오면 미매칭 PreToolUse가 영구 in-flight로 남아 worktree 카드가 무한 busy가 됨.)
   const closedTools = new Set();
   let sawTerminator = false;
   for (let i = activity.length - 1; i >= 0; i--) {
@@ -59,7 +61,7 @@ export function pickCurrentTool(activity) {
     if (t === 'PostToolUse') {
       const name = _toolNameOf(ev);
       if (name) closedTools.add(name);
-    } else if (t === 'UserPromptSubmit' || t === 'Stop' || t === 'SessionEnd') {
+    } else if (t === 'UserPromptSubmit' || t === 'Stop' || t === 'SessionEnd' || t === 'SubagentStop') {
       sawTerminator = true;
     } else if (t === 'PreToolUse') {
       const name = _toolNameOf(ev);
@@ -188,10 +190,17 @@ export function pickBlockedFlag(activity) {
  * Busy = 가장 최근 UserPromptSubmit 이후 매칭되는 Stop이 아직 안 옴.
  * 시간 임계값 없음. Claude가 응답을 만들고 있는 상태를 정확히 식별.
  *
- * @param {Array<{ts:string,type:string}>} activity
+ * @param {Array<{ts:string,type:string,data?:unknown}>} activity
+ * @param {{lastPromptEvent?:object, lastStopEvent?:object}} [fallback]
+ * @param {{ toolImpliesBusy?: boolean }} [opts]
+ *   toolImpliesBusy=true면, top-level UserPromptSubmit/Stop 페어가 없어도 진행 중
+ *   tool(PreToolUse 후 PostToolUse 미도착)을 busy로 본다. loop/auto가 sub-agent로
+ *   위임하는 **worktree 카드 전용** — sub-agent hook은 top-level prompt/Stop 없이
+ *   SubagentStop으로 끝나므로, ingest가 agent_id로 라우팅한 tool 활동만이 유일한
+ *   "진행 중" 신호다. 일반 SessionCard는 이 옵션을 켜지 않아 기존 동작을 보존한다.
  * @returns {boolean}
  */
-export function pickIsBusy(activity, fallback) {
+export function pickIsBusy(activity, fallback, opts = {}) {
   if (Array.isArray(activity)) {
     for (let i = activity.length - 1; i >= 0; i--) {
       const t = activity[i]?.type;
@@ -202,9 +211,16 @@ export function pickIsBusy(activity, fallback) {
   // ring buffer eviction 보정 — fallback 별도 필드의 timestamp 비교.
   const promptTs = fallback?.lastPromptEvent?.ts;
   const stopTs = fallback?.lastStopEvent?.ts;
-  if (!promptTs) return false;
-  if (!stopTs) return true;
-  return Date.parse(promptTs) > Date.parse(stopTs);
+  if (promptTs) {
+    if (!stopTs) return true;
+    if (Date.parse(promptTs) > Date.parse(stopTs)) return true;
+  }
+  // worktree 카드 전용: 진행 중 tool이 곧 busy.
+  // pickCurrentTool은 PostToolUse/SubagentStop이 오면 조용해지므로 단계 사이에는
+  // busy로 남지 않는다 (pickActiveSubagent는 trailing SubagentStop에 영구 busy가
+  // 되어 부적합 — 사용 안 함).
+  if (opts.toolImpliesBusy && pickCurrentTool(activity)) return true;
+  return false;
 }
 
 /**

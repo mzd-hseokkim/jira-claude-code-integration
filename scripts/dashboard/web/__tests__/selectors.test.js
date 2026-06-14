@@ -6,6 +6,7 @@ import {
   pickActiveSubagent,
   pickBlockedFlag,
   pickIsAwaitingUser,
+  pickIsBusy,
 } from '../src/selectors/activity.js';
 
 const ts = '2026-04-30T00:00:00.000Z';
@@ -80,6 +81,15 @@ describe('pickCurrentTool', () => {
     ];
     const result = pickCurrentTool(activity);
     expect(result?.name).toBe('Bash');
+  });
+
+  it('SubagentStop이 terminator: PostToolUse 유실돼도 in-flight로 안 남음', () => {
+    // sub-agent 마지막 tool의 PostToolUse가 유실된 채 SubagentStop만 도착.
+    const activity = [
+      { ts, type: 'PreToolUse', data: { payload: { tool_name: 'Bash' } } },
+      { ts, type: 'SubagentStop', data: {} },
+    ];
+    expect(pickCurrentTool(activity)).toBeNull();
   });
 });
 
@@ -249,5 +259,63 @@ describe('pickIsAwaitingUser', () => {
       { ts: new Date(promptMs + 200).toISOString(), type: 'Stop', data: {} },
     ];
     expect(pickIsAwaitingUser(activity, null)).toBe(false);
+  });
+});
+
+// loop/auto sub-agent 위임 worktree의 busy 판정.
+// top-level UserPromptSubmit/Stop이 없고 ingest가 agent_id로 라우팅한
+// sub-agent 활동(PreToolUse/PostToolUse/SubagentStop)만 들어오는 경우.
+describe('pickIsBusy — sub-agent 위임 (loop/auto)', () => {
+  it('UserPromptSubmit→Stop 정상 페어: prompt 후 Stop 없으면 busy', () => {
+    expect(pickIsBusy([{ ts, type: 'UserPromptSubmit', data: {} }])).toBe(true);
+    expect(pickIsBusy([
+      { ts, type: 'UserPromptSubmit', data: {} },
+      { ts, type: 'Stop', data: {} },
+    ])).toBe(false);
+  });
+
+  it('toolImpliesBusy: top-level prompt 없이 진행 중 tool만 → busy', () => {
+    const activity = [
+      { ts, type: 'PreToolUse', data: { payload: { tool_name: 'Edit' } } },
+    ];
+    expect(pickIsBusy(activity, null, { toolImpliesBusy: true })).toBe(true);
+  });
+
+  it('opt-out(기본): 진행 중 tool만으로는 busy 아님 (일반 SessionCard 동작 보존)', () => {
+    const activity = [
+      { ts, type: 'PreToolUse', data: { payload: { tool_name: 'Edit' } } },
+    ];
+    expect(pickIsBusy(activity)).toBe(false);
+    expect(pickIsBusy(activity, null, {})).toBe(false);
+  });
+
+  it('toolImpliesBusy: tool 완료(PostToolUse 도착) → 단계 사이라 busy 아님', () => {
+    const activity = [
+      { ts, type: 'PreToolUse', data: { payload: { tool_name: 'Edit' } } },
+      { ts, type: 'PostToolUse', data: { payload: { tool_name: 'Edit' } } },
+    ];
+    expect(pickIsBusy(activity, null, { toolImpliesBusy: true })).toBe(false);
+  });
+
+  it('toolImpliesBusy: trailing SubagentStop만으로는 busy 아님 (영구 busy 방지)', () => {
+    const activity = [
+      { ts, type: 'PreToolUse', data: { payload: { tool_name: 'Bash' } } },
+      { ts, type: 'PostToolUse', data: { payload: { tool_name: 'Bash' } } },
+      { ts, type: 'SubagentStop', data: {} },
+    ];
+    expect(pickIsBusy(activity, null, { toolImpliesBusy: true })).toBe(false);
+  });
+
+  it('toolImpliesBusy: PostToolUse 유실 + SubagentStop → busy 아님 (busy-leak 방지)', () => {
+    const activity = [
+      { ts, type: 'PreToolUse', data: { payload: { tool_name: 'Bash' } } },
+      { ts, type: 'SubagentStop', data: {} },
+    ];
+    expect(pickIsBusy(activity, null, { toolImpliesBusy: true })).toBe(false);
+  });
+
+  it('빈 activity: busy 아님', () => {
+    expect(pickIsBusy([], null, { toolImpliesBusy: true })).toBe(false);
+    expect(pickIsBusy(null, null, { toolImpliesBusy: true })).toBe(false);
   });
 });
