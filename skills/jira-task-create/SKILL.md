@@ -111,7 +111,7 @@ Epic 연결 여부, Labels, Components, Assignee를 배치 질문.
 
 ### Step 3: Decide Sub-task Split (스킬 자동 판단)
 
-> **import 모드에서는 본 단계를 skip하고 Step 5로 직행한다.**
+> **import 모드에서는 본 단계를 skip하고 Step 4.9(Import Granularity Check)로 간다.** 트리는 이미 정해져 있으므로 필요 여부를 다시 판단하지 않지만, 분해 정도는 Step 4.9에서 검사한다.
 
 수집된 정보를 바탕으로 **스킬이 직접** 서브태스크 필요 여부를 판단한다.
 
@@ -120,6 +120,8 @@ Epic 연결 여부, Labels, Components, Assignee를 배치 질문.
 | 여러 레이어 동시 수정 | 단일 파일/함수 수정 |
 | 순차 단계가 명확히 구분됨 | 버그 수정 (단일 원인) |
 | 독립 검증 가능 단위 3개 이상 | 소규모 리팩토링 / 문서 업데이트 |
+
+서브태스크를 만들기로 했다면 **개수가 아니라 경계**를 정한다. 서브태스크 하나는 worktree 하나(`jira-task-init`)이므로, 같은 파일을 건드리는 항목을 나누면 병렬 진행이 막히고 리베이스만 늘어난다. 유효한 경계는 대개 `[서버] / [화면]` 또는 `계약 / 구현` 한 줄이다.
 
 판단 결과를 사용자에게 투명하게 공유 후 Step 4 또는 Step 5로 진행.
 
@@ -134,6 +136,36 @@ Epic 연결 여부, Labels, Components, Assignee를 배치 질문.
 - 의존성은 **`Blocks` 이슈 링크**로 저장됨 (`init <parent-key>`가 착수 가능 분석에 활용)
 
 **사용자 확인 (`AskUserQuestion`):** `그대로 진행` / `수정 요청` / `서브태스크 없이 단일 이슈로` / `취소`
+
+### Step 4.9: Import Granularity Check (★ import 모드 전용)
+
+**실행 조건**: `importMode = true` 이고 `breakdownLevel`이 `L2` 또는 `L3`. `L1`이거나 default 모드면 skip.
+
+import 모드는 Step 3/4의 분해 판단을 건너뛰므로, discover가 넘긴 트리가 과분해된 채로 Jira에 박히는 경로가 열려 있다. 본 단계가 마지막 방어선이다.
+
+**개수는 검사하지 않는다.** 서브태스크가 몇 건이어야 하는지는 일의 크기가 정하며, 15건이 맞는 작업도 있다. 여기서 보는 것은 **파일 독점이 깨졌는지** 하나다 — 인과가 분명하고(같은 파일 → 같은 worktree → 충돌) 문서 텍스트만으로 판정되기 때문이다.
+
+각 Sub-task의 summary·description에서 파일 경로·모듈명을 추출해, **같은 Story 안에서 파일/모듈이 겹치는 Sub-task 쌍**을 찾는다.
+
+겹치는 쌍이 없으면 아무것도 출력하지 않고 Step 5로 간다. 있으면 Step 5 Preview에 `## Merge Suggestion` 블록을 포함한다:
+
+```
+## Merge Suggestion
+
+서브태스크 하나는 worktree 하나입니다. 아래 항목은 같은 파일을 건드려
+나눠 두면 병렬 진행이 막히고 리베이스만 늘어납니다.
+
+- Story 1: [1.1, 1.2, 1.3] → 1건 (전부 contract/entities/*.ts)
+- Story 2: [2.1, 2.2] → 1건 (둘 다 ensureCandidate.ts)
+
+병합 시: Sub-task 17건 → 10건
+```
+
+겹치는 근거(어느 파일인지)를 반드시 함께 적는다. 근거 없이 "많아 보인다"로 병합을 제안하지 않는다.
+
+그리고 Step 5 최종 확인의 선택지에 **`병합안대로 생성`** 을 추가하고 이를 **첫 번째(권장) 옵션**으로 둔다. 선택지는 `병합안대로 생성` / `원안대로 생성` / `수정` / `취소` 4분기가 된다.
+
+`병합안대로 생성`을 고르면 병합된 트리로 Step 6을 진행한다. 사라진 노드의 설명 본문은 남는 노드의 description에 소제목으로 합쳐 정보를 잃지 않는다.
 
 ### Step 5: Final Preview
 
@@ -157,6 +189,8 @@ Preview 출력 **직전**에 모든 노드 summary를 일괄 JQL로 중복 검�
 
 `breakdownLevel`(`L1` | `L2` | `L3`)을 Preview 상단에 1줄로 명시한다.
 
+Step 4.9에서 과분해 신호가 잡혔으면 `## Merge Suggestion` 블록을 포함한다.
+
 ```
 📦 생성 예정 이슈 (import)
 
@@ -166,9 +200,13 @@ Breakdown Level: <L1 Single | L2 Story-only | L3 Epic+Stories+Subtasks>
 # L1: ## Task (단건)
 # L2: ## Story / ## Sub-tasks (M개) / ## Issue Links (K개)
 # L3: ## Epic / ## Stories (N개) / ## Sub-tasks (M개) / ## Issue Links (K개)
+
+# Step 4.9 신호가 있을 때만: ## Merge Suggestion
 ```
 
-**최종 확인 (`AskUserQuestion`):** `생성 진행` / `수정` / `취소`
+**최종 확인 (`AskUserQuestion`):**
+- Step 4.9 신호 없음: `생성 진행` / `수정` / `취소`
+- Step 4.9 신호 있음: `병합안대로 생성`(권장) / `원안대로 생성` / `수정` / `취소`
 
 ### Step 6: Create in Jira
 
