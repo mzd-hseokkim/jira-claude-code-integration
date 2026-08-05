@@ -162,7 +162,7 @@ Step 4 합성 산출물(FR / Edge Cases / Out of Scope / Open Questions)을 사�
 
 #### Step 5 절차
 
-1. `breakdown-level.md`의 출력 템플릿 중 Step 4.5에서 확정된 레벨 1개를 골라 `Proposed Issue Breakdown` 섹션을 채운다.
+1. `breakdown-level.md`의 **서브태스크 도출 순서**(파일군 나열 → 묶기 → 덩어리 1개=서브태스크 1개 → 경계 규칙 검산)를 먼저 수행한다. Step 2 Codebase Context가 이 단계의 입력이다. 그런 다음 Step 4.5에서 확정된 레벨의 출력 템플릿 1개를 골라 `Proposed Issue Breakdown` 섹션을 채운다 — 각 Sub-task의 `범위:` 줄은 필수다.
 2. `Technical Approach Hint` 섹션을 채운다 — Codebase Context · Functional Requirements · Constraints를 입력으로 LLM이 합성. 코드 스니펫 금지. 항목: 핵심 구현 포인트 / 검토할 접근 옵션 / 주의 지점. `--lite`면 3-5줄 요약.
 3. Step 6 Next 안내는 확정 레벨에 따라 권장 명령을 분기 출력한다 (L1: `/jira-task create <힌트>`, L2/L3: `/jira-task create --from-requirements ...`).
 

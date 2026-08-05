@@ -59,12 +59,15 @@ L2 출력 템플릿:
 ```markdown
 - **Story**: <스토리 한 줄 요약>
   - Sub-task 1: <서브태스크 요약>
+    - 범위: <파일/모듈>
   - Sub-task 2: <서브태스크 요약>
+    - 범위: <파일/모듈>
 ```
 
 규칙:
 - Story 노드 1건. 2건 이상이면 **E5**.
 - Story의 자식만 Sub-task로 인정 (`Sub-task <N>:` 또는 `Subtask <N>:`). L2 표준은 단일 인덱스(`1`,`2`,...)지만 사용자가 L3 템플릿을 흉내 낸 dot 인덱스(`1.1`,`1.2`,...)도 관용 처리한다 — Story가 1건뿐이라 의미 충돌이 없다.
+- Sub-task의 `범위:` 자식 줄은 1.5-4C와 동일하게 `scope`로 보존한다.
 - 들여쓰기/불릿 규칙은 1.5-4C와 동일(2/4-space, `-`/`*` 혼용 허용).
 - `(blocks: <N>)` 표기는 같은 Story의 sibling Subtask 인덱스 참조만 허용. 위반은 **E7**(skip + 경고).
 
@@ -84,9 +87,12 @@ L3 출력 템플릿(표준):
 - **Epic**: <에픽 1줄 요약>
   - **Story 1**: <스토리 요약>
     - Sub-task 1.1: <서브태스크 요약>
+      - 범위: <파일/모듈>
     - Sub-task 1.2: <서브태스크 요약> (blocks: 1.1)
+      - 범위: <파일/모듈>
   - **Story 2**: <스토리 요약>
     - Sub-task 2.1: <서브태스크 요약>
+      - 범위: <파일/모듈>
 ```
 
 **파싱 규칙:**
@@ -97,7 +103,8 @@ L3 출력 템플릿(표준):
   - `**Epic**:` 또는 `Epic:` 으로 시작 → **Epic 노드** (트리 루트, L3 정확히 1개)
   - `**Story <N>**:` 또는 `Story <N>:` → **Story 노드**
   - `Sub-task <N>.<M>:` 또는 `Subtask <N>.<M>:` → **Subtask 노드**
-  - 일치하지 않는 라인은 무시(주석으로 간주)하되 디버그 로그 1줄을 남긴다.
+  - `범위:` 또는 `Scope:` → 직전 Subtask 노드의 **scope 자식 줄**. 값(파일/모듈 문자열)을 해당 subtask의 `scope`에 보존한다. Subtask 노드보다 먼저 등장하거나 Story 직속이면 무시 + 디버그 로그.
+  - 그 외 일치하지 않는 라인은 무시(주석으로 간주)하되 디버그 로그 1줄을 남긴다.
 - **부모 매핑**:
   - Epic 0개는 L3에서 발생할 수 없음 (Step 1.5-3에서 이미 분기). 발생 시 파서 결함으로 간주.
   - Story `<N>`의 부모는 Epic.
@@ -123,7 +130,11 @@ ImportPayload {
   stories[]?: [{ index, summary, description?, priority?, labels?, subtasks[] }], // L2/L3
   links[]?: [{ outwardRef, inwardRef }]                      // L2/L3 (sibling 참조)
 }
+
+subtasks[] 원소: { index, summary, description?, scope? }
 ```
+
+> **`scope` 필드**: `범위:` 자식 줄에서 채워지며 Step 4.9(Import Granularity Check)의 유일한 판정 입력이다. `scope`가 비어 있는 Subtask는 겹침 판정 대상에서 제외되고, 제외된 건수를 Step 4.9가 사용자에게 1줄로 알린다 (조용히 통과시키지 않는다). `scope`는 Jira description 본문에도 `범위: <값>` 한 줄로 포함시킨다.
 
 > **priority/labels 추출 규칙**: 표준 트리 형식에는 priority/labels 표기 문법이 없다. 따라서 `priority`/`labels`는 항상 비어 있는 옵셔널 필드로 다루며, **트리에 표기가 없으면 priority는 항상 `Medium`을 사용한다** (Step 6의 `or "Medium"` 폴백). labels는 폴백 시에만 자동으로 채워진다 (예: `epic-substitute`).
 

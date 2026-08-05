@@ -111,41 +111,59 @@ Epic 연결 여부, Labels, Components, Assignee를 배치 질문.
 
 ### Step 3: Decide Sub-task Split (스킬 자동 판단)
 
-> **import 모드에서는 본 단계를 skip하고 Step 4.9(Import Granularity Check)로 간다.** 트리는 이미 정해져 있으므로 필요 여부를 다시 판단하지 않지만, 분해 정도는 Step 4.9에서 검사한다.
+> **import 모드에서는 본 단계를 skip하고 Step 4.9(Granularity Check)로 간다.** 트리는 이미 정해져 있으므로 필요 여부를 다시 판단하지 않지만, 분해 정도는 Step 4.9에서 검사한다.
 
 수집된 정보를 바탕으로 **스킬이 직접** 서브태스크 필요 여부를 판단한다.
 
+판단 순서는 discover와 동일하게 **파일군이 먼저다**. 요구사항 항목에서 서브태스크로 곧장 내려가지 않는다.
+
+1. 이 일을 끝내려면 어떤 파일/모듈을 고쳐야 하는지 먼저 나열한다.
+2. 같이 고쳐야 말이 되는 파일들을 한 덩어리로 묶는다.
+3. **덩어리가 2개 이상일 때만** 서브태스크를 만든다. 덩어리 1개면 단일 이슈다.
+
 | 서브태스크 필요 | 서브태스크 불필요 |
 |---|---|
-| 여러 레이어 동시 수정 | 단일 파일/함수 수정 |
-| 순차 단계가 명확히 구분됨 | 버그 수정 (단일 원인) |
-| 독립 검증 가능 단위 3개 이상 | 소규모 리팩토링 / 문서 업데이트 |
+| 파일군 덩어리 2개 이상 (서버/화면, 계약/구현 등) | 단일 파일/함수 수정 |
+| 덩어리끼리 순차 의존이 명확 | 버그 수정 (단일 원인) |
+| 덩어리별로 따로 머지해도 저장소가 말이 됨 | 소규모 리팩토링 / 문서 업데이트 |
+
+**"검증 단위가 여러 개"는 분해 근거가 아니다.** 검증 단위와 머지 단위는 다르다. 한 번의 수정으로 여러 요구사항이 동시에 충족되는 일이 흔하다.
 
 서브태스크를 만들기로 했다면 **개수가 아니라 경계**를 정한다. 서브태스크 하나는 worktree 하나(`jira-task-init`)이므로, 같은 파일을 건드리는 항목을 나누면 병렬 진행이 막히고 리베이스만 늘어난다. 유효한 경계는 대개 `[서버] / [화면]` 또는 `계약 / 구현` 한 줄이다.
 
-판단 결과를 사용자에게 투명하게 공유 후 Step 4 또는 Step 5로 진행.
+판단 결과를 **각 서브태스크의 파일군과 함께** 사용자에게 투명하게 공유 후 Step 4 또는 Step 5로 진행.
 
 ### Step 4: Propose Sub-task Breakdown (분해 필요한 경우)
 
 > **import 모드에서는 본 단계를 skip하고 Step 5로 직행한다.**
 
-초안 테이블 표시 (# / Summary / Type / Priority / Depends on / Parallel?).
+초안 테이블 표시 (# / Summary / **범위(파일/모듈)** / Type / Priority / Depends on / Parallel?).
 
 **설계 규약:**
+- `범위` 칸은 필수다. Step 3에서 묶은 파일군 덩어리를 그대로 옮긴다. 채울 수 없는 항목은 서브태스크가 아니므로 앞뒤와 합친다
 - `Depends on`이 비어 있으면 `Parallel ✓`
 - 의존성은 **`Blocks` 이슈 링크**로 저장됨 (`init <parent-key>`가 착수 가능 분석에 활용)
+- `범위` 값은 각 서브태스크 description 본문에도 `범위: <값>` 한 줄로 포함시킨다
 
 **사용자 확인 (`AskUserQuestion`):** `그대로 진행` / `수정 요청` / `서브태스크 없이 단일 이슈로` / `취소`
 
-### Step 4.9: Import Granularity Check (★ import 모드 전용)
+### Step 4.9: Granularity Check
 
-**실행 조건**: `importMode = true` 이고 `breakdownLevel`이 `L2` 또는 `L3`. `L1`이거나 default 모드면 skip.
+**실행 조건**: 서브태스크가 2건 이상인 모든 경로.
+- **import 모드**: `breakdownLevel`이 `L2` 또는 `L3`. `L1`이면 skip. 판정 입력은 각 Subtask의 `scope` 필드(`from-requirements-mode.md` 참고).
+- **default 모드**: Step 4에서 서브태스크 초안을 만든 경우. 판정 입력은 초안 테이블의 `범위` 칸.
 
-import 모드는 Step 3/4의 분해 판단을 건너뛰므로, discover가 넘긴 트리가 과분해된 채로 Jira에 박히는 경로가 열려 있다. 본 단계가 마지막 방어선이다.
+import 모드는 Step 3/4의 분해 판단을 건너뛰고, default 모드는 스킬이 방금 자기가 쓴 초안을 그대로 밀고 나간다. 어느 쪽이든 과분해된 트리가 Jira에 박히는 경로가 열려 있다. 본 단계가 마지막 방어선이다.
 
 **개수는 검사하지 않는다.** 서브태스크가 몇 건이어야 하는지는 일의 크기가 정하며, 15건이 맞는 작업도 있다. 여기서 보는 것은 **파일 독점이 깨졌는지** 하나다 — 인과가 분명하고(같은 파일 → 같은 worktree → 충돌) 문서 텍스트만으로 판정되기 때문이다.
 
-각 Sub-task의 summary·description에서 파일 경로·모듈명을 추출해, **같은 Story 안에서 파일/모듈이 겹치는 Sub-task 쌍**을 찾는다.
+**같은 Story(또는 같은 부모) 안에서 `범위`/`scope`가 겹치는 Sub-task 쌍**을 찾는다. 경로 문자열이 같거나, 한쪽이 다른 쪽의 디렉터리 상위이거나, 같은 모듈명을 가리키면 겹침으로 본다.
+
+`범위`/`scope`가 비어 있는 Sub-task는 판정 대상에서 제외한다. **제외된 건이 1건이라도 있으면 조용히 통과시키지 않고** 사용자에게 1줄 알린다:
+
+```
+ℹ️ Sub-task N건은 범위(파일/모듈)가 비어 있어 과분해 검사를 건너뛰었습니다.
+```
 
 겹치는 쌍이 없으면 아무것도 출력하지 않고 Step 5로 간다. 있으면 Step 5 Preview에 `## Merge Suggestion` 블록을 포함한다:
 
@@ -180,7 +198,9 @@ import 모드는 Step 3/4의 분해 판단을 건너뛰므로, discover가 넘�
 - Project / Summary / Type / Priority / Epic Link / Labels / Components / Assignee
 - Description: (요약 3~5줄)
 
-## Sub-tasks (N개) / Issue Links (M개)
+## Sub-tasks (N개) — 각 항목에 범위(파일/모듈) 표시 / Issue Links (M개)
+
+# Step 4.9 신호가 있을 때만: ## Merge Suggestion
 ```
 
 **Import 모드 (`--from-requirements`):**
