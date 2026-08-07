@@ -48,6 +48,7 @@ Display the available workflow commands:
 |---------|-------------|
 | `/jira setup` | Interactive setup wizard for Jira MCP server registration |
 | `/jira dashboard [start\|stop\|status\|setup]` | Dashboard 서버 관리 — 셋업/기동/중지/상태조회 (인자 없으면 자동 시작) |
+| `/jira-task epic [set <키\|이름>\|show\|clear]` | 프로젝트 Epic 스코프(`.jira-epic.json`) 설정 — 이후 create가 이 Epic 아래에 이슈 생성 |
 | `/jira-task create [힌트]` | 신규 Jira 이슈를 대화형으로 생성 (서브태스크/의존성/에픽 연결 포함) |
 | `/jira-task init [N]` | Fetch my top N assigned tasks and create worktrees for each |
 | `/jira-task auto <TASK-ID>` | Auto-execute full workflow (start → approach → impl → test → review) |

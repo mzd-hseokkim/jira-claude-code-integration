@@ -40,6 +40,9 @@ WORKTREE_GITIGNORE="$WORKTREE_BASE/<TASK-ID>/.gitignore"
 if ! grep -qF ".jira-context.json" "$WORKTREE_GITIGNORE" 2>/dev/null; then
   printf '\n# Jira integration (local dev context)\n.jira-context.json\nTASK-README.md\n' >> "$WORKTREE_GITIGNORE"
 fi
+if ! grep -qF ".jira-epic.json" "$WORKTREE_GITIGNORE" 2>/dev/null; then
+  printf '\n# Jira integration (local epic scope)\n.jira-epic.json\n' >> "$WORKTREE_GITIGNORE"
+fi
 ```
 
 이미 존재하면 스킵.

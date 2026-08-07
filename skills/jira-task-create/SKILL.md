@@ -38,6 +38,7 @@ allowed-tools:
 
 - Jira MCP 서버 (`atlassian`) 연결됨 — 미연결 시 `/jira setup` 안내 후 종료
 - `JIRA_DEFAULT_PROJECT` 환경변수가 있으면 프로젝트 키로 사용, 없으면 Step 2에서 사용자에게 묻는다
+- `.jira-epic.json`(Epic 스코프)이 있으면 생성 이슈의 Epic 링크 **기본값**으로 사용. 없으면 지금까지처럼 Epic 없이 생성
 
 ## Workflow
 
@@ -52,6 +53,13 @@ allowed-tools:
    - 자연어 힌트는 Epic description의 추가 컨텍스트로만 사용한다.
    - 자동 서브태스크 분해(Step 3/4)는 import 모드에서 절대 동작하지 않는다 (회귀 금지).
 3. Jira MCP 연결 확인: `mcp__atlassian__jira_get_user_profile` 호출. 실패하면 "/jira setup을 먼저 실행하세요" 안내 후 종료.
+4. **Epic 스코프 로드**: `Read skills/_shared/epic-scope.md` 후 경로 결정 + 읽기 블록을 실행해 `epicScope`를 세팅한다 (파일 없거나 파싱 실패 → `null`, 진행에는 영향 없음). 로드되면 사용자에게 1줄 알린다:
+
+```
+📌 Epic 스코프 적용: MAE-100 (v1.0 릴리스)
+```
+
+**우선순위**: 대화에서 사용자가 Epic을 명시했으면 그 값이 `epicScope`보다 우선한다. 파일은 기본값일 뿐이다.
 
 `importMode` 플래그는 이후 단계 진행 흐름의 분기점이다. `importMode = true`이면 Step 1.5를 거쳐 Step 1~4를 skip하고 Step 5로 직행한다.
 
@@ -104,6 +112,8 @@ allowed-tools:
 **Phase C — 선택 정보** (A/B 완료 후)
 
 Epic 연결 여부, Labels, Components, Assignee를 배치 질문.
+
+**`epicScope`가 있으면 Epic 연결 질문과 아래 선택 서브 플로우를 통째로 skip한다** — 이미 정해진 값이므로 다시 묻지 않는다. 다른 Epic으로 바꾸려면 `/jira-task epic set <키>`.
 
 **Epic 선택 서브 플로우** (사용자가 "기존 에픽 선택"한 경우):
 1. JQL: `project = <PROJECT_KEY> AND issuetype = Epic AND status != Done ORDER BY created DESC` (limit=10)
@@ -189,6 +199,8 @@ import 모드는 Step 3/4의 분해 판단을 건너뛰고, default 모드는 �
 
 생성 직전에 전체 계획을 한 번 더 요약한다.
 
+`epicScope`로 Epic이 정해진 경우 `Epic Link` 값 뒤에 출처를 붙인다 — `MAE-100 (v1.0 릴리스) ← .jira-epic.json`. 대화에서 명시된 값이면 출처 표기 없음.
+
 **Default 모드:**
 
 ```
@@ -216,6 +228,8 @@ Step 4.9에서 과분해 신호가 잡혔으면 `## Merge Suggestion` 블록을 
 
 Source: docs/requirements/<slug>.requirements.md
 Breakdown Level: <L1 Single | L2 Story-only | L3 Epic+Stories+Subtasks>
+# epicScope가 있을 때만: Epic Scope: MAE-100 (v1.0 릴리스) ← .jira-epic.json
+# L3 + epicScope: 문서의 Epic 노드는 생성하지 않고 Story를 MAE-100 아래에 붙입니다
 
 # L1: ## Task (단건)
 # L2: ## Story / ## Sub-tasks (M개) / ## Issue Links (K개)
@@ -236,13 +250,23 @@ Breakdown Level: <L1 Single | L2 Story-only | L3 Epic+Stories+Subtasks>
 > - **import L2 Story-only**: 6-1b (Story 1건, parent 없음) → 6-3 (Subtask 루프) → 6-4 (링크) → 6-5 (검증). 6-1/6-2 skip (Epic 생성·연결 없음).
 > - **import L3 Tree**: 6-1 (Epic 생성) → 6-2 **skip** → 6-1b (Story 루프) → 6-3 (Subtask 루프) → 6-4 (링크) → 6-5 (검증).
 
+**`epicScope`가 있을 때의 시퀀스 변경** — 상위 개념에서 이미 정해진 Epic을 따라간다:
+
+| 모드 | 변경 |
+|---|---|
+| default / import L1 | 상위 이슈에 `epicScope.epicKey`를 Epic 링크로 주입 (6-1) |
+| import L2 | Story의 `parent = epicScope.epicKey` (6-1b). Epic 부재 전제가 해소되므로 parent를 설정한다 |
+| import L3 | **6-1의 Epic 생성을 skip**하고 `epic.created_key` 자리에 `epicScope.epicKey`를 그대로 사용. Story 루프(6-1b)는 그대로 그 키를 parent로 쓴다. 문서의 Epic 노드 summary/description은 버리지 않고, 생성 후 스코프 Epic에 코멘트로 남길지 Step 7에서 판단한다 |
+
+Epic을 중첩 생성하지 않는다 — Jira가 Epic 아래 Epic을 제대로 지원하지 않는다.
+
 **6-1. 상위 이슈 생성 (default 또는 import L1/L3에서 호출)**
 
 `additional_fields`는 **JSON 문자열**로 직렬화. priority/labels/epic_key를 dict에 조립 후 `json.dumps()`. priority 기본값은 `Medium` (`from-requirements-mode.md` Step 1.5-5의 추출 규칙과 동일).
 
 폴백 규칙은 호출 모드별로 발동 케이스가 다르다 — `from-requirements-mode.md`의 Tree→Issue Mapping 표가 단일 진실. 본 절은 요약만 둔다:
 
-- **default / import L1**: Task 또는 Story 타입 시도. Story 실패 → `Task` (default 모드는 + `parent=Epic-KEY` if epic-link, L1은 parent 없음).
+- **default / import L1**: Task 또는 Story 타입 시도. Story 실패 → `Task` (default 모드는 + `parent=Epic-KEY` if epic-link, L1은 `epicScope` 있으면 그 키를 parent로).
 - **import L3 Epic 생성**: Epic 타입 실패 → `Task` + label `epic-substitute`.
 - **Subtask 타입 실패**: `Task` + `parent=Story-KEY` (6-3 영역 — 본 절 비대상).
 - **import L2 Story 생성**: 본 절이 아니라 6-1b가 담당 (Epic 부재로 parent 생략).
@@ -252,11 +276,11 @@ Breakdown Level: <L1 Single | L2 Story-only | L3 Epic+Stories+Subtasks>
 **6-1b. Story 생성 루프 (★ import 모드 전용)**
 
 - **L3 Tree**: 각 Story에 `parent = epic.created_key` 설정. 폴백: `Story` 실패 → `Task` + `parent=Epic-KEY`.
-- **L2 Story-only**: Story 1건만 생성. `parent`는 설정하지 않음(Epic 부재). 폴백: `Story` 실패 → `Task` (parent 없음).
+- **L2 Story-only**: Story 1건만 생성. `parent`는 설정하지 않음(Epic 부재) — 단 `epicScope`가 있으면 `parent = epicScope.epicKey`. 폴백: `Story` 실패 → `Task` (parent 규칙 동일).
 
 생성 직후 `(story.index → story.created_key)` 누적.
 
-**6-2. 에픽 연결 검증 (default 모드 전용)**
+**6-2. 에픽 연결 검증 (default 모드 + `epicScope`가 적용된 import L1)**
 
 `jira_get_issue`로 재조회 → epic link 미설정 시 `jira_link_to_epic` 폴백 → 이것도 실패 시 경고 후 계속.
 
@@ -315,5 +339,7 @@ Breakdown Level: <L1 Single | L2 Story-only | L3 Epic+Stories+Subtasks>
 | E9 | Epic/Story 타입 비활성 | Task + parent 또는 + label `epic-substitute` 폴백, 즉시 알림 |
 | E10 | 트리 들여쓰기 혼용 | 경고 + 첫 자식 기준 진행 (불가 시 종료) |
 | E11 | 루트 노드 토큰 식별 실패 (`작업`/`Story`/`Epic` 어느 쪽도 아님) | 자연어 모드 폴백 제안 (`AskUserQuestion`) |
+| E12 | `.jira-epic.json` 파싱 실패 / 스코프 Epic 조회 실패 | 경고 1줄 + `epicScope = null`로 진행 (Epic 없이 생성). 중단하지 않는다 |
+| E13 | 스코프 Epic의 프로젝트가 생성 대상 프로젝트와 다름 | 경고 + `AskUserQuestion`(`Epic 없이 진행` / `취소`) |
 
 **Non-goals**: worktree/branch 생성, `.jira-context.json` 수정, 구현/테스트/리뷰 수행, 기존 이슈 수정.

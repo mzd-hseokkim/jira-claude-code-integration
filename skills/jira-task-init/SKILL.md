@@ -117,6 +117,9 @@ REPO_GITIGNORE="$REPO_ROOT/.gitignore"
 if ! grep -qF ".jira-context.json" "$REPO_GITIGNORE" 2>/dev/null; then
   printf '\n# Jira integration (local dev context)\n.jira-context.json\nTASK-README.md\n' >> "$REPO_GITIGNORE"
 fi
+if ! grep -qF ".jira-epic.json" "$REPO_GITIGNORE" 2>/dev/null; then
+  printf '\n# Jira integration (local epic scope)\n.jira-epic.json\n' >> "$REPO_GITIGNORE"
+fi
 ```
 
 이미 존재하면 스킵.

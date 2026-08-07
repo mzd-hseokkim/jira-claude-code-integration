@@ -35,6 +35,7 @@ Thumbs.db
 
 # Local state
 .jira-context.json
+.jira-epic.json
 TASK-README.md
 .claude/
 scripts/bulk-register-roadmap.py

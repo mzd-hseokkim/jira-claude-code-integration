@@ -149,6 +149,16 @@ subtasks[] 원소: { index, summary, description?, scope? }
 | L3 | Story | `Story` | Epic-KEY | 실패 시 `Task` + parent=Epic-KEY |
 | L3 | Sub-task | `Subtask` | Story-KEY | 실패 시 `Task` + parent=Story-KEY |
 
+**`epicScope`(`.jira-epic.json`)가 있을 때의 덮어쓰기** — 상위 개념에서 정해진 Epic이 문서 트리보다 우선한다:
+
+| 레벨 | 변경 |
+|---|---|
+| L1 | 작업의 parent = `epicScope.epicKey` |
+| L2 | Story의 parent = `epicScope.epicKey` (`(없음)` 대신) |
+| L3 | **Epic 행 자체가 사라진다** — Epic을 새로 만들지 않고 `epicScope.epicKey`를 Epic-KEY로 사용. Story/Sub-task 행은 그대로 |
+
+Epic 중첩 생성은 하지 않는다.
+
 **의존성 표현:**
 - `(blocks: ...)` 표기 → `link_type = "Blocks"` (실제 이름은 `jira_get_link_types`로 조회).
 - "A가 B를 블록한다" → `outward_issue_key = A, inward_issue_key = B`.

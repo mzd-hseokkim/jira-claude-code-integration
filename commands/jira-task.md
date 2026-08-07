@@ -1,8 +1,8 @@
 ---
 name: jira-task
-description: Main workflow command for Jira-integrated development. Routes to specialized skills based on the action argument. Usage /jira-task [action] [TASK-ID]. Actions create, discover, init, start, approach, impl, test, review, merge, pr, done, report, status, clean. Triggers jira-task, jira task, create task, new task, discover requirements, init tasks, setup tasks, start task, begin task, approach task, implement task, test task, review task, create PR, complete task, task report, clean worktree, 태스크 생성, 이슈 등록, 요구사항 수집, 현황 리포트, 작업 환경 세팅, 작업 시작, 접근 설계, 구현 시작, 테스트 실행, 코드 리뷰, PR 만들어, 작업 완료, 워크트리 정리
+description: Main workflow command for Jira-integrated development. Routes to specialized skills based on the action argument. Usage /jira-task [action] [TASK-ID]. Actions epic, create, discover, init, start, approach, impl, test, review, merge, pr, done, report, status, clean. Triggers jira-task, jira task, create task, new task, discover requirements, init tasks, setup tasks, start task, begin task, approach task, implement task, test task, review task, create PR, complete task, task report, clean worktree, set epic, epic scope, 에픽 설정, 이번 작업은 epic, 태스크 생성, 이슈 등록, 요구사항 수집, 현황 리포트, 작업 환경 세팅, 작업 시작, 접근 설계, 구현 시작, 테스트 실행, 코드 리뷰, PR 만들어, 작업 완료, 워크트리 정리
 user-invocable: true
-argument-hint: "[create|discover|init|start|approach|impl|test|review|pr|merge|done|report|auto|loop|clean] [TASK-ID 또는 힌트/주제]"
+argument-hint: "[epic|create|discover|init|start|approach|impl|test|review|pr|merge|done|report|auto|loop|clean] [TASK-ID 또는 힌트/주제]"
 allowed-tools:
   - Read
   - Write
@@ -22,8 +22,8 @@ Parse the user's argument to determine the action and task ID, then execute the 
 
 The argument format is: `[action] [TASK-ID 또는 힌트]`
 
-- **action**: One of `create`, `discover`, `init`, `start`, `approach`, `impl`, `test`, `review`, `pr`, `merge`, `done`, `report`, `status`, `auto`, `loop`, `clean`. `plan`/`design`은 `approach`의 deprecated alias로 허용된다 (자동 라우팅).
-- **TASK-ID**: Jira issue key (e.g., `PROJ-123`). Optional — if omitted, auto-detect from context. Not required for `create`, `discover`, `init`, `report`, `status`, `loop`.
+- **action**: One of `epic`, `create`, `discover`, `init`, `start`, `approach`, `impl`, `test`, `review`, `pr`, `merge`, `done`, `report`, `status`, `auto`, `loop`, `clean`. `plan`/`design`은 `approach`의 deprecated alias로 허용된다 (자동 라우팅).
+- **TASK-ID**: Jira issue key (e.g., `PROJ-123`). Optional — if omitted, auto-detect from context. Not required for `epic`, `create`, `discover`, `init`, `report`, `status`, `loop`.
 - For `create`, any text after the action is treated as an initial hint (자연어 설명) and passed to the skill as-is.
 - For `discover`, any text after the action (자연어 주제) 및 `--lite`, `--from <파일경로>` 등의 플래그는 원문 그대로 스킬에 위임된다.
 
@@ -44,6 +44,20 @@ If auto-detection succeeds, proceed with the detected TASK-ID. If it fails and t
 각 action은 대응하는 스킬의 워크플로를 그대로 따른다. 세부 절차는 각 스킬의 SKILL.md를 참조.
 
 **중요: 서브 스킬 실행 시 반드시 `Skill` 도구를 사용한다. `Task` 도구는 절대 사용하지 않는다.**
+
+### `epic [set <에픽 키|이름> | show | clear]`
+
+Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-epic", args: "<epic 이후의 전체 인자를 그대로 전달>" })`
+
+프로젝트 로컬 Epic 스코프(`.jira-epic.json`)를 관리한다. 설정해 두면 이후 `create`가 만드는 이슈가 그 Epic 아래에 붙는다. 스코프가 없으면 create는 Epic 없이 생성한다.
+
+**자연어 진입**: 슬래시 커맨드 없이 "이번 작업은 epic v1.0이야", "에픽 MAE-100으로 설정해줘" 같은 발화가 나오면 곧바로 위 Skill을 호출한다 (args에 발화 원문 전달). Claude가 직접 파일을 쓰거나 JQL을 짜지 않는다.
+
+인자 예시:
+- `epic` → args: `""` (현재 스코프 표시)
+- `epic set v1.0` → args: `"set v1.0"`
+- `epic MAE-100` → args: `"MAE-100"`
+- `epic clear` → args: `"clear"`
 
 ### `create [자연어 힌트]`
 

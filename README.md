@@ -67,7 +67,7 @@ Each step automatically posts a comment and/or attachment to the Jira issue and 
 ## Key Features
 
 **Interactive Issue Creation** *(v0.12.0)*
-`/jira-task create [hint]` registers a brand-new Jira issue from conversation context. If context is thin, it asks a few batched questions; if the scope warrants it, it proposes a sub-task breakdown (with `Blocks` links for dependencies so downstream `init` can auto-detect ready-to-start sub-tasks). Supports linking to an existing epic.
+`/jira-task create [hint]` registers a brand-new Jira issue from conversation context. If context is thin, it asks a few batched questions; if the scope warrants it, it proposes a sub-task breakdown (with `Blocks` links for dependencies so downstream `init` can auto-detect ready-to-start sub-tasks). Supports linking to an existing epic — and if you've pinned one with `/jira-task epic set <key|name>`, every new issue is attached to it automatically (no epic pinned → created without one, as before).
 - **No raw `jira_create_issue` footguns**: the skill encodes the exact `mcp-atlassian` schema (e.g. `additional_fields` is a JSON string, `parent` is a bare key, `priority` is `{"name": "..."}`, `components` is a CSV string, `assignee` must be top-level).
 - **Auto sub-task decision**: the skill judges whether to split based on scope; no flag needed.
 - **Silent-skip guard**: re-fetches created issues to verify priority/labels actually landed (unknown `additional_fields` keys are otherwise dropped with only a warning).
@@ -235,6 +235,7 @@ claude
 | `/jira` | anywhere | Connection status + help |
 | `/jira setup` | anywhere | **Interactive setup wizard** (prerequisites → credentials → MCP registration → validation) |
 | `/jira-task discover [topic]` | anywhere | **Turn a free-form topic into a requirements doc** (`docs/requirements/<slug>.requirements.md`) for `/jira-task create --from-requirements` |
+| `/jira-task epic [set\|show\|clear]` | anywhere | **Pin a project-local Epic scope** (`.jira-epic.json`, gitignored) — subsequent `create` attaches new issues under it |
 | `/jira-task create [hint]` | anywhere | **Interactively create a new Jira issue** with optional sub-tasks, dependency links, and epic linking |
 | `/jira-task init [N\|KEY\|desc]` | main repo | Fetch tasks + create worktrees (count, issue key, or natural language) |
 | `/jira-task auto <ID>` | worktree | **Auto-run full pipeline** with sub-agent isolation + iterative review |
