@@ -47,9 +47,9 @@ git log --oneline <base-branch>..feature/<TASK-ID>
 git diff --name-only <base-branch>..feature/<TASK-ID>
 ```
 
-설계 문서 존재 여부 확인:
-- `docs/design/<TASK-ID>.design.md` 존재? (Gap Analysis 가능 여부)
-- `docs/plan/<TASK-ID>.plan.md` 존재? (Acceptance Criteria 참조)
+Approach 문서 존재 여부 확인 (Acceptance Criteria와 Implementation Plan이 모두 이 문서 안에 있다):
+- `docs/approach/<TASK-ID>.approach.md` 존재? (Gap Analysis 가능 여부)
+- 없으면 legacy fallback으로 `docs/design/<TASK-ID>.design.md` 확인 — 반대 순서 금지
 
 ### Step 2: Perform Review (Mode A: delegate / Mode B: self)
 
@@ -59,16 +59,21 @@ git diff --name-only <base-branch>..feature/<TASK-ID>
 
 본 wrapper agent가 이미 격리된 컨텍스트이므로 추가 Agent를 띄우지 말고 다음 작업을 **직접 수행**:
 
-1. **Gap Analysis**: `docs/design/<TASK-ID>.design.md`가 있으면 Implementation Plan 항목별로 실제 구현 여부를 `Glob`/`Grep`으로 확인하고 매칭률 산출. 없으면 스킵.
-2. **Lint & Format Check**: 변경 파일 중 다음 확장자에 대해 lint/format 실행:
-   - Node.js: `.js`/`.ts`/`.jsx`/`.tsx`/`.mjs`/`.cjs` → `npx eslint` / `npx prettier --check`
+1. **Gap Analysis**: `docs/approach/<TASK-ID>.approach.md`(없으면 legacy `docs/design/<TASK-ID>.design.md`)가 있으면 Implementation Plan 항목별로 실제 구현 여부를 `Glob`/`Grep`으로 확인하고 매칭률 산출. 둘 다 없으면 스킵하되 조용히 넘기지 말고 리포트에 `Gap Analysis: 스킵 (approach 문서 없음 — <조회한 경로>)`를 남기고 `matchRate: null`로 보고.
+2. **Lint & Format Check**: 변경 파일 중 다음 확장자에 대해, **프로젝트가 선언한 도구만** 실행:
+   - Node.js: `.js`/`.ts`/`.jsx`/`.tsx`/`.mjs`/`.cjs` → `npx --no-install eslint` / `npx --no-install prettier --check`
    - Python: `.py` → `ruff check` / `ruff format --check` 또는 `flake8`
    - Java/Kotlin: `.java`/`.kt`/`.kts` → `checkstyle`
-   변경 파일만 대상, 도구 없으면 스킵, 기존 프로젝트 설정 우선. lint 실패가 있어도 리뷰를 중단하지 않고 정보로 포함.
-3. **Code Quality Review**: 변경 파일을 `Read`로 검토 — 보안 취약점(injection/XSS/하드코딩 credentials), 에러 핸들링 누락, 네이밍 일관성, 불필요한 복잡도.
-4. **Compile Findings**: Critical / Warning / Info 3단계로 분류. 파일:라인 참조 포함.
 
-산출물: Mode A의 subagent 반환과 동일한 구조 (결과 / 검토 파일 수 / Gap matchRate / Lint 표 / findings / Positive Notes). 이걸 Step 4에 전달해 `docs/review/<TASK-ID>.review.md`로 저장.
+   도구 존재 판정은 실행 성공 여부가 아니라 `package.json`의 `dependencies`/`devDependencies` 선언 또는 `node_modules/<tool>` 존재로 한다 (`npx`가 자동 설치해버려 "없으면 스킵"이 발동하지 않음). 포맷터는 설정 파일(`.prettierrc*`/`prettier.config.*`/`package.json`의 `prettier` 키)이 있을 때만 실행하고, 없으면 `Skipped (prettier 설정 없음)`으로 기록.
+
+   **변경 파일 전체를 인자로 한 번에 실행**한다. 파일별 반복 실행 금지 — 도구 기동 비용이 파일당 10초 이상이다. 예: `npx --no-install eslint <file1> <file2> ... <fileN>`
+
+   lint 실패가 있어도 리뷰를 중단하지 않는다. 포맷터 결과는 `Lint & Format` 표에만 남기고 findings로 승격하지 않는다.
+3. **Code Quality Review**: 1차 입력은 `git diff <base-branch>..feature/<TASK-ID>` 본문 — 변경 파일 전문을 읽지 마라. 보안 취약점(injection/XSS/하드코딩 credentials), 에러 핸들링 누락, 네이밍 일관성, 불필요한 복잡도를 검토. findings는 diff에 포함된 라인에 대해서만 생성하고, 맥락이 필요할 때만 해당 파일을 선택적으로 `Read`한 뒤 그 사실을 리포트에 남긴다.
+4. **Compile Findings**: Critical / Warning / Info 3단계로 분류. 파일:라인 참조 포함. severity별 상위 10건까지.
+
+산출물: Mode A의 subagent 반환과 동일한 구조 (`review-metrics` 블록 / 결과 / 검토 파일 수 / Gap matchRate / Lint 표 / findings / Positive Notes). 이걸 Step 4에 전달해 `docs/review/<TASK-ID>.review.md`로 저장.
 
 self-mode에서도 Edit/Write로 코드를 직접 수정하지 마라 — 리뷰 자체에 한정. 수정은 별도 단계(예: auto의 review-fix sub-agent).
 
@@ -95,6 +100,8 @@ self-mode에서도 Edit/Write로 코드를 직접 수정하지 마라 — 리뷰
 subagent 반환값을 `docs/review/<TASK-ID>.review.md`에 저장. template contract를 따라 정형화한다.
 
 `templates/review.template.md`를 Read해서 contract(필수: Summary, Gap Analysis, Lint & Format, Code Quality Findings, Positive Notes)를 따른다.
+
+**subagent 반환 맨 앞의 `<!-- review-metrics ... -->` 블록을 파일 최상단에 그대로 보존한다.** `jira-task-auto`의 Scope Shortfall Triage가 이 블록을 읽는다 — 누락하면 판정이 불가능해진다. 정형화 과정에서 본문 문구를 다듬는 것은 허용되지만 이 블록의 키·형식은 변경 금지.
 
 ### Step 4.7: Append Review Log (best-effort)
 

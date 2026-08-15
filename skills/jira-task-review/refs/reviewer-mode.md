@@ -41,25 +41,42 @@ Repo root: <REPO_ROOT 절대경로>
 ## 작업
 다음 4가지를 순서대로 수행하고 결과를 구조화된 형태로 반환:
 
-1. **Gap Analysis**: docs/design/<TASK-ID>.design.md가 있으면 Implementation Plan 항목별로 실제 구현 여부를 Glob/Grep으로 확인하고 매칭률 산출. 없으면 스킵.
+1. **Gap Analysis**: docs/approach/<TASK-ID>.approach.md가 있으면 Implementation Plan 항목별로 실제 구현 여부를 Glob/Grep으로 확인하고 매칭률 산출. 없을 때만 legacy fallback docs/design/<TASK-ID>.design.md 확인 (반대 순서 금지). 둘 다 없으면 스킵하되 리포트에 "Gap Analysis: 스킵 (approach 문서 없음 — <조회한 경로>)"를 명시하고 matchRate는 null로 반환.
 
-2. **Lint & Format Check**: 변경 파일 중 다음 확장자에 대해 lint/format 실행:
-   - Node.js (package.json 있을 때): .js/.ts/.jsx/.tsx/.mjs/.cjs → npx eslint, npx prettier --check
+2. **Lint & Format Check**: 변경 파일 중 다음 확장자에 대해, 프로젝트가 선언한 도구만 실행:
+   - Node.js: .js/.ts/.jsx/.tsx/.mjs/.cjs → npx --no-install eslint, npx --no-install prettier --check
    - Python (pyproject.toml/setup.py/requirements.txt 있을 때): .py → ruff check / ruff format --check, 또는 flake8
    - Java/Kotlin (pom.xml/build.gradle 있을 때): .java/.kt/.kts → checkstyle
-   변경 파일만 대상, 도구 없으면 스킵, 기존 프로젝트 설정 우선. lint 실패가 있어도 리뷰를 중단하지 않고 정보로 포함.
 
-3. **Code Quality Review**: 변경 파일을 Read해서 보안 취약점(injection/XSS/하드코딩 credentials), 에러 핸들링 누락, 네이밍 일관성, 불필요한 복잡도를 검토.
+   도구 존재 판정은 실행 성공 여부가 아니라 package.json의 dependencies/devDependencies 선언 또는 node_modules/<tool> 존재로 한다 — npx가 레지스트리에서 자동 설치해버려 "없으면 스킵"이 발동하지 않는다. 포맷터는 설정 파일(.prettierrc*/prettier.config.*/package.json의 prettier 키)이 있을 때만 실행하고, 없으면 "Skipped (prettier 설정 없음)"으로 기록.
+
+   lint/format은 변경 파일 전체를 인자로 한 번에 실행한다. 파일별로 반복 실행하지 마라 — 도구 기동 비용이 파일당 10초 이상이다.
+   예: npx --no-install eslint <file1> <file2> ... <fileN>
+
+   lint 실패가 있어도 리뷰를 중단하지 않는다. 포맷터 결과는 Lint & Format 표에만 남기고 findings로 승격하지 않는다.
+
+3. **Code Quality Review**: 1차 입력은 `git diff <base-branch>..feature/<TASK-ID>` 본문 — 변경 파일 전문을 읽지 마라. 보안 취약점(injection/XSS/하드코딩 credentials), 에러 핸들링 누락, 네이밍 일관성, 불필요한 복잡도를 검토. findings는 diff에 포함된 라인에 대해서만 생성하고, 맥락이 필요할 때만 해당 파일을 선택적으로 Read한 뒤 그 사실을 리포트에 남긴다.
 
 4. **Compile Findings**: Critical / Warning / Info 3단계로 분류. 파일:라인 참조 포함.
 
 ## 출력 형식 (반드시 따를 것)
+- 맨 앞에 구조화 필드 블록 (형식 변경 금지 — 호출자가 자동 판정에 사용):
+  ```
+  <!-- review-metrics
+  matchRate: <N | null>
+  criticalCount: <N>
+  warningCount: <N>
+  infoCount: <N>
+  -->
+  ```
 - 결과: Approve / Request Changes / Needs Discussion 중 하나
 - 검토 파일 수, 커밋 수
 - Gap Analysis: 매칭률 + 미구현 항목
 - Lint & Format: 도구별 표 (대상 파일 수 / 결과 / 주요 이슈)
-- Code Quality Findings: Critical / Warnings / Info 분류
-- Positive Notes: 잘 된 점
+- Code Quality Findings: Critical / Warnings / Info 분류 (severity별 상위 10건)
+- Positive Notes: 잘 된 점 (3건 이내)
+
+분량 상한: 전체 200줄 이내. 각 finding은 `파일:라인 — 한 줄 요약` + 근거 1문장 (항목당 문단 금지).
 
 산출물 작성 시 templates/review.template.md를 Read해서 contract(필수/옵셔널 분류, 옵셔널 마커 규약)를 따른다.
 ```

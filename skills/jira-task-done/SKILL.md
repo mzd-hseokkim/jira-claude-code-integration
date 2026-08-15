@@ -53,9 +53,8 @@ merge 단계에서 이미 Jira 코멘트(`## Task Merged Locally`)에 변경 파
 다음 출처를 우선순위대로 인용해 완료 요약 생성 (git 재조회 금지):
 
 1. `.jira-context.json`의 cachedIssue 코멘트 중 `## Task Merged Locally` 또는 `## Pull Request Created` (변경 파일/라인 수)
-2. `docs/plan/<TASK-ID>.plan.md` (기획 요약)
-3. `docs/design/<TASK-ID>.design.md` (설계 요약)
-4. `docs/test/<TASK-ID>.test-report.md` (테스트 결과)
+2. `docs/approach/<TASK-ID>.approach.md` (기획 + 설계 요약. 없을 때만 legacy `docs/plan/<TASK-ID>.plan.md` / `docs/design/<TASK-ID>.design.md`)
+3. `docs/test/<TASK-ID>.test-report.md` (테스트 결과)
 
 ### Step 5: Post Completion Report to Jira
 

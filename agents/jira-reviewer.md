@@ -43,29 +43,49 @@ git log --oneline <base>..feature/<TASK-ID>
 git diff --name-only <base>..feature/<TASK-ID>
 ```
 
-### 2. Gap Analysis (if design doc exists)
-- Read `docs/design/<TASK-ID>.design.md`
+### 2. Gap Analysis (if approach doc exists)
+- Read `docs/approach/<TASK-ID>.approach.md` (1순위). 없을 때만 legacy fallback `docs/design/<TASK-ID>.design.md` — 반대 순서 금지
 - For each Implementation Plan item, check actual code with Glob/Grep
 - Produce: `매칭률 = 구현 항목 / 전체 항목 × 100`
 - List unimplemented items explicitly
+- 문서를 못 찾으면 조용히 넘기지 말고 리포트에 `Gap Analysis: 스킵 (approach 문서 없음 — <조회한 경로>)`를 명시하고 `matchRate: null`로 반환 (0%로 보고 금지)
 
 ### 3. Lint & Format Check
-변경 파일에 대해 프로젝트 타입 감지 후 실행 (변경 파일만, 기존 설정 우선):
+변경 파일에 대해 **프로젝트가 선언한 도구만** 실행한다.
+
+**도구 존재 판정** — `npx <tool>` 실행 성공 여부로 판정하지 마라. 도구가 없으면 npx가 레지스트리에서 자동 설치해 실행해버려 "도구 없으면 스킵"이 발동하지 않는다.
+- Node.js: `package.json`의 `dependencies`/`devDependencies`에 선언됐거나 `node_modules/<tool>`이 존재할 때만 대상
+- 실행은 `npx --no-install <tool>` 또는 `node_modules/.bin/<tool>` 직접 호출 (자동 설치 금지)
+- **포맷터는 설정 파일이 있을 때만 실행**: `.prettierrc*` / `prettier.config.*` / `package.json`의 `prettier` 키가 모두 없으면 실행하지 않고 `Skipped (prettier 설정 없음)`으로 기록. 설정 없이 돌리면 프로젝트가 채택한 적 없는 기본 스타일로 검사해 오탐만 나온다
 
 | 감지 | 타입 | 도구 |
 |------|------|------|
-| `package.json` | Node.js (.js/.ts/.jsx/.tsx/.mjs/.cjs) | `npx eslint`, `npx prettier --check` |
+| `package.json` + 의존성 선언 | Node.js (.js/.ts/.jsx/.tsx/.mjs/.cjs) | `npx --no-install eslint`, `npx --no-install prettier --check` (설정 있을 때만) |
 | `pyproject.toml` / `setup.py` / `requirements.txt` | Python (.py) | `ruff check` + `ruff format --check` 우선, fallback `flake8` |
 | `pom.xml` / `build.gradle*` | Java/Kotlin | checkstyle |
 
-도구 없으면 스킵. lint 실패가 있어도 리뷰를 중단하지 않고 정보로 포함. 실제 버그 가능성이 있는 lint 오류는 Code Quality Findings의 Warning으로도 반영.
+**일괄 실행**: 변경 파일 전체를 인자로 **한 번에** 실행한다. 파일별 반복 호출 금지 — 도구 기동 비용이 파일당 10초 이상이라 37파일이면 11분 대 20초 차이가 난다.
+
+```bash
+npx --no-install eslint <file1> <file2> ... <fileN>
+```
+
+선언되지 않은 도구는 스킵하고 사유를 표에 남긴다. lint 실패가 있어도 리뷰를 중단하지 않는다. **포맷터 결과는 `Lint & Format` 표에만 정보로 남기고 Code Quality Findings로 승격하지 않는다.** lint 오류는 명확한 버그를 지목한 경우(`no-undef`, `no-unreachable` 등)에만 Warning으로 반영한다.
 
 ### 4. Code Quality Review
-변경 파일을 Read해서 검토:
+**1차 입력은 diff 본문이다 — 변경 파일 전문을 읽지 마라.**
+
+```bash
+git diff <base>..feature/<TASK-ID>
+```
+
+검토 항목:
 - 보안 취약점 (injection, XSS, 하드코딩된 credentials)
 - 에러 핸들링 누락
 - 네이밍 컨벤션 일관성
 - 불필요한 복잡도
+
+findings는 **diff에 포함된 라인**에 대해서만 생성한다. 변경과 무관한 기존 코드에 대한 지적은 Info로 분리하거나 제외한다. 변경 주변 맥락이 필요할 때만 해당 파일을 선택적으로 Read하고, 어떤 파일을 왜 읽었는지 리포트에 남긴다.
 
 각 발견에 `파일:라인` 참조를 붙인다.
 
@@ -73,15 +93,26 @@ git diff --name-only <base>..feature/<TASK-ID>
 Critical / Warning / Info 3단계로 분류. 한국어로 작성.
 
 ## Output Format
-다음 구조로 반환 (caller가 docs/review/<TASK-ID>.review.md에 저장하고 Jira에 게시함):
+다음 구조로 반환 (caller가 docs/review/<TASK-ID>.review.md에 저장하고 Jira에 게시함).
+
+**분량 상한**: 전체 200줄 이내. findings는 severity별 상위 10건까지, Positive Notes는 3건 이내. 각 항목은 `파일:라인 — 한 줄 요약` + 근거 1문장으로 고정한다 (항목당 문단 금지).
+
+**맨 앞에 구조화 필드 블록을 그대로 출력한다** — 호출자(`jira-task-auto`)가 이 값을 읽어 자동 판정한다. 본문 문구 정규식 파싱에 의존하지 않게 하는 것이 목적이므로 형식을 바꾸지 마라. Gap Analysis를 스킵했으면 `matchRate: null`.
 
 ```
+<!-- review-metrics
+matchRate: <N | null>
+criticalCount: <N>
+warningCount: <N>
+infoCount: <N>
+-->
+
 **결과**: Approve / Request Changes / Needs Discussion
 **검토 파일 수**: <N>개
 **커밋 수**: <N>개
 
 ## Gap Analysis
-**설계-구현 일치율**: <N>% (구현 <N> / 전체 <N>)
+**설계-구현 매칭률**: <N>% (구현 <N> / 전체 <N>)
 - 미구현 항목: ...
 
 ## Lint & Format
@@ -111,5 +142,6 @@ Reviewed by jira-reviewer subagent (model: opus)
 ## What you do NOT do
 - Do NOT call `mcp__atlassian__jira_add_comment` (caller's job)
 - Do NOT modify any files (read-only review)
-- Do NOT skip lint just because the project has no lint config — try detection first
+- Do NOT run a tool the project has not declared, and never let `npx` auto-install one
+- Do NOT read changed files in full when the diff suffices
 - Do NOT pad findings with generic remarks; every finding must be actionable

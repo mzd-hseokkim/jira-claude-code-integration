@@ -15,4 +15,10 @@ matchRate가 낮거나 Critical이 많으면 scope 자체가 누락된 상태. f
 따라서:
 - matchRate < 70% **또는** Critical ≥ 3 → fix loop 진입 **금지**, 즉시 중단(Scope Shortfall Bail).
 - 그 외 → 기존 Trivial Fix Path(최대 2회 자동 수정 루프) 진행.
-- 신호 추출 실패(parse error) → fail-safe로 fix loop 진입.
+- 신호 추출 실패(parse error) → fix loop 진입 **금지**, 즉시 중단(Triage Parse Bail).
+
+## parse error에서 멈추는 쪽으로 뒤집은 근거
+
+이전에는 parse error를 fail-safe로 보고 fix loop에 진입시켰다. 그러나 리포트에 매칭률이 기재되지 않는 조건(예: Gap Analysis 스킵)이 생기면 추출이 **항상** 실패해 triage 자체가 무력화되고 모든 태스크가 fix loop으로 떨어진다. 루프 1회는 수정 sub-agent + 전체 테스트 재실행 + opus 재리뷰로 20분 이상 소요되며, 이를 최대 2회 반복한다. 근거 없이 루프를 도는 비용이 근거 없이 멈추는 비용보다 훨씬 크므로 판정 불가 시에는 사용자에게 위임한다.
+
+신호는 리뷰 리포트 최상단 `<!-- review-metrics -->` 블록에서 읽는다. 마크다운 본문 정규식 파싱은 리포트 문구가 조금만 달라져도 깨지므로 구버전 리포트 fallback으로만 남긴다.

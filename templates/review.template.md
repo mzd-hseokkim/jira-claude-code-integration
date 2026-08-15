@@ -1,3 +1,10 @@
+<!-- review-metrics
+matchRate: {n | null}
+criticalCount: {n}
+warningCount: {n}
+infoCount: {n}
+-->
+
 # Code Review: {task_id} - {summary}
 
 **Date**: {ISO date}
@@ -11,6 +18,13 @@ Section contract:
 - 옵셔널(optional): Acceptance Criteria 검증, Security Review, Out of Scope, Open Items / Follow-ups, Verification Commands
 
 가변 섹션 마커 규약: `<!-- optional: <조건 또는 사유> -->` (헤더 직전 줄). 자동 처리 X, 사람/LLM 참고용.
+
+분량 상한:
+- 전체 200줄 이내.
+- Code Quality Findings는 severity별 상위 10건까지, Positive Notes는 3건 이내.
+- 각 finding 항목은 `` `파일:라인` — 한 줄 요약 `` + 근거 1문장. 항목당 문단 금지.
+
+`<!-- review-metrics ... -->` 블록은 파일 최상단(제목 위)에 그대로 보존한다 — `jira-task-auto`가 자동 판정에 읽는 유일한 입력이며 키·형식 변경 금지.
 
 L1 경량 경로 계약:
 - L1 task에서 이 파일을 생성하지 않고 Jira 코멘트에 인라인 핵심 findings만 포함하는 것이 허용됨.
@@ -32,13 +46,15 @@ L1 경량 경로 계약:
 
 ## Gap Analysis
 
-**설계-구현 일치율**: **{n}% ({passed}/{total})**
+**설계-구현 매칭률**: **{n}% ({passed}/{total})**
 
-| Design Implementation Plan | 구현 여부 | 위치 |
-|---------------------------|----------|------|
+| Approach Implementation Plan | 구현 여부 | 위치 |
+|-----------------------------|----------|------|
 | {plan item} | O / X / Partial | `{file}:{line}` |
 
 {설계와 구현 사이 차이점 요약. 100% 일치면 "차이점 없음".}
+
+{approach 문서를 못 찾아 스킵한 경우: `Gap Analysis: 스킵 (approach 문서 없음 — <조회한 경로>)`를 명시하고 매칭률 자리는 비워둔다. 0%로 적지 않는다.}
 
 ## Lint & Format
 

@@ -212,18 +212,47 @@ review sub-agent 완료 후 `.jira-context.json`을 `Read`로 읽어 `completedS
 
 #### Scope Shortfall Triage
 
-`docs/review/<TASK-ID>.review.md`를 `Read`로 읽고 다음 신호를 추출한다:
-- **Gap matchRate**: "설계-구현 매칭률" 또는 "Implementation Plan 매칭" 등에 기재된 백분율 (정규식: `매칭률[^0-9]*([0-9]+)%` 또는 `(\d+)\s*/\s*\d+\s*\(([0-9.]+)%\)`).
-- **Critical count**: "Critical" 섹션 항목 수.
-- **Warning count**: "Warning" 섹션 항목 수.
+`docs/review/<TASK-ID>.review.md`를 `Read`로 읽고 **최상단 `<!-- review-metrics ... -->` 블록**에서 신호를 읽는다. 이것이 단일 입력이다:
+
+```
+<!-- review-metrics
+matchRate: <N | null>
+criticalCount: <N>
+warningCount: <N>
+infoCount: <N>
+-->
+```
+
+블록이 없는 구버전 리포트에 한해 본문 fallback 파싱을 시도한다 (`매칭률[^0-9]*([0-9]+)%` 또는 `(\d+)\s*/\s*\d+\s*\(([0-9.]+)%\)`, "Critical" 섹션 항목 수). 본문 문구는 언제든 바뀔 수 있으므로 이 경로에 의존하지 마라.
 
 **분기 규칙**:
 
 | 조건 | 판정 | 동작 |
 |------|------|------|
-| matchRate < 70% **또는** Critical count ≥ 3 | **Scope shortfall** | fix loop 진입 안 함, 즉시 중단 (아래 Scope Shortfall Bail) |
-| matchRate ≥ 70% **그리고** Critical count < 3 | **Trivial fix** | 기존 fix loop 진입 (최대 2회) |
-| 위 두 신호 추출 실패 (parse error) | 기존 동작 보존 | fix loop 진입 (fail-safe) |
+| matchRate < 70% **또는** criticalCount ≥ 3 | **Scope shortfall** | fix loop 진입 안 함, 즉시 중단 (아래 Scope Shortfall Bail) |
+| matchRate ≥ 70% **그리고** criticalCount < 3 | **Trivial fix** | 기존 fix loop 진입 (최대 2회) |
+| `matchRate: null` (Gap Analysis 스킵) **그리고** criticalCount < 3 | **Trivial fix** | fix loop 진입 (매칭률 부재는 부분 구현 신호가 아님) |
+| 신호 추출 실패 (블록 없음 + fallback 파싱 실패) | **판정 불가** | fix loop 진입 **안 함**, 즉시 중단 (아래 Triage Parse Bail) |
+
+> **parse 실패 시 중단하는 이유**: fix loop 1회는 수정 sub-agent + 전체 테스트 재실행 + opus 재리뷰로 구성되어 20분 이상 걸린다. 근거 없이 루프를 도는 비용이 근거 없이 멈추는 비용보다 훨씬 크다.
+
+#### Triage Parse Bail (판정 불가로 중단)
+
+```
+❌ Auto 모드 중단 (판정 불가): 리뷰 리포트에서 매칭률/Critical 수를 추출하지 못했습니다.
+
+조회한 파일: docs/review/<TASK-ID>.review.md
+누락: <review-metrics 블록 없음 | 본문 fallback 파싱 실패>
+
+판단: 자동 수정 루프 진입 여부를 판단할 근거가 없어 사용자 결정에 위임합니다.
+
+현재 진행 상황: <completedSteps>
+
+다음 권장 흐름 중 택일:
+1. 리뷰 리포트를 직접 확인하고 판단 → `docs/review/<TASK-ID>.review.md`
+2. 리뷰 재실행 → `/jira-task review <TASK-ID>`
+3. 지적사항 수용하고 진행 → `/jira-task merge <TASK-ID>`
+```
 
 > **임계값 70% / 3건 근거**: `skills/jira-task-auto/refs/review-wrapper.md` "Scope Shortfall 분기 근거" 섹션 — 관측 분포 기반 휴리스틱. 자세한 분기 근거는 동 파일 참조.
 
@@ -250,9 +279,11 @@ review sub-agent 완료 후 `.jira-context.json`을 `Read`로 읽어 `completedS
 
 위 분기가 "Trivial fix"이면 최대 **2회** 자동 수정 후 재검증한다.
 
-**품질 기준:**
-- 설계-구현 매칭률 100%
-- Code Quality에서 Critical / Warning 이슈 없음
+**품질 기준 (자동 통과 차단 조건):**
+- 설계-구현 매칭률 ≥ 90% (`.jira-context.json`에 `reviewGate.matchRateThreshold`가 있으면 그 값. `matchRate: null`이면 이 조건은 판정에서 제외)
+- Code Quality에서 **Critical 이슈 없음**
+
+Warning / Info는 리포트에 남기되 게이트를 막지 않는다. 리뷰어는 Default-FAIL 지시로 보수적으로 판정하므로 Warning 0건을 요구하면 정상 구현도 통과하지 못한다. Implementation Plan 항목 중 일부는 정적 분석으로 확인이 불가능해 매칭률 100%는 도달 가능한 기준이 아니다.
 
 **루프 절차 (회차별, 모두 sub-agent로 위임):**
 
@@ -272,7 +303,7 @@ review sub-agent 완료 후 `.jira-context.json`을 `Read`로 읽어 `completedS
    Jira task <TASK-ID>의 리뷰 지적사항을 수정하고 테스트를 재실행하라.
 
    1. `docs/review/<TASK-ID>.review.md`를 Read로 읽는다.
-   2. Critical / Warning 항목과 Gap Analysis 미충족 항목을 식별한다.
+   2. Critical 항목과 Gap Analysis 미충족 항목을 식별한다 (게이트를 막는 것은 이 둘뿐). Warning은 같은 파일을 이미 수정 중이라 저비용으로 처리되는 경우에만 함께 고치고, 이를 위해 추가 파일을 열지 마라.
    3. 지적된 이슈를 Edit으로 코드에 직접 반영한다. 수정 범위는 리뷰 지적 사항에 한정 — 무관한 리팩토링 금지.
    4. `.jira-context.json`을 Read로 읽고, completedSteps에서 "test"와 "review"를 제거한 뒤 Edit으로 다시 쓴다 (재실행 가능하게).
    5. `jira-integration:jira-task-test` Skill을 인자 "<TASK-ID>"로 호출하여 테스트를 재실행한다 (수정된 코드 컨텍스트를 그대로 재사용).
@@ -301,7 +332,7 @@ review sub-agent 완료 후 `.jira-context.json`을 `Read`로 읽어 `completedS
 ❌ Auto 모드 중단: review 품질 게이트를 2회 시도 후에도 통과하지 못했습니다.
 
 미해결 이슈:
-- <남은 Critical/Warning 항목 — sub-agent 반환 요약에서 추출>
+- <남은 Critical 항목 + Gap Analysis 미충족 항목 — sub-agent 반환 요약에서 추출>
 
 현재 진행 상황: <completedSteps>
 
