@@ -64,6 +64,23 @@ Approach 문서가 없으면, Jira 이슈 설명과 Acceptance Criteria 기반�
 - 테스트 코드 작성과 실행은 모두 `/jira-task test` 단계의 책임이다
 - 단, 구현 대상 파일 자체가 우연히 테스트 코드인 경우(예: 테스트 유틸리티 자체를 구현하는 task)는 approach 문서 Implementation Plan에 명시된 한에서만 허용
 
+### Step 2.5: Self-Check (종료 직전, 필수)
+
+구현을 마쳤다고 판단한 시점에 1회 수행한다. 목적은 review 1회차 통과율 향상 — review를 대체하지 않는다.
+
+1. **Plan 대조**: approach 문서의 Implementation Plan 항목(L1은 5줄 요약)을 실제 변경과 하나씩 대조한다. 미구현 항목은 지금 마저 구현하고, 의도적으로 제외한 항목은 사유를 Step 3 코멘트와 완료 요약에 명시한다.
+2. **Lint 배치 1회**: 변경 파일 전체를 인자로 **한 번에** 실행한다. 도구 판정 규칙은 review와 동일 — **프로젝트가 선언한 도구만** (`package.json` 의존성 선언 또는 `node_modules/<tool>` 존재 시 `npx --no-install eslint`; Python은 `ruff check`; 포맷터는 설정 파일 `.prettierrc*`/`prettier.config.*`/`package.json` `prettier` 키가 있을 때만). 오류는 즉시 수정 후 1회만 재실행. 선언된 도구가 없으면 스킵하고 사유를 기록.
+   - **lint는 이 시점 단 1회다.** 구현 중에는 돌리지 않는다 (구현 중 검증은 Step 2의 타입체크/컴파일). review 단계도 이 기록을 인용하고 재실행하지 않는다.
+3. **결과 기록**: **`<worktree>/.jira-context.json`** (Step 4와 동일한 명시 경로 — cwd 상대 경로 금지, cwd가 메인 레포일 수 있다)에 `implSelfCheck` 키를 Edit으로 기록한다. aggregate 파일(`tasks[]`가 있는 쪽)에는 기록 금지 — cachedIssue와 동일 규칙:
+
+   ```json
+   "implSelfCheck": {
+     "planMatched": "<구현 항목 수>/<전체 항목 수>",
+     "lint": { "tool": "<도구명 | none>", "files": <N>, "errors": <N>, "warnings": <N> },
+     "ranAt": "<ISO8601>"
+   }
+   ```
+
 ### Step 3: Post Progress to Jira
 
 구현 완료 후 `mcp__atlassian__jira_add_comment`:
@@ -106,6 +123,7 @@ python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> impl "-" \
 
 - 생성된 파일: <list>
 - 수정된 파일: <list>
+- Self-check: Plan <n>/<m> 매칭, lint <errors> errors / <warnings> warnings (<도구명> | 스킵 사유)
 - Jira 코멘트 게시됨
 
 **Progress**: init → start → approach → **impl ✓** → test → review → merge → pr → done

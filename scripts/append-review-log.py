@@ -104,6 +104,8 @@ def main():
         "falsePositive": None,
         "userOverride": None,
     }
+    if isinstance(raw.get("timings"), dict):
+        entry["timings"] = raw["timings"]
     if not redact_import_ok:
         entry["redactStatus"] = "import-failed"
 

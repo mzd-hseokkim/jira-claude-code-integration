@@ -25,6 +25,7 @@ Section contract:
 - 각 finding 항목은 `` `파일:라인` — 한 줄 요약 `` + 근거 1문장. 항목당 문단 금지.
 
 `<!-- review-metrics ... -->` 블록은 파일 최상단(제목 위)에 그대로 보존한다 — `jira-task-auto`가 자동 판정에 읽는 유일한 입력이며 키·형식 변경 금지.
+`<!-- review-timings ... -->` 블록(gapSec/lintSec/qualitySec)이 있으면 review-metrics 바로 뒤에 함께 보존한다 — 자동 판정에는 미사용, review-log 축적용이므로 정형화 과정에서 드랍 금지.
 
 L1 경량 경로 계약:
 - L1 task에서 이 파일을 생성하지 않고 Jira 코멘트에 인라인 핵심 findings만 포함하는 것이 허용됨.

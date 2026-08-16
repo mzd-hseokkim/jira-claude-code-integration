@@ -122,7 +122,9 @@ Agent({
 | 1 | start | `general-purpose` | haiku | 상태 전이 + 브랜치 셋업, 판단 거의 없음 |
 | 2 | approach | `general-purpose` | opus | 스코프·아키텍처 통합 결정 — 사고 집약적 (level-aware) |
 | 3 | impl+test | `general-purpose` | sonnet | 코드 생성 + 테스트 실행 — 동일 모델·코드 컨텍스트라 단일 agent로 묶음 |
-| 4 | review | `general-purpose` | opus | 오케스트레이션만 — 실제 리뷰 작업은 inner `jira-reviewer` agent가 수행 |
+| 4 | review | `general-purpose` | opus — **L1은 sonnet** | self-mode에서는 wrapper가 직접 리뷰하므로 wrapper 모델이 곧 리뷰 모델. L1(Subtask/Task/Bug)은 gap 대조·lint 인용 등 기계적 작업 위주라 sonnet으로 충분 |
+
+**review 모델의 Level 판정은 review Agent 호출 직전에 한다** (Step 1 시점에는 판정 입력이 아직 없다 — `cachedIssue`는 start/approach가 만든다). 호출 직전 재-Read한 worktree-local `.jira-context.json`에서 `breakdownLevel` → 없으면 `cachedIssue.issuetype` 폴백 (approach Step 0 동일 규칙: Subtask/Task/Bug→L1, Story→L2, Epic→L3). **둘 다 없으면 opus** (보수 기본값 — L2를 sonnet으로 하향하는 것보다 L1을 opus로 상향하는 쪽이 안전). L1이면 `"sonnet"`, 그 외 `"opus"`.
 
 전 단계 `general-purpose`로 통일한다. review의 self-praise bias 차단은 `jira-task-review` Skill 내부에서 자체적으로 띄우는 `jira-reviewer` subagent가 담당한다 (Step 2, `Reviewer Independence Rule`).
 
@@ -305,6 +307,7 @@ Warning / Info는 리포트에 남기되 게이트를 막지 않는다. 리뷰�
    1. `docs/review/<TASK-ID>.review.md`를 Read로 읽는다.
    2. Critical 항목과 Gap Analysis 미충족 항목을 식별한다 (게이트를 막는 것은 이 둘뿐). Warning은 같은 파일을 이미 수정 중이라 저비용으로 처리되는 경우에만 함께 고치고, 이를 위해 추가 파일을 열지 마라.
    3. 지적된 이슈를 Edit으로 코드에 직접 반영한다. 수정 범위는 리뷰 지적 사항에 한정 — 무관한 리팩토링 금지.
+   3-b. 코드를 수정했으면 lint를 배치 1회 재실행한다 (impl Step 2.5와 동일 규칙: 선언된 도구만, `npx --no-install`, 변경 파일 전체를 한 번에). 결과로 worktree `.jira-context.json`의 `implSelfCheck.lint`와 `ranAt`을 Edit으로 갱신한다 (`implSelfCheck` 키가 없으면 생성) — 재리뷰가 이 기록을 인용한다. 변경 확정 시점이 다시 온 것이므로 "lint 1회 원칙" 위배가 아니다.
    4. `.jira-context.json`을 Read로 읽고, completedSteps에서 "test"와 "review"를 제거한 뒤 Edit으로 다시 쓴다 (재실행 가능하게).
    5. `jira-integration:jira-task-test` Skill을 인자 "<TASK-ID>"로 호출하여 테스트를 재실행한다 (수정된 코드 컨텍스트를 그대로 재사용).
    6. 부모에 다음 최소 요약만 반환:

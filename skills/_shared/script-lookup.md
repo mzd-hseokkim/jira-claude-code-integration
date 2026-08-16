@@ -28,6 +28,27 @@ unset _resolved _c
 
 찾지 못하면 `$OUT_VAR`는 빈 문자열. 호출자가 빈 값 처리(스킵 + 사용자 안내)를 책임진다.
 
+## Batch Lookup (다중 스크립트, Bash 1회)
+
+한 스킬이 스크립트를 2개 이상 쓰면 lookup을 개별 실행하지 말고 아래 블록 **1회**로 전부 결정한다. 개별 블록은 후보 나열 시 `find "$HOME/.claude"` 스캔이 매번 eager 실행되므로 호출 수만큼 비용이 쌓인다 — 이 블록은 앞 후보가 히트하면 find를 생략한다.
+
+```bash
+SCRIPT_NAMES="<파일명1> <파일명2> ..."   # 공백 구분
+
+_repo_root=$(node -e "try{console.log(require('./.jira-context.json').repoRoot||'')}catch{}" 2>/dev/null)
+for _n in $SCRIPT_NAMES; do
+  if   [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/${_n}" ]; then _r="${CLAUDE_PLUGIN_ROOT}/scripts/${_n}"
+  elif [ -f "scripts/${_n}" ]; then _r="scripts/${_n}"
+  elif [ -n "$_repo_root" ] && [ -f "${_repo_root}/scripts/${_n}" ]; then _r="${_repo_root}/scripts/${_n}"
+  else _r=$(find "$HOME/.claude" -name "${_n}" -type f 2>/dev/null | sort -V | tail -1)
+  fi
+  echo "RESOLVED ${_n}=${_r:-NOT_FOUND}"
+done
+unset _repo_root _n _r
+```
+
+Bash 호출 간 변수는 유지되지 않으므로, 호출자는 `RESOLVED` 출력 경로를 **이후 단계에서 리터럴로 사용**한다. `NOT_FOUND`는 개별 lookup의 빈 문자열과 동일하게 처리(스킵 + 사용자 안내).
+
 ## Lookup 우선순위 근거
 
 1. **`CLAUDE_PLUGIN_ROOT`** — 플러그인 런타임이 명시 주입할 때 가장 정확.

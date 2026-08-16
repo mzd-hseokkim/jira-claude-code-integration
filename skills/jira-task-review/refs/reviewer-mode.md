@@ -37,27 +37,24 @@ TASK-ID: <TASK-ID>
 Base branch: <base-branch>
 Feature branch: feature/<TASK-ID>
 Repo root: <REPO_ROOT 절대경로>
+Worktree: <worktree 절대경로 — cwd가 워크트리면 cwd, 메인 레포면 aggregate `.jira-context.json`의 `tasks[]`에서 해당 TASK-ID의 `worktreePath`. implSelfCheck 조회는 이 경로의 `.jira-context.json`을 쓴다>
 
 ## 작업
 다음 4가지를 순서대로 수행하고 결과를 구조화된 형태로 반환:
 
 1. **Gap Analysis**: docs/approach/<TASK-ID>.approach.md가 있으면 Implementation Plan 항목별로 실제 구현 여부를 Glob/Grep으로 확인하고 매칭률 산출. 없을 때만 legacy fallback docs/design/<TASK-ID>.design.md 확인 (반대 순서 금지). 둘 다 없으면 스킵하되 리포트에 "Gap Analysis: 스킵 (approach 문서 없음 — <조회한 경로>)"를 명시하고 matchRate는 null로 반환.
 
-2. **Lint & Format Check**: 변경 파일 중 다음 확장자에 대해, 프로젝트가 선언한 도구만 실행:
-   - Node.js: .js/.ts/.jsx/.tsx/.mjs/.cjs → npx --no-install eslint, npx --no-install prettier --check
-   - Python (pyproject.toml/setup.py/requirements.txt 있을 때): .py → ruff check / ruff format --check, 또는 flake8
-   - Java/Kotlin (pom.xml/build.gradle 있을 때): .java/.kt/.kts → checkstyle
-
-   도구 존재 판정은 실행 성공 여부가 아니라 package.json의 dependencies/devDependencies 선언 또는 node_modules/<tool> 존재로 한다 — npx가 레지스트리에서 자동 설치해버려 "없으면 스킵"이 발동하지 않는다. 포맷터는 설정 파일(.prettierrc*/prettier.config.*/package.json의 prettier 키)이 있을 때만 실행하고, 없으면 "Skipped (prettier 설정 없음)"으로 기록.
-
-   lint/format은 변경 파일 전체를 인자로 한 번에 실행한다. 파일별로 반복 실행하지 마라 — 도구 기동 비용이 파일당 10초 이상이다.
-   예: npx --no-install eslint <file1> <file2> ... <fileN>
+2. **Lint & Format (인용 우선)**: worktree-local .jira-context.json의 implSelfCheck.lint를 먼저 확인한다.
+   - 있으면 **lint를 재실행하지 않는다**. 그 기록을 Lint & Format 표에 인용하고 출처를 "impl self-check 인용"으로 표기한다 (lint는 커밋 시점 1회 원칙 — impl 단계가 그 1회).
+   - 없으면 fallback으로 직접 실행: 프로젝트가 선언한 도구만 (package.json의 dependencies/devDependencies 선언 또는 node_modules/<tool> 존재로 판정 — npx가 자동 설치해버리므로 실행 성공 여부로 판정 금지). Node.js는 npx --no-install eslint, Python은 ruff check + ruff format --check(fallback flake8), Java/Kotlin(pom.xml/build.gradle 있을 때)은 checkstyle, 포맷터는 설정 파일(.prettierrc*/prettier.config.*/package.json의 prettier 키)이 있을 때만 실행하고 없으면 "Skipped (prettier 설정 없음)"으로 기록. 변경 파일 전체를 인자로 한 번에 실행 — 파일별 반복 실행 금지. 예: npx --no-install eslint <file1> ... <fileN>
 
    lint 실패가 있어도 리뷰를 중단하지 않는다. 포맷터 결과는 Lint & Format 표에만 남기고 findings로 승격하지 않는다.
 
 3. **Code Quality Review**: 1차 입력은 `git diff <base-branch>..feature/<TASK-ID>` 본문 — 변경 파일 전문을 읽지 마라. 보안 취약점(injection/XSS/하드코딩 credentials), 에러 핸들링 누락, 네이밍 일관성, 불필요한 복잡도를 검토. findings는 diff에 포함된 라인에 대해서만 생성하고, 맥락이 필요할 때만 해당 파일을 선택적으로 Read한 뒤 그 사실을 리포트에 남긴다.
 
 4. **Compile Findings**: Critical / Warning / Info 3단계로 분류. 파일:라인 참조 포함.
+
+단계별 소요 기록: 1~3 각 단계에서 어차피 실행하는 bash 명령에 `date +%s`를 편승시켜 단계별 소요(초)를 근사 측정한다 — 타이밍만을 위한 별도 Bash 호출 금지. 측정 못 한 단계는 null. lint를 implSelfCheck 인용으로 대체한 경우도 lintSec: null (실행 없음 = 측정 없음).
 
 ## 출력 형식 (반드시 따를 것)
 - 맨 앞에 구조화 필드 블록 (형식 변경 금지 — 호출자가 자동 판정에 사용):
@@ -67,6 +64,14 @@ Repo root: <REPO_ROOT 절대경로>
   criticalCount: <N>
   warningCount: <N>
   infoCount: <N>
+  -->
+  ```
+- 그 바로 다음에 소요 기록 블록 (게이트 판정에 미사용, review-log 축적용):
+  ```
+  <!-- review-timings
+  gapSec: <N | null>
+  lintSec: <N | null>
+  qualitySec: <N | null>
   -->
   ```
 - 결과: Approve / Request Changes / Needs Discussion 중 하나

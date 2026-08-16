@@ -84,6 +84,7 @@ def _apply_step(target: dict, step: str, status: str, ts: str) -> None:
 _AGGREGATE_POLLUTION_KEYS = frozenset({
     "taskId", "branch", "worktreePath", "summary", "priority",
     "status", "completedSteps", "cachedIssue", "parentEpic", "parentStory",
+    "implSelfCheck",
 })
 
 

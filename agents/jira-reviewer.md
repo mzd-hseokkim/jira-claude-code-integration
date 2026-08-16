@@ -50,8 +50,10 @@ git diff --name-only <base>..feature/<TASK-ID>
 - List unimplemented items explicitly
 - 문서를 못 찾으면 조용히 넘기지 말고 리포트에 `Gap Analysis: 스킵 (approach 문서 없음 — <조회한 경로>)`를 명시하고 `matchRate: null`로 반환 (0%로 보고 금지)
 
-### 3. Lint & Format Check
-변경 파일에 대해 **프로젝트가 선언한 도구만** 실행한다.
+### 3. Lint & Format Check (인용 우선)
+**worktree-local `.jira-context.json`의 `implSelfCheck.lint`를 먼저 확인한다.** 있으면 **lint를 재실행하지 않고** 그 기록을 `Lint & Format` 표에 인용하며 출처를 `impl self-check 인용`으로 표기한다 (lint는 커밋 시점 1회 원칙 — impl 단계가 그 1회).
+
+없을 때만 fallback으로 직접 실행 — **프로젝트가 선언한 도구만**:
 
 **도구 존재 판정** — `npx <tool>` 실행 성공 여부로 판정하지 마라. 도구가 없으면 npx가 레지스트리에서 자동 설치해 실행해버려 "도구 없으면 스킵"이 발동하지 않는다.
 - Node.js: `package.json`의 `dependencies`/`devDependencies`에 선언됐거나 `node_modules/<tool>`이 존재할 때만 대상
@@ -92,6 +94,8 @@ findings는 **diff에 포함된 라인**에 대해서만 생성한다. 변경과
 ### 5. Compile & Return
 Critical / Warning / Info 3단계로 분류. 한국어로 작성.
 
+**단계별 소요 기록**: 2~4 각 단계에서 어차피 실행하는 bash 명령에 `date +%s`를 편승시켜 단계별 소요(초)를 근사 측정한다 — 타이밍만을 위한 별도 Bash 호출 금지. 측정 못 한 단계는 `null`. lint를 implSelfCheck 인용으로 대체한 경우도 `lintSec: null` (실행 없음 = 측정 없음).
+
 ## Output Format
 다음 구조로 반환 (caller가 docs/review/<TASK-ID>.review.md에 저장하고 Jira에 게시함).
 
@@ -105,6 +109,11 @@ matchRate: <N | null>
 criticalCount: <N>
 warningCount: <N>
 infoCount: <N>
+-->
+<!-- review-timings
+gapSec: <N | null>
+lintSec: <N | null>
+qualitySec: <N | null>
 -->
 
 **결과**: Approve / Request Changes / Needs Discussion
