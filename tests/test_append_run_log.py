@@ -31,7 +31,8 @@ class StageDurationsTest(unittest.TestCase):
             "reviewAt": "2026-08-22T16:04:35Z",
         }
         d = module.stage_durations(ctx)
-        self.assertEqual(d["start"], 316)
+        self.assertEqual(d["queueWaitSec"], 316)
+        self.assertNotIn("start", d)
         self.assertEqual(d["approach"], 247)
         self.assertNotIn("impl", d)
         self.assertEqual(d["test"], 335)
@@ -46,7 +47,7 @@ class StageDurationsTest(unittest.TestCase):
             "approachAt": "2026-08-22T15:53:29Z",
         }
         d = module.stage_durations(ctx)
-        self.assertIsNone(d["start"])
+        self.assertIsNone(d["queueWaitSec"])
         self.assertEqual(d["approach"], 563)
 
     def test_negative_diff_becomes_null(self):
@@ -62,7 +63,7 @@ class StageDurationsTest(unittest.TestCase):
             "startAt": "2026-08-22T15:49:22Z",
             "startedAt": "2026-08-23T00:49:22Z",
         }
-        self.assertEqual(module.stage_durations(ctx)["start"], 316)
+        self.assertEqual(module.stage_durations(ctx)["queueWaitSec"], 316)
 
 
 class BuildEntryTest(unittest.TestCase):
@@ -102,7 +103,7 @@ class BuildEntryTest(unittest.TestCase):
             e = json.loads(lines[0])
             self.assertEqual(e["status"], "aborted")
             self.assertEqual(e["failedStage"], "impl+test")
-            self.assertEqual(e["stageDurationsSec"], {"start": 316})
+            self.assertEqual(e["stageDurationsSec"], {"queueWaitSec": 316})
 
 
 import unittest.mock  # noqa: E402  (patch.object 사용)

@@ -56,14 +56,18 @@ def stage_durations(ctx):
             if ts:
                 if k == "startedAt":
                     # 인라인 패치 폴백 — 로컬 시각일 수 있어 신뢰 불가. 기록은 null, 기준 시각으로도 쓰지 않음.
-                    out[stage] = None
+                    out["queueWaitSec"] = None
                     ts = None
                 break
         if ts is None:
             continue
         if prev is not None and stage != "init":
             sec = int((ts - prev).total_seconds())
-            out[stage] = sec if sec >= 0 else None  # 음수 = 시계 불일치(로컬 시각 오염) → null
+            sec = sec if sec >= 0 else None  # 음수 = 시계 불일치(로컬 시각 오염) → null
+            if stage == "start":
+                out["queueWaitSec"] = sec  # init→start 간격 = 큐 대기 (loop) — 단계 소요가 아님
+            else:
+                out[stage] = sec
         prev = ts
     return out
 
@@ -104,6 +108,11 @@ def build_entry(task_id, result, ctx, kind):
 
 def _load_json(path):
     if path == "-":
+        # Windows 콘솔 stdin은 기본 인코딩이 cp949/surrogateescape일 수 있어 한국어 JSON이 깨진다 → UTF-8 강제
+        try:
+            sys.stdin.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
         return json.load(sys.stdin)
     with open(path, encoding="utf-8") as f:
         return json.load(f)
