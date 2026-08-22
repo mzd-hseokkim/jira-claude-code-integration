@@ -152,6 +152,7 @@ if (shouldRun('start')) {
     'start',
     'haiku',
     skillStagePrompt('start', [
+      `   ⛔ Skill Step 6의 context 갱신은 반드시 jira-context-update.py 호출로 수행한다 — .jira-context.json을 Edit으로 직접 패치하지 마라 (startAt 등 타임스탬프가 스크립트의 UTC 규약을 따라야 run-log 소요시간이 맞는다).`,
       `3. Skill의 PDCA 권고 블록에서 "스킵 가능"으로 판정된 단계를 pdcaSkippable 배열로 반환하라 (없으면 빈 배열).`,
       `4. cachedIssue의 issuetype 이름만(예: "작업") issueType 필드로 반환하라 — 부가 설명 금지.`,
     ].join('\n')),

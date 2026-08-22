@@ -125,6 +125,16 @@ Workflow 반환 객체의 `status`별로 렌더링한다. 공통: `<completedSte
 수동으로 수정 후 재실행하세요: /jira-task review <TASK-ID>
 ```
 
+## Step 5.5: run-log 기록 (관측용, non-blocking)
+
+렌더링 후 Workflow 반환 객체를 **어떤 status든** run-log에 1줄 기록한다 (retro의 입력 — `tasks/retro-skill-design.md` §2). `script-lookup.md`로 `append-run-log.py`를 해석한 뒤 Bash 1회:
+
+```bash
+printf '%s' '<Workflow 반환 객체 JSON 그대로>' | python3 "$APPEND_RUN_LOG_PY" <TASK-ID> - ".jira-context.json" "docs/run-log"
+```
+
+단계 소요시간은 스크립트가 worktree context의 `<step>At` 타임스탬프로 계산한다. 실패해도 워크플로 결과에는 영향 없음 — 경고 한 줄만 출력.
+
 ## 재개(Resume)
 
 중단 후 `/jira-task auto <TASK-ID>` 재실행이 정본 경로다 — Step 2가 최신 `completedSteps`를 읽어 남은 단계만 실행 계획에 들어간다. (같은 세션에서 스크립트를 수정하며 재시도하는 플러그인 개발 상황에서만 Workflow `resumeFromRunId`를 쓴다.)

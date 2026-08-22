@@ -26,7 +26,7 @@
 
 retro의 가치는 입력 폭에 비례한다. 뒤에 심으면 그만큼 데이터 공백이므로 선행 구현에 끼워 넣는다:
 
-- **run-log 신설**: `docs/run-log/_index.jsonl` (append-only, review-log와 동일한 atomic 규약). auto(Workflow) 완료 시 **launcher 스킬**이 `append-run-log.py`(신규, append-review-log.py 패턴 복제)로 1줄 기록:
+- **run-log 신설** ✅ v0.53.0 구현: `docs/run-log/_index.jsonl` (append-only). auto(Workflow) 완료 시 **launcher 스킬**이 `append-run-log.py`로 1줄 기록 (`innerLoopIterations`는 2번 구현 전까지 null):
   ```json
   { "taskId", "timestamp", "status": "completed|aborted|scope_shortfall|fix_exhausted",
     "failedStage", "stagesRun": [], "skipped": {"user":[],"pdca":[]},
