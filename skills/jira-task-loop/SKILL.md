@@ -8,6 +8,8 @@ allowed-tools:
   - Edit
   - Bash
   - Skill
+  - EnterWorktree
+  - ExitWorktree
 ---
 
 # jira-task-loop: Drain Task Queue
@@ -65,13 +67,11 @@ main에서 동작 확인 후 /jira-task done <TASK-ID>로 마무리하세요.
 
 ### 2-a. worktree로 이동 + auto 실행
 
-**먼저 해당 태스크의 worktree로 이동한다** (`Bash`):
+**먼저 세션 cwd를 해당 태스크의 worktree로 옮긴다** — Bash `cd`가 아니라 **`EnterWorktree({ path: "<worktreePath>" })`**:
 
-```bash
-cd "<worktreePath>"
-```
-
-> ⛔ **main repo cwd에서 auto를 호출하지 마라.** auto가 띄우는 내부 스킬(start/approach/impl/test/review)과 phase-gate 훅은 모두 **cwd의 worktree-local `.jira-context.json`**을 기준으로 동작한다. main repo에서 부르면 start가 이미 존재하는 worktree를 재생성하려다 실패하거나, impl이 main repo 작업 트리를 수정하고, aggregate 최상위가 worktree-local 필드로 오염된다. 2-b(merge)까지 같은 worktree cwd에서 호출한다.
+> ⛔ Bash `cd`는 셸에만 적용된다. auto launcher의 `Read`와 Workflow가 띄우는 stage agent는 **세션 cwd**를 보므로, `cd`만 하면 launcher가 main의 aggregate를 읽고 cwd 불일치로 중단한다(또는 impl이 main 작업 트리를 수정한다). `EnterWorktree`만이 세션 cwd를 바꾼다.
+>
+> EnterWorktree 세션은 격리 모드라 `git -C <repoRoot>` 같은 외부 경로 git 명령과 복잡한 bash를 거부한다. 이 안에서는 auto 호출과 단순 명령만 하고, **merge 전에 반드시 `ExitWorktree({ action: "keep" })`로 main에 복귀**한다 (2-b).
 
 aggregate(절대 경로)를 다시 `Read`해 해당 태스크의 `completedSteps`에 `"review"`가 이미 있으면 auto를 건너뛰고 2-b로.
 
@@ -90,7 +90,9 @@ aggregate(절대 경로)를 다시 `Read`해 해당 태스크의 `completedSteps
 
 ### 2-b. local merge
 
-`Skill({ skill: "jira-integration:jira-local-merge", args: "<TASK-ID>" })`
+먼저 `ExitWorktree({ action: "keep" })`로 main 세션 cwd로 복귀한다 (격리 해제 — merge는 `git -C <repoRoot>`가 필요). 이미 main이면 no-op.
+
+`Skill({ skill: "jira-integration:jira-local-merge", args: "<TASK-ID>" })` — merge 스킬의 worktree 측 작업(pre-flight, 스마트 커밋)은 `git -C "<worktreePath>"`로 수행한다.
 
 완료 후 aggregate를 다시 `Read`해 `"merge"`가 `completedSteps`에 들어왔는지 확인. 없으면 → merge 실패. **base 브랜치 원상 복구가 필수**다 (더러워진 base는 이후 모든 태스크를 오염시킨다):
 
@@ -103,7 +105,7 @@ base가 깨끗하면 `deferredKind: "merge-failed"`로 Step 2.5 격리 후 다�
 
 ### 2.5. 격리 (quarantine)
 
-aggregate의 해당 태스크 항목에 `Edit`으로 기록하고 이번 run의 큐에서 제외한다:
+EnterWorktree 상태면 먼저 `ExitWorktree({ action: "keep" })`로 main에 복귀한다 (다음 태스크의 EnterWorktree는 main에서만 가능). 그다음 aggregate의 해당 태스크 항목에 `Edit`으로 기록하고 이번 run의 큐에서 제외한다:
 
 ```json
 "deferred": true,
@@ -150,7 +152,7 @@ git -C "<worktreePath>" rebase --abort 2>/dev/null || true
 
 ## Step 3: 예외 리포트 (Completion Summary)
 
-큐 소진 시, 먼저 `cd "<REPO_ROOT>"`로 복귀한 뒤 **사람의 결정 목록** 형태로 보고한다. 클린 통과 줄의 수치는 merge 스킬이 Jira 코멘트에 쓴 commit/file/line 카운트를 재사용:
+큐 소진 시, EnterWorktree 상태면 `ExitWorktree({ action: "keep" })`로 main에 복귀한 뒤 **사람의 결정 목록** 형태로 보고한다. 클린 통과 줄의 수치는 merge 스킬이 Jira 코멘트에 쓴 commit/file/line 카운트를 재사용:
 
 ```
 ─────────────────────────────────────────
@@ -193,7 +195,7 @@ printf '%s' '{"status":"loop-run","passed":[<통과 TASK-ID>],"quarantined":[{"t
 1. **연속 동일-단계 실패 2건** — 서로 다른 태스크가 같은 `failedStage`(또는 같은 deferredKind가 `merge-failed`)로 연속 실패.
 2. **인프라 시그니처** — auto/merge 실패 사유에 다음이 포함: HTTP 401/403·`Unauthorized`·`authentication`, MCP 연결 실패(`mcp`+`connect`/`not available`), base 브랜치 checkout/상태 복구 실패. 목록은 보수적으로 짧게 유지 — 과잉 매칭이 격리의 가치를 죽인다.
 
-전체 중단 시 `cd "<REPO_ROOT>"`로 복귀한 뒤 보고:
+전체 중단 시 EnterWorktree 상태면 `ExitWorktree({ action: "keep" })`로 main에 복귀한 뒤 보고:
 
 ```
 ❌ Loop 중단 (시스템 실패 의심): <판정 근거 — 연속 <단계> 실패 2건 | 인프라 시그니처 "<매칭 문자열>">
