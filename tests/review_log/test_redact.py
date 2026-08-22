@@ -1,21 +1,25 @@
 """단위 테스트: scripts/review_log/redact.py
 
 실행:
-    python -m unittest discover tests/review_log
-    (레포 루트에서 실행. sys.path에 scripts/ 디렉터리가 포함되어야 함)
+    python -m unittest tests.review_log.test_redact
+    python -m unittest discover tests
+    (레포 루트에서 실행)
 """
 
-import sys
+import importlib.util
 import os
 import unittest
 
-# scripts/ 디렉터리를 sys.path에 추가 (패키지 import 경로 확보)
+# discover 시 tests/review_log가 top-level 패키지 "review_log"로 먼저 등록되어
+# scripts/review_log를 가리는 문제를 피하기 위해, sys.path 조작 대신
+# 파일 경로에서 직접 모듈을 로드한다.
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_SCRIPTS_DIR = os.path.join(_REPO_ROOT, "scripts")
-if _SCRIPTS_DIR not in sys.path:
-    sys.path.insert(0, _SCRIPTS_DIR)
-
-from review_log.redact import redact, REDACT_PATTERNS  # noqa: E402
+_REDACT_PATH = os.path.join(_REPO_ROOT, "scripts", "review_log", "redact.py")
+_spec = importlib.util.spec_from_file_location("_redact_under_test", _REDACT_PATH)
+_redact_module = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_redact_module)
+redact = _redact_module.redact
+REDACT_PATTERNS = _redact_module.REDACT_PATTERNS
 
 
 class TestRedactPatterns(unittest.TestCase):
