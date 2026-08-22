@@ -101,7 +101,7 @@ Critical / Warning / Info 3단계로 분류. 한국어로 작성.
 
 **분량 상한**: 전체 200줄 이내. findings는 severity별 상위 10건까지, Positive Notes는 3건 이내. 각 항목은 `파일:라인 — 한 줄 요약` + 근거 1문장으로 고정한다 (항목당 문단 금지).
 
-**맨 앞에 구조화 필드 블록을 그대로 출력한다** — 호출자(`jira-task-auto`)가 이 값을 읽어 자동 판정한다. 본문 문구 정규식 파싱에 의존하지 않게 하는 것이 목적이므로 형식을 바꾸지 마라. Gap Analysis를 스킵했으면 `matchRate: null`.
+**맨 앞에 구조화 필드 블록을 그대로 출력한다** — 호출 측(`jira-task-auto` wrapper 등)이 이 값을 구조화 반환의 `metrics`로 그대로 옮겨 자동 판정에 쓰고, 블록 자체는 리포트·review-log의 정본 기록이다. 형식을 바꾸지 마라. Gap Analysis를 스킵했으면 `matchRate: null`.
 
 ```
 <!-- review-metrics

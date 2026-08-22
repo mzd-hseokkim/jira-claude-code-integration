@@ -52,7 +52,7 @@ Workflow는 **백그라운드로 실행**되고 완료 시 task notification이 
 
 | 파일 | 상태 | 내용 |
 |---|---|---|
-| `scripts/workflows/auto.workflow.js` | 신규 | 오케스트레이터 스크립트 (아래 스켈레톤) |
+| `scripts/auto.workflow.js` | 신규 | 오케스트레이터 스크립트 (아래 스켈레톤) |
 | `skills/jira-task-auto/SKILL.md` | 축소 (374→~80줄) | thin launcher + 메시지 렌더링 템플릿 |
 | `skills/jira-task-auto/refs/review-wrapper.md` | 축소 | wrapper 근거 서술 중 제어 흐름 관련 삭제, triage 임계값 근거만 유지 |
 | `skills/_shared/script-lookup.md` | 무수정 | `auto.workflow.js`도 동일 lookup 규약 사용 |
@@ -259,7 +259,7 @@ frontmatter `allowed-tools`에 `Workflow` 추가, `Agent` 제거.
 
 ## 마이그레이션 / 테스트 계획
 
-1. `scripts/workflows/auto.workflow.js` 작성 + SKILL.md 축소. `plugin.json` **v0.52.0**.
+1. `scripts/auto.workflow.js` 작성 + SKILL.md 축소. `plugin.json` **v0.52.0**.
 2. 단위 검증: 더미 태스크 1건으로 `auto` 단독 실행 — (a) 전 단계 신규, (b) `completedSteps` 부분 완료 재개, (c) `--skip test`, (d) review 게이트 미통과 → fix loop 1회, (e) scope shortfall bail.
 3. 통합 검증: `loop` 무수정 상태로 2태스크 큐 소진 — loop→auto(Workflow) 경유 시 notification 대기·요약 렌더링 확인.
 4. 회귀 체크리스트: `tasks/harness-improvement-review.md`의 "유지할 것" 목록 — 서브에이전트 격리, context 핸드오프, cache-first fetch가 stage 스킬 레벨에서 그대로 동작하는지.

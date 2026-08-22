@@ -69,7 +69,7 @@ inner loop가 수렴을 흡수하므로 바깥 상한은 2회 유지가 아니�
 
 | 파일 | 변경 |
 |---|---|
-| `scripts/workflows/auto.workflow.js` (1번 선행 시) 또는 `skills/jira-task-auto/SKILL.md` | fix prompt 교체 (inner loop 지시 + fixSelfCheck 계약), bail 분기 추가 |
+| `scripts/auto.workflow.js` (1번 선행 시) 또는 `skills/jira-task-auto/SKILL.md` | fix prompt 교체 (inner loop 지시 + fixSelfCheck 계약), bail 분기 추가 |
 | `skills/jira-task-review/SKILL.md` + `agents/jira-reviewer.md` | delta 모드 입력·범위 규칙 추가 (마커 `[review-delta-mode]` 또는 prompt 인자) |
 | `scripts/jira-context-update.py` | `_AGGREGATE_POLLUTION_KEYS`에 `fixSelfCheck` 추가 |
 | `scripts/append-review-log.py` | `deltaReview` 필드 수용 |

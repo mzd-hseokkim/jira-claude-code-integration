@@ -82,7 +82,7 @@ fast path의 리뷰 입력은 표준과 동일 (`implSelfCheck` 인용, review-m
 
 | 파일 | 변경 |
 |---|---|
-| `scripts/workflows/auto.workflow.js` | plan 시점 L1 분기 + 통합 agent prompt + escalation 전환 로직 |
+| `scripts/auto.workflow.js` | plan 시점 L1 분기 + 통합 agent prompt + escalation 전환 로직 |
 | `skills/jira-task-start/SKILL.md` | "fast path 모드에서 Jira 코멘트·PDCA 생략" 마커 지원 (`[fastpath]` 인자 등 — 최소 침습) |
 | approach/impl/test SKILL.md | 동일 — 코멘트 유예 마커만 (절차 본문 무수정) |
 | `skills/jira-task-auto/SKILL.md` (launcher) | 실행 계획 표시에 fast path 여부 1줄 |

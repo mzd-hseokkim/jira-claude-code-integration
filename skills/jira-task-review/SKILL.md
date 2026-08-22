@@ -109,7 +109,7 @@ subagent 반환값을 `docs/review/<TASK-ID>.review.md`에 저장. template cont
 
 `templates/review.template.md`를 Read해서 contract(필수: Summary, Gap Analysis, Lint & Format, Code Quality Findings, Positive Notes)를 따른다.
 
-**subagent 반환 맨 앞의 `<!-- review-metrics ... -->` 블록을 파일 최상단에 그대로 보존한다.** `jira-task-auto`의 Scope Shortfall Triage가 이 블록을 읽는다 — 누락하면 판정이 불가능해진다. 정형화 과정에서 본문 문구를 다듬는 것은 허용되지만 이 블록의 키·형식은 변경 금지. 바로 뒤의 `<!-- review-timings ... -->` 블록도 있으면 함께 보존한다 (Step 4.7이 review-log에 기록).
+**subagent 반환 맨 앞의 `<!-- review-metrics ... -->` 블록을 파일 최상단에 그대로 보존한다.** `jira-task-auto`(v0.52.0+)는 같은 값을 wrapper의 구조화 반환으로 받지만, 이 블록은 리포트 열람·대시보드·review-log의 정본 기록이다 — 누락 금지. 정형화 과정에서 본문 문구를 다듬는 것은 허용되지만 이 블록의 키·형식은 변경 금지. 바로 뒤의 `<!-- review-timings ... -->` 블록도 있으면 함께 보존한다 (Step 4.7이 review-log에 기록).
 
 ### Step 4.7: Append Review Log (best-effort)
 
