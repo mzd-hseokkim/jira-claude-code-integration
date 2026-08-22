@@ -113,6 +113,20 @@ Workflow 반환 객체의 `status`별로 렌더링한다. 공통: `<completedSte
 3. impl/test/review 단계만 수동 재실행 → 단계별로 `/jira-task <단계> <TASK-ID>` 호출
 ```
 
+**`fix_unconverged`** (fix agent의 inner sensor loop이 5회 내 green 실패 — 재리뷰 없이 중단):
+
+```
+❌ Auto 모드 중단: 리뷰 지적 수정이 lint/typecheck/관련 테스트로 수렴하지 않았습니다 (inner loop <innerLoopIterations>회).
+
+마지막 센서 출력:
+<sensorSummary>
+
+판단: computational sensor로 잡히지 않는 종류의 문제(설계 갭 등)로 보입니다. 사용자 결정에 위임합니다.
+현재 진행 상황: <completedSteps>
+
+worktree에서 직접 수정 후 재실행하세요: /jira-task test <TASK-ID> → /jira-task review <TASK-ID>
+```
+
 **`fix_exhausted`**:
 
 ```

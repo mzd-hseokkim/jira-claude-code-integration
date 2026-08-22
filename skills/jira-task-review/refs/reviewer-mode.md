@@ -24,6 +24,21 @@
 
 **제약**: sub-agent는 일반적으로 추가 `Agent` 호출 권한이 없으므로 self-mode를 강제하지 않으면 무조건 실패한다 — `[review-self-mode]` 마커가 없는데 `Agent` 도구가 부재한 환경에서 실행되면 즉시 에러로 중단(fallback 금지).
 
+### Delta Mode (`[review-delta-mode]` — Mode B 전용 수식자)
+
+**조건**: `[review-self-mode]`와 함께 `[review-delta-mode]` 마커가 있는 경우 — `jira-task-auto`의 fix loop 재리뷰. 1회차 리뷰는 항상 full이며, 이 마커 없이 delta로 줄이지 않는다.
+
+**입력**: 직전 `docs/review/<TASK-ID>.review.md` + worktree `.jira-context.json`의 `fixSelfCheck` (`files` = fix agent가 수정한 파일, `lint`/`typecheck`/`relatedTests` 센서 결과).
+
+**재검증 범위** — 다음만 Default-FAIL로 다시 검증한다:
+1. 직전 리뷰의 Critical findings 전부
+2. 직전 Gap Analysis 미충족 항목 전부
+3. `fixSelfCheck.files`에 든 파일의 diff 라인 (새 findings 생성은 이 파일들에 한정)
+
+그 외 직전 리뷰에서 통과한 항목은 **승계**한다 — 리포트에 `(직전 리뷰 승계)`로 표기하고 재확인하지 않는다. 승계는 이미 증거 확인을 거친 판정이므로 Default-FAIL 계약 위반이 아니다. Lint는 `implSelfCheck.lint`(fix agent가 갱신) 인용.
+
+**출력**: Mode B와 동일 구조. `review-metrics`의 카운트는 승계 항목 + 재검증 결과를 **합산**한 현재 상태 (delta 범위만 세지 않는다 — auto 게이트가 그대로 읽는다). Step 4.7 review-log에 `deltaReview: true`를 포함한다.
+
 ## Mode A — Subagent 호출 (delegate)
 
 **반드시 `Agent` 도구로 `subagent_type: "jira-reviewer"`, `model: "opus"`를 명시하여 호출**한다. main 세션이 직접 1-4를 수행하는 것을 금지한다 (self-praise bias 차단).

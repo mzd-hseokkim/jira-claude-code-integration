@@ -71,11 +71,14 @@ const REVIEW_SCHEMA = {
 
 const FIX_SCHEMA = {
   type: 'object',
-  required: ['step', 'result', 'cwdVerified', 'completedStepsAfter', 'testResult'],
+  required: ['step', 'result', 'cwdVerified', 'completedStepsAfter', 'converged', 'innerLoopIterations', 'testResult'],
   properties: {
     ...STAGE_SCHEMA.properties,
-    filesEdited: { type: 'integer' },
-    testResult: { type: 'string', enum: ['success', 'failed'] },
+    filesEdited: { type: 'array', items: { type: 'string' } },
+    converged: { type: 'boolean' },                 // inner sensor loop이 green으로 끝났는가
+    innerLoopIterations: { type: 'integer' },
+    sensorSummary: { type: ['string', 'null'] },    // 미수렴 시 마지막 sensor 출력 요약 (bail 메시지용)
+    testResult: { type: 'string', enum: ['success', 'failed', 'skipped'] },  // 전체 스위트 (수렴 후 1회)
   },
 }
 
@@ -214,12 +217,15 @@ if (substeps.length) {
 
 // ---------- 4. review + triage + fix loop ----------
 
-function reviewPrompt() {
+function reviewPrompt(delta) {
   return [
     guardHeader,
     ``,
-    `[review-self-mode]`,
+    `[review-self-mode]${delta ? ' [review-delta-mode]' : ''}`,
     ``,
+    delta
+      ? `이번 리뷰는 fix loop 재리뷰다. [review-delta-mode] 규칙(reviewer-mode.md)에 따라 직전 리뷰의 Critical/미충족 Gap 항목과 fixSelfCheck.files에 든 파일만 재검증하고, 나머지 항목은 직전 판정을 승계한다.`
+      : ``,
     `Jira task ${taskId}의 review 단계를 수행하라. \`jira-integration:jira-task-review\` Skill을 인자 "${taskId}"로 호출한다.`,
     ``,
     `주의: 본 wrapper는 이미 격리된 sub-agent 컨텍스트이므로 추가 Agent 도구 사용 권한이 없다.`,
@@ -233,29 +239,46 @@ function reviewPrompt() {
   ].join('\n')
 }
 
+// 설계: tasks/sensor-loop-design.md — 루프 안쪽엔 초 단위 computational sensor, 바깥엔 분 단위 판정.
 function fixPrompt() {
   return [
     guardHeader,
     ``,
-    `Jira task ${taskId}의 리뷰 지적사항을 수정하고 테스트를 재실행하라.`,
+    `Jira task ${taskId}의 리뷰 지적사항을 수정하고, 싼 센서(lint/typecheck/관련 테스트)로 수렴시킨 뒤 전체 테스트를 1회 재실행하라.`,
     ``,
+    `## A. 수정 대상 식별`,
     `1. \`docs/review/${taskId}.review.md\`를 Read로 읽는다.`,
     `2. Critical 항목과 Gap Analysis 미충족 항목을 식별한다 (게이트를 막는 것은 이 둘뿐). Warning은 같은 파일을 이미 수정 중이라 저비용으로 처리되는 경우에만 함께 고치고, 이를 위해 추가 파일을 열지 마라.`,
-    `3. 지적된 이슈를 Edit으로 코드에 직접 반영한다. 수정 범위는 리뷰 지적 사항에 한정 — 무관한 리팩토링 금지.`,
-    `3-b. 코드를 수정했으면 lint를 배치 1회 재실행한다 (impl Step 2.5와 동일 규칙: 선언된 도구만, \`npx --no-install\`, 변경 파일 전체를 한 번에). 결과로 worktree \`.jira-context.json\`의 \`implSelfCheck.lint\`와 \`ranAt\`을 Edit으로 갱신한다 (\`implSelfCheck\` 키가 없으면 생성) — 재리뷰가 이 기록을 인용한다.`,
-    `4. \`.jira-context.json\`을 Read로 읽고, completedSteps에서 "test"와 "review"를 제거한 뒤 Edit으로 다시 쓴다 (재실행 가능하게).`,
-    `5. \`jira-integration:jira-task-test\` Skill을 인자 "${taskId}"로 호출하여 테스트를 재실행한다 (수정된 코드 컨텍스트를 그대로 재사용). 결과를 testResult로 반환하라.`,
+    ``,
+    `## B. Inner sensor loop (최대 5회 — jira-task-test Skill을 부르지 마라)`,
+    `회차마다: 수정(Edit) → 아래 센서 실행 → 실패 출력을 다음 수정의 입력으로 → 전부 green이면 종료.`,
+    `- lint: impl Step 2.5와 동일 규칙 (선언된 도구만, \`npx --no-install\`, 변경 파일 전체를 배치 1회). 회차당 1회, 파일 저장마다 돌리지 마라.`,
+    `- typecheck: 프로젝트가 선언한 것만 (tsc 등). 없으면 skipped.`,
+    `- 관련 테스트만 (전체 스위트 금지): vitest → \`vitest related <변경파일> --run\` / jest → \`jest --findRelatedTests <변경파일>\` / pytest → \`pytest --lf\` / playwright → 직전 실패 spec만 \`--grep\` 또는 파일 지정 / 선별 불가(custom) → 직전 실패 테스트 목록만, 그것도 불가면 이 항목 skipped.`,
+    `5회 안에 green이 안 되면 멈추고 converged=false, 마지막 센서 출력을 sensorSummary(3줄 이내)로 반환하라 — 전체 테스트·재리뷰로 넘어가지 마라.`,
+    ``,
+    `## C. 기록`,
+    `worktree \`.jira-context.json\`에 Edit으로 기록 (aggregate 금지):`,
+    `  "fixSelfCheck": { "iterations": <N>, "files": [<수정 파일 상대경로>], "lint": {tool, files, errors, warnings}, "typecheck": "pass|fail|skipped", "relatedTests": "pass|fail|skipped", "ranAt": "<UTC ISO8601 Z>" }`,
+    `\`implSelfCheck.lint\`와 \`ranAt\`도 마지막 lint 결과로 갱신한다 (재리뷰가 인용하는 대상).`,
+    ``,
+    `## D. 전체 스위트 1회 (수렴 후에만)`,
+    `1. \`.jira-context.json\`의 completedSteps에서 "test"와 "review"를 제거한다 (Edit).`,
+    `2. \`jira-integration:jira-task-test\` Skill을 인자 "${taskId}"로 호출한다 (리포트·Jira 코멘트는 이 1회만 갱신). 결과를 testResult로 반환.`,
     ``,
     returnFooter,
+    `- filesEdited에는 수정한 파일 상대경로 목록, innerLoopIterations에는 B의 회차 수를 넣어라.`,
   ].join('\n')
 }
 
 let fixAttempts = 0
+let innerLoopIterations = 0
 let lastMetrics = null
 
 while (shouldRun('review')) {
   const reviewModel = resolveReviewModel()
-  const g = await runStage('review', reviewModel, reviewPrompt(), 'Review', REVIEW_SCHEMA)
+  // 1회차는 항상 full 리뷰, fix 이후 재리뷰는 delta 모드 (직전 Critical/미충족 Gap + 수정 파일만 재검증)
+  const g = await runStage('review', reviewModel, reviewPrompt(fixAttempts > 0), 'Review', REVIEW_SCHEMA)
   if (!g.ok) return abort('review', g.reason)
 
   const m = g.r.metrics
@@ -272,19 +295,27 @@ while (shouldRun('review')) {
   // matchRate < 70% 또는 Critical ≥ 3 → 단일 fix agent로 못 메우는 scope 누락 → 사용자 위임.
   // (구버전의 Triage Parse Bail은 schema 강제 반환으로 구조적으로 소멸 — 파싱 실패 경로 없음)
   if ((m.matchRate !== null && m.matchRate < 70) || m.criticalCount >= 3) {
-    return { status: 'scope_shortfall', metrics: m, completedSteps: [...done], skipped: skippedInfo(), fixAttempts }
+    return { status: 'scope_shortfall', metrics: m, completedSteps: [...done], skipped: skippedInfo(), fixAttempts, innerLoopIterations }
   }
 
   if (fixAttempts >= 2) {
-    return { status: 'fix_exhausted', metrics: m, completedSteps: [...done], skipped: skippedInfo(), fixAttempts }
+    return { status: 'fix_exhausted', metrics: m, completedSteps: [...done], skipped: skippedInfo(), fixAttempts, innerLoopIterations }
   }
 
   fixAttempts++
-  log(`review 게이트 미통과 (시도 ${fixAttempts}/2) — fix+test sub-agent 위임`)
+  log(`review 게이트 미통과 (시도 ${fixAttempts}/2) — fix sub-agent 위임 (inner sensor loop → 전체 테스트 1회)`)
 
   const f = await runStage('review-fix', 'sonnet', fixPrompt(), 'Fix', FIX_SCHEMA)
   if (!f.ok) return abort('review-fix', f.reason)
-  if (f.r.testResult !== 'success') return abort('review-fix', `수정 후 테스트 실패: ${f.r.failureReason || '사유 미보고'}`)
+  innerLoopIterations += f.r.innerLoopIterations || 0
+  if (!f.r.converged) {
+    // inner loop 미수렴 = computational sensor로 안 잡히는 종류의 문제 → 재리뷰 없이 사용자 위임
+    return {
+      status: 'fix_unconverged', metrics: m, completedSteps: [...done], skipped: skippedInfo(),
+      fixAttempts, innerLoopIterations, sensorSummary: f.r.sensorSummary || null,
+    }
+  }
+  if (f.r.testResult !== 'success') return abort('review-fix', `수정 후 전체 테스트 실패: ${f.r.failureReason || '사유 미보고'}`)
   done.delete('test')
   if (f.r.completedStepsAfter.includes('test')) done.add('test')
 }
@@ -296,5 +327,6 @@ return {
   completedSteps: [...done],
   skipped: skippedInfo(),
   fixAttempts,
+  innerLoopIterations,
   metrics: lastMetrics,
 }

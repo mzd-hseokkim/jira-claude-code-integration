@@ -1,7 +1,7 @@
 # Fix Loop의 Computational Sensor 재구성 — 설계
 
 > 개선안 2번. `tasks/loop-engineering-roadmap.md` 참조. 의존: 1번(auto Workflow화) 권장 — fix prompt 수정 위치가 스크립트냐 SKILL.md냐의 차이일 뿐, 독립 구현도 가능.
-> 상태: 설계 (미구현)
+> 상태: 구현됨 (v0.54.0) — 검증은 fix loop이 실제 발생하는 태스크에서 수행
 
 ---
 

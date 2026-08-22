@@ -20,7 +20,7 @@ allowed-tools:
 
 Mode A/B 분기 규칙과 Mode A subagent prompt 전문은 `Read skills/jira-task-review/refs/reviewer-mode.md`로 참조.
 
-요약: `[review-self-mode]` 마커가 없으면 Mode A(Agent 위임, opus 강제), 있으면 Mode B(wrapper agent가 직접 수행). self-praise / 사각지대 누락 차단이 목적.
+요약: `[review-self-mode]` 마커가 없으면 Mode A(Agent 위임, opus 강제), 있으면 Mode B(wrapper agent가 직접 수행). self-praise / 사각지대 누락 차단이 목적. Mode B에 `[review-delta-mode]`가 함께 오면 fix loop 재리뷰 — 직전 Critical/미충족 Gap + 수정 파일만 재검증하고 나머지는 승계 (같은 문서의 Delta Mode 단락).
 
 ## Workflow
 
@@ -116,7 +116,7 @@ subagent 반환값을 `docs/review/<TASK-ID>.review.md`에 저장. template cont
 Step 4에서 저장한 review 결과를 `docs/review-log/` 로그에 append한다. 실패는 워크플로를 차단하지 않는다.
 
 > **선행 조건**: Step 3에서 받은 subagent 결과를 `SUBAGENT_RESULT_JSON` 변수(JSON 문자열)에 보관해야 한다.
-> subagent 반환값 구조: `{ result: "Approve"|"Request Changes"|"Needs Discussion", findings: [{severity, file, line, category, message}, ...], timings: {gapSec, lintSec, qualitySec, totalSec} | 생략, ... }`
+> subagent 반환값 구조: `{ result: "Approve"|"Request Changes"|"Needs Discussion", findings: [{severity, file, line, category, message}, ...], timings: {gapSec, lintSec, qualitySec, totalSec} | 생략, deltaReview: true | 생략, ... }` — `deltaReview`는 `[review-delta-mode]`로 수행했을 때만 `true`.
 > `timings`는 subagent 산출물의 `review-timings` 블록 값에 `totalSec`(아래에서 계산)을 더해 구성한다. 블록이 없으면 키 생략.
 
 두 번의 Bash 호출로 수행한다 (①의 출력을 봐야 ②를 구성할 수 있으므로 한 호출로 합치지 마라):

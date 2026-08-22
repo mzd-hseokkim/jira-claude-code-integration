@@ -106,6 +106,8 @@ def main():
     }
     if isinstance(raw.get("timings"), dict):
         entry["timings"] = raw["timings"]
+    if raw.get("deltaReview") is True:
+        entry["deltaReview"] = True  # fix loop 재리뷰(delta 모드) — retro에서 full/delta 판정 품질 분리 추적
     if not redact_import_ok:
         entry["redactStatus"] = "import-failed"
 

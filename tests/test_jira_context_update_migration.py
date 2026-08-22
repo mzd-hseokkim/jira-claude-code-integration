@@ -106,6 +106,8 @@ class StripAggregatePollutionTest(unittest.TestCase):
                 "startedAt": "2026-01-01T00:00:00Z",
                 "cachedIssue": {"key": "T-1"},
                 "parentEpic": "T-0",
+                "implSelfCheck": {"planMatched": "1/1"},
+                "fixSelfCheck": {"iterations": 2},
                 "tasks": [{"taskId": "T-1", "completedSteps": ["init"]}],
             }
         )
@@ -113,7 +115,8 @@ class StripAggregatePollutionTest(unittest.TestCase):
         self.assertIn("aggregate updated", result)
         with open(path, encoding="utf-8") as f:
             ctx = json.load(f)
-        for key in ("status", "completedSteps", "startedAt", "cachedIssue", "parentEpic"):
+        for key in ("status", "completedSteps", "startedAt", "cachedIssue", "parentEpic",
+                    "implSelfCheck", "fixSelfCheck"):
             self.assertNotIn(key, ctx)
         # legit aggregate fields preserved, task entry updated normally
         self.assertEqual(ctx["initialized"], "2026-01-01T00:00:00Z")
