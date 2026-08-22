@@ -61,7 +61,7 @@ Worktree: <worktree 절대경로 — cwd가 워크트리면 cwd, 메인 레포�
 
 2. **Lint & Format (인용 우선)**: worktree-local .jira-context.json의 implSelfCheck.lint를 먼저 확인한다.
    - 있으면 **lint를 재실행하지 않는다**. 그 기록을 Lint & Format 표에 인용하고 출처를 "impl self-check 인용"으로 표기한다 (lint는 커밋 시점 1회 원칙 — impl 단계가 그 1회).
-   - 없으면 fallback으로 직접 실행: 프로젝트가 선언한 도구만 (package.json의 dependencies/devDependencies 선언 또는 node_modules/<tool> 존재로 판정 — npx가 자동 설치해버리므로 실행 성공 여부로 판정 금지). Node.js는 npx --no-install eslint, Python은 ruff check + ruff format --check(fallback flake8), Java/Kotlin(pom.xml/build.gradle 있을 때)은 checkstyle, 포맷터는 설정 파일(.prettierrc*/prettier.config.*/package.json의 prettier 키)이 있을 때만 실행하고 없으면 "Skipped (prettier 설정 없음)"으로 기록. 변경 파일 전체를 인자로 한 번에 실행 — 파일별 반복 실행 금지. 예: npx --no-install eslint <file1> ... <fileN>
+   - 없으면 fallback으로 직접 실행: 도구 판정은 `bash <scripts>/detect-lint.sh` 1회로 (출력 LINT/FORMAT/NONE — 선언된 도구만 판정). 출력된 명령에 변경 파일 전체를 인자로 한 번에 실행 — 파일별 반복 실행 금지. NONE이면 "Skipped (선언된 도구 없음)"으로 기록.
 
    lint 실패가 있어도 리뷰를 중단하지 않는다. 포맷터 결과는 Lint & Format 표에만 남기고 findings로 승격하지 않는다.
 

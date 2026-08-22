@@ -93,6 +93,35 @@ class StripAggregatePollutionTest(unittest.TestCase):
         f.close()
         return Path(f.name)
 
+    def test_patch_applies_to_worktree_only_and_fills_ranAt(self):
+        wt = self._write({"taskId": "T-1", "completedSteps": ["start"]})
+        agg = self._write({"initialized": "x", "tasks": [{"taskId": "T-1", "completedSteps": ["init"]}]})
+        patch = {"implSelfCheck": {"planMatched": "1/1", "lint": {"tool": "none"}}}
+        out = module.update_context(str(wt), "T-1", "impl", "-", "2026-01-02T00:00:00Z", patch)
+        self.assertIn('completedSteps=["start", "impl"]', out)
+        module.update_context(str(agg), "T-1", "impl", "-", "2026-01-02T00:00:00Z", patch)
+        with open(wt, encoding="utf-8") as f:
+            w = json.load(f)
+        with open(agg, encoding="utf-8") as f:
+            a = json.load(f)
+        self.assertEqual(w["implSelfCheck"]["ranAt"], "2026-01-02T00:00:00Z")
+        self.assertNotIn("implSelfCheck", a)
+        self.assertNotIn("implSelfCheck", a["tasks"][0])
+
+    def test_record_only_step_dash_patches_without_step(self):
+        wt = self._write({"taskId": "T-1", "completedSteps": ["start", "impl", "test", "review"]})
+        agg = self._write({"initialized": "x", "tasks": [{"taskId": "T-1", "completedSteps": ["init"]}]})
+        patch = {"completedSteps": ["start", "impl"], "fixSelfCheck": {"iterations": 2}}
+        module.update_context(str(wt), "T-1", "-", "-", "2026-01-02T00:00:00Z", patch)
+        module.update_context(str(agg), "T-1", "-", "-", "2026-01-02T00:00:00Z", patch)
+        with open(wt, encoding="utf-8") as f:
+            w = json.load(f)
+        with open(agg, encoding="utf-8") as f:
+            a = json.load(f)
+        self.assertEqual(w["completedSteps"], ["start", "impl"])
+        self.assertNotIn("-At", json.dumps(w))
+        self.assertEqual(a["tasks"][0]["completedSteps"], ["init"])
+
     def test_polluted_aggregate_is_self_healed_on_update(self):
         path = self._write(
             {

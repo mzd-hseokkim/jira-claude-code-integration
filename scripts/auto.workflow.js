@@ -22,6 +22,7 @@ const {
   breakdownLevel = null,
   issueType: initialIssueType = null,
   ctxFiles = [],
+  scriptsDir = null,   // 플러그인 scripts/ 절대 경로 — launcher가 lookup을 1회 끝내고 넘긴다 (stage agent의 lookup 의식 제거)
 } = args
 
 const worktreeCtx = ctxFiles[0] || `${worktreePath}/.jira-context.json`
@@ -84,15 +85,23 @@ const FIX_SCHEMA = {
 
 // ---------- 공통 프롬프트 조각 ----------
 
+const scriptPath = (name) => (scriptsDir ? `${scriptsDir}/${name}` : name)
+
 const guardHeader = [
   `먼저 pwd로 현재 디렉터리를 확인하라. "${worktreePath}"가 아니면 어떤 작업도 수행하지 말고`,
-  `cwdVerified=false, result=failed, failureReason="cwd mismatch"로 즉시 반환하라.`,
-  `일치하면 cwdVerified=true.`,
-].join(' ')
+  `cwdVerified=false, result=failed, failureReason="cwd mismatch"로 즉시 반환하라. 일치하면 cwdVerified=true.`,
+  ``,
+  `호출 비용 규칙 (도구 호출 1회 ≈ 10초 — 의식 호출을 줄여라):`,
+  `- 셸 명령은 Bash 도구만 쓴다. PowerShell 도구·즉석 스크립트 작성 금지.`,
+  scriptsDir
+    ? `- 플러그인 스크립트는 전부 "${scriptsDir}/" 아래에 있다 (jira-context-update.py, jira-attach.sh, append-review-log-wrapper.sh, detect-lint.sh). Skill 본문의 script-lookup.md Read·lookup 블록·ls 확인을 전부 생략하고 이 절대 경로를 바로 쓴다.`
+    : `- 플러그인 스크립트는 Skill 본문의 script-lookup 규약으로 1회만 해석한다.`,
+  `- 이 worktree의 .jira-context.json은 "${worktreeCtx}"다 — 경로를 찾기 위한 ls/find 금지.`,
+].join('\n')
 
 const returnFooter = [
   `완료 후 StructuredOutput으로만 결과를 반환하라:`,
-  `- 종료 직전 "${worktreeCtx}"를 Read로 다시 읽어, completedSteps 배열의 현재 값을 completedStepsAfter에 그대로 옮겨 적어라 (기억에 의존하지 말 것).`,
+  `- completedStepsAfter에는 jira-context-update.py 실행 출력의 \`completedSteps=[...]\` 값을 그대로 옮겨 적는다 (파일 재-Read 금지, 기억에 의존 금지).`,
   `- 산출물 본문(approach 문서 내용, 코드 diff, 테스트 로그)을 반환하지 마라 — 부모 컨텍스트 오염 방지.`,
 ].join('\n')
 
@@ -252,18 +261,18 @@ function fixPrompt() {
     ``,
     `## B. Inner sensor loop (최대 5회 — jira-task-test Skill을 부르지 마라)`,
     `회차마다: 수정(Edit) → 아래 센서 실행 → 실패 출력을 다음 수정의 입력으로 → 전부 green이면 종료.`,
-    `- lint: impl Step 2.5와 동일 규칙 (선언된 도구만, \`npx --no-install\`, 변경 파일 전체를 배치 1회). 회차당 1회, 파일 저장마다 돌리지 마라.`,
+    `- lint: \`bash ${scriptPath('detect-lint.sh')}\` 출력의 도구만 (NONE이면 skipped), 변경 파일 전체를 배치 1회. 회차당 1회, 파일 저장마다 돌리지 마라. 탐지를 위한 별도 cat/grep/ls 금지.`,
     `- typecheck: 프로젝트가 선언한 것만 (tsc 등). 없으면 skipped.`,
     `- 관련 테스트만 (전체 스위트 금지): vitest → \`vitest related <변경파일> --run\` / jest → \`jest --findRelatedTests <변경파일>\` / pytest → \`pytest --lf\` / playwright → 직전 실패 spec만 \`--grep\` 또는 파일 지정 / 선별 불가(custom) → 직전 실패 테스트 목록만, 그것도 불가면 이 항목 skipped.`,
     `5회 안에 green이 안 되면 멈추고 converged=false, 마지막 센서 출력을 sensorSummary(3줄 이내)로 반환하라 — 전체 테스트·재리뷰로 넘어가지 마라.`,
     ``,
-    `## C. 기록`,
-    `worktree \`.jira-context.json\`에 Edit으로 기록 (aggregate 금지):`,
-    `  "fixSelfCheck": { "iterations": <N>, "files": [<수정 파일 상대경로>], "lint": {tool, files, errors, warnings}, "typecheck": "pass|fail|skipped", "relatedTests": "pass|fail|skipped", "ranAt": "<UTC ISO8601 Z>" }`,
-    `\`implSelfCheck.lint\`와 \`ranAt\`도 마지막 lint 결과로 갱신한다 (재리뷰가 인용하는 대상).`,
+    `## C. 기록 (Bash 1회 — Edit/date 호출 금지)`,
+    `\`.jira-context.json\`의 completedSteps에서 "test"와 "review"를 제거하면서 self-check를 한 번에 기록한다:`,
+    `  python3 "${scriptPath('jira-context-update.py')}" ${taskId} "-" "-" "${worktreeCtx}" --patch '{"completedSteps":<test·review를 뺀 배열>,"fixSelfCheck":{"iterations":<N>,"files":[<수정 파일>],"lint":{"tool":..,"files":..,"errors":..,"warnings":..},"typecheck":"pass|fail|skipped","relatedTests":"pass|fail|skipped"},"implSelfCheck":{"planMatched":"<유지>","lint":{<마지막 lint 결과>}}}'`,
+    `(ranAt은 스크립트가 채운다. aggregate에는 기록하지 않는다.)`,
     ``,
     `## D. 전체 스위트 1회 (수렴 후에만)`,
-    `1. \`.jira-context.json\`의 completedSteps에서 "test"와 "review"를 제거한다 (Edit).`,
+    `1. (C에서 completedSteps 정리 완료)`,
     `2. \`jira-integration:jira-task-test\` Skill을 인자 "${taskId}"로 호출한다 (리포트·Jira 코멘트는 이 1회만 갱신). 결과를 testResult로 반환.`,
     ``,
     returnFooter,

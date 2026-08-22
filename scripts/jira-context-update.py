@@ -2,8 +2,14 @@
 """Update jira-context.json files (worktree-local and/or aggregate) for a workflow step.
 
 Usage:
-    python3 scripts/jira-context-update.py <TASK-ID> <step> <status> <ctx-file> [<ctx-file>...]
+    python3 scripts/jira-context-update.py <TASK-ID> <step> <status> <ctx-file> [<ctx-file>...] [--patch '<json>']
     python3 scripts/jira-context-update.py --migrate-approach <ctx-file> [<ctx-file>...]
+
+--patch '<json>' (v0.58.0): worktree-local 파일에만 top-level 키를 병합한다 (aggregate에는 적용 안 함 —
+    pollution 규칙). implSelfCheck / fixSelfCheck 객체에 ranAt이 없으면 현재 UTC로 채운다.
+    용도: impl/fix 단계가 self-check 기록과 completedSteps 갱신을 Bash 1회로 끝내기.
+    step에 "-"를 주면 completedSteps 추가·타임스탬프 기록 없이 patch만 적용한다 (fix loop의 test/review 제거용).
+    갱신 후 worktree 파일의 completedSteps를 `completedSteps=[...]`로 출력하므로 재-Read가 필요 없다.
 
 The --migrate-approach mode is a one-shot migration (MAE-357): for each task
 that has both 'plan' and 'design' in completedSteps but is missing 'approach',
@@ -98,7 +104,8 @@ def _strip_aggregate_pollution(ctx: dict) -> list[str]:
     return removed
 
 
-def update_context(ctx_file: str, task_id: str, step: str, status: str, ts: str) -> str:
+def update_context(ctx_file: str, task_id: str, step: str, status: str, ts: str,
+                   patch: dict | None = None) -> str:
     if not os.path.isfile(ctx_file):
         return f"missing: {ctx_file}"
     with open(ctx_file, "r", encoding="utf-8") as f:
@@ -112,7 +119,7 @@ def update_context(ctx_file: str, task_id: str, step: str, status: str, ts: str)
             )
         updated = False
         for t in ctx["tasks"]:
-            if t.get("taskId") == task_id:
+            if t.get("taskId") == task_id and step != "-":
                 _apply_step(t, step, status, ts)
                 updated = True
                 break
@@ -122,10 +129,17 @@ def update_context(ctx_file: str, task_id: str, step: str, status: str, ts: str)
         if updated:
             return f"aggregate updated ({task_id}): {ctx_file}"
         return f"no {task_id} in aggregate, skipped: {ctx_file}"
-    _apply_step(ctx, step, status, ts)
+    if step != "-":
+        _apply_step(ctx, step, status, ts)
+    if patch:
+        for k, v in patch.items():
+            if k in ("implSelfCheck", "fixSelfCheck") and isinstance(v, dict) and not v.get("ranAt"):
+                v = {**v, "ranAt": ts}
+            ctx[k] = v
     with open(ctx_file, "w", encoding="utf-8") as f:
         json.dump(ctx, f, indent=2, ensure_ascii=False)
-    return f"worktree updated: {ctx_file}"
+    steps = json.dumps(ctx.get("completedSteps", []), ensure_ascii=False)
+    return f"worktree updated: {ctx_file}\ncompletedSteps={steps}"
 
 
 def _migrate_target(t: dict) -> bool:
@@ -164,11 +178,26 @@ def main(argv: list[str]) -> int:
         for ctx_file in argv[2:]:
             print(migrate_approach(ctx_file))
         return 0
+    patch = None
+    if "--patch" in argv:
+        i = argv.index("--patch")
+        if i + 1 >= len(argv):
+            print("error: --patch requires a JSON argument", file=sys.stderr)
+            return 2
+        try:
+            patch = json.loads(argv[i + 1])
+        except ValueError as e:
+            print(f"error: --patch JSON 파싱 실패: {e}", file=sys.stderr)
+            return 2
+        argv = argv[:i] + argv[i + 2:]
     if len(argv) < 5:
         print(__doc__, file=sys.stderr)
         return 2
     task_id, step, status = argv[1], argv[2], argv[3]
-    if step not in VALID_STEPS:
+    if step == "-" and not patch:
+        print("error: step '-' (record-only)는 --patch와 함께만 쓸 수 있다", file=sys.stderr)
+        return 2
+    if step != "-" and step not in VALID_STEPS:
         print(
             f"error: invalid step '{step}'. Valid steps: {sorted(VALID_STEPS)}",
             file=sys.stderr,
@@ -176,7 +205,7 @@ def main(argv: list[str]) -> int:
         return 2
     ts = _now_utc_iso()
     for ctx_file in argv[4:]:
-        print(update_context(ctx_file, task_id, step, status, ts))
+        print(update_context(ctx_file, task_id, step, status, ts, patch))
     return 0
 
 

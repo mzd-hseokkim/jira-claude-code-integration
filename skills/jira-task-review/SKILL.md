@@ -63,7 +63,7 @@ Approach 문서 존재 여부 확인 (Acceptance Criteria와 Implementation Plan
 1. **Gap Analysis**: `docs/approach/<TASK-ID>.approach.md`(없으면 legacy `docs/design/<TASK-ID>.design.md`)가 있으면 Implementation Plan 항목별로 실제 구현 여부를 `Glob`/`Grep`으로 확인하고 매칭률 산출. 둘 다 없으면 스킵하되 조용히 넘기지 말고 리포트에 `Gap Analysis: 스킵 (approach 문서 없음 — <조회한 경로>)`를 남기고 `matchRate: null`로 보고.
 2. **Lint & Format (인용 우선)**: worktree-local `.jira-context.json`의 `implSelfCheck.lint`를 확인한다.
    - **있으면 lint를 재실행하지 않는다.** 그 기록을 `Lint & Format` 표에 인용하고 출처를 `impl self-check 인용`으로 표기한다 (lint는 커밋 시점 1회 원칙 — impl Step 2.5가 그 1회).
-   - **없으면 fallback**으로 직접 실행: **프로젝트가 선언한 도구만** (`package.json` 의존성 선언 또는 `node_modules/<tool>` 존재 — `npx`가 자동 설치해버리므로 실행 성공 여부로 판정 금지). Node.js는 `npx --no-install eslint`, Python은 `ruff check` + `ruff format --check`(fallback `flake8`), Java/Kotlin(`pom.xml`/`build.gradle*` 있을 때)은 `checkstyle`, 포맷터는 설정 파일(`.prettierrc*`/`prettier.config.*`/`package.json`의 `prettier` 키)이 있을 때만 실행하고 없으면 `Skipped (prettier 설정 없음)`으로 기록. **변경 파일 전체를 인자로 한 번에 실행** — 파일별 반복 실행 금지. 예: `npx --no-install eslint <file1> ... <fileN>`
+   - **없으면 fallback**으로 직접 실행: 도구 판정은 `bash <scripts>/detect-lint.sh` **1회**로 (출력 `LINT`/`FORMAT`/`NONE` — 선언된 도구만 판정하는 규칙이 스크립트에 있다; `package.json`·`node_modules`를 직접 cat/ls/grep 하지 마라). 출력된 명령에 **변경 파일 전체를 인자로 한 번에** 실행 — 파일별 반복 실행 금지. `NONE`이면 `Skipped (선언된 도구 없음)`으로 기록.
 
    lint 실패가 있어도 리뷰를 중단하지 않는다. 포맷터 결과는 `Lint & Format` 표에만 남기고 findings로 승격하지 않는다.
 3. **Code Quality Review**: 1차 입력은 `git diff <base-branch>..feature/<TASK-ID>` 본문 — 변경 파일 전문을 읽지 마라. 보안 취약점(injection/XSS/하드코딩 credentials), 에러 핸들링 누락, 네이밍 일관성, 불필요한 복잡도를 검토. findings는 diff에 포함된 라인에 대해서만 생성하고, 맥락이 필요할 때만 해당 파일을 선택적으로 `Read`한 뒤 그 사실을 리포트에 남긴다.
@@ -121,7 +121,7 @@ Step 4에서 저장한 review 결과를 `docs/review-log/` 로그에 append한�
 
 두 번의 Bash 호출로 수행한다 (①의 출력을 봐야 ②를 구성할 수 있으므로 한 호출로 합치지 마라):
 
-**Bash 호출 ① — 경로 결정 + 종료 시각**: `Read skills/_shared/script-lookup.md`의 **Batch Lookup** 블록을 실행하고 끝에 `date +%s`를 편승:
+**Bash 호출 ① — 경로 결정 + 종료 시각**: 호출 prompt가 스크립트 절대 경로(`<scripts>/`)를 이미 줬으면 lookup 없이 `date +%s`만 실행한다. 아니면 `Read skills/_shared/script-lookup.md`의 **Batch Lookup** 블록을 실행하고 끝에 `date +%s`를 편승:
 
 ```bash
 SCRIPT_NAMES="append-review-log-wrapper.sh jira-attach.sh jira-context-update.py"

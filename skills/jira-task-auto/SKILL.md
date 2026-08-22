@@ -37,14 +37,15 @@ cwd(worktree)의 `.jira-context.json`을 `Read`로 읽어 다음을 조립한다
 { taskId, worktreePath, completedSteps, userSkipSteps,
   breakdownLevel,        // 없으면 null
   issueType,             // cachedIssue.issuetype 이름, 없으면 null
-  ctxFiles: [<worktree ctx 절대경로>, <repoRoot aggregate 절대경로>] }
+  ctxFiles: [<worktree ctx 절대경로>, <repoRoot aggregate 절대경로>],
+  scriptsDir }           // Step 3에서 해석한 auto.workflow.js의 디렉터리 절대경로 — stage agent가 lookup을 반복하지 않게 한다
 ```
 
 `worktreePath`가 cwd와 다르면 중단하고 안내: worktree로 이동 후 재실행 (`cd <worktreePath>`).
 
 ## Step 3: 스크립트 lookup
 
-`skills/_shared/script-lookup.md`를 Read하고 `SCRIPT_NAME="auto.workflow.js"`, `OUT_VAR="AUTO_WF_JS"`로 lookup 블록을 실행한다. 빈 값이면 중단:
+`skills/_shared/script-lookup.md`를 Read하고 `SCRIPT_NAME="auto.workflow.js"`, `OUT_VAR="AUTO_WF_JS"`로 lookup 블록을 실행한다. 해석된 경로의 디렉터리(`dirname`)가 `scriptsDir`다 — 같은 디렉터리에 `jira-context-update.py`, `detect-lint.sh` 등 공용 스크립트가 전부 있으므로 이 값 하나로 stage agent의 lookup 의식(Read·루프·확인 3~4회/단계)이 사라진다. 빈 값이면 중단:
 
 ```
 ❌ Auto 실행 불가: auto.workflow.js를 찾지 못했습니다. 플러그인 설치 상태를 확인하세요.
@@ -141,10 +142,10 @@ worktree에서 직접 수정 후 재실행하세요: /jira-task test <TASK-ID> �
 
 ## Step 5.5: run-log 기록 (관측용, non-blocking)
 
-렌더링 후 Workflow 반환 객체를 **어떤 status든** run-log에 1줄 기록한다 (retro의 입력 — `tasks/retro-skill-design.md` §2). `script-lookup.md`로 `append-run-log.py`를 해석한 뒤 Bash 1회:
+렌더링 후 Workflow 반환 객체를 **어떤 status든** run-log에 1줄 기록한다 (retro의 입력 — `tasks/retro-skill-design.md` §2). 스크립트는 Step 3의 `scriptsDir`에 있다 (재-lookup 금지). Bash 1회:
 
 ```bash
-printf '%s' '<Workflow 반환 객체 JSON 그대로>' | python3 "$APPEND_RUN_LOG_PY" <TASK-ID> - ".jira-context.json" "docs/run-log"
+printf '%s' '<Workflow 반환 객체 JSON 그대로>' | python3 "<scriptsDir>/append-run-log.py" <TASK-ID> - ".jira-context.json" "docs/run-log"
 ```
 
 단계 소요시간은 스크립트가 worktree context의 `<step>At` 타임스탬프로 계산한다. 실패해도 워크플로 결과에는 영향 없음 — 경고 한 줄만 출력.
