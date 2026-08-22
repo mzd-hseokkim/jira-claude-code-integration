@@ -1,660 +1,42 @@
 # jira-integration · Claude Code Plugin
 
-> Current version: 0.52.0
-
-**[English]** | [한국어](#korean)
-
-[![Version](https://img.shields.io/badge/version-0.34.0-blue)](#)
+[![Version](https://img.shields.io/badge/version-0.57.0-blue)](.claude-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-orange)](https://docs.anthropic.com/en/docs/claude-code)
-[![MCP](https://img.shields.io/badge/MCP-mcp--atlassian-purple)](https://github.com/sooperset/mcp-atlassian)
+[![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-8A2BE2)](#)
+[![MCP](https://img.shields.io/badge/MCP-mcp--atlassian-orange)](https://github.com/sooperset/mcp-atlassian)
 
-> **Automate your entire dev workflow — from Jira issue to merged PR — inside Claude Code.**
+Jira 이슈 하나를 **브랜치 생성 → 설계 → 구현 → 테스트 → 리뷰 → 병합**까지 Claude Code가 끝까지 처리하고, 그 과정을 전부 Jira에 기록하는 플러그인입니다. 이슈 여러 건을 큐에 넣고 돌리면, 사람은 마지막에 **예외 리포트만** 보고 결정합니다.
 
----
-
-## Why This Plugin?
-
-Most Jira + AI tools stop at CRUD (read/create/update issues). This plugin automates the **entire development lifecycle**: approach → implementation → testing → review → PR → done, with every step synced back to Jira automatically.
-
-| | **This Plugin** | Atlassian Official AI | netresearch/jira-skill |
-|---|:---:|:---:|:---:|
-| Jira MCP integration | ✅ | ✅ | ❌ Python scripts |
-| Full PDCA lifecycle | ✅ | ❌ code gen only | ❌ CRUD only |
-| Multi-worktree batch setup | ✅ | ❌ | ❌ |
-| Auto Jira status transitions | ✅ | ✅ | manual |
-| Approach / Test docs | ✅ | ❌ | ❌ |
-| Approach-Impl gap analysis | ✅ | ❌ | ❌ |
-| Iterative review (auto-fix + retry) | ✅ | ❌ | ❌ |
-| Progress tracking across sessions | ✅ | ❌ | ❌ |
+> **English TL;DR** — A Claude Code plugin that drives a Jira issue through branch → approach → impl → test → review → local merge, posting every step back to Jira. Queue several issues with `/jira-task init`, drain them with `/jira-task loop`; failures are quarantined per task and you review one exception report at the end. Orchestration runs as a deterministic Workflow script, not prompt-interpreted control flow. The rest of this document is in Korean.
 
 ---
 
-## Workflow
+## 목차
 
-```mermaid
-graph LR
-    DSC["/jira-task discover\nTopic → requirements doc"] -.-> N["/jira-task create\nNew issue + sub-tasks"]
-    N -.-> A["/jira-task init\nBatch worktree setup"]
-    A --> B["/jira-task start\nIn Progress"]
-    B --> C["/jira-task approach\nApproach doc (L1/L2/L3)"]
-    C --> E["/jira-task impl\nImplement"]
-    E --> F["/jira-task test\nE2E + unit tests"]
-    F --> G["/jira-task review\nGap analysis + review"]
-    G --> H["/jira-task merge\nLocal merge"]
-    H --> I["/jira-task pr\nCreate GitHub PR"]
-    I --> J["/jira-task done\nDone"]
-
-    AUTO["⚡ /jira-task auto\nstart→review (auto)"]
-    LOOP["🔁 /jira-task loop\nqueue: auto→merge per task"]
-
-    style DSC fill:#A0522D,color:#fff
-    style N fill:#8B4513,color:#fff
-    style A fill:#2B50D4,color:#fff
-    style J fill:#156030,color:#fff
-    style AUTO fill:#7B2D8B,color:#fff
-    style LOOP fill:#B8336A,color:#fff
-```
-
-> **Discover (optional first step)**: `/jira-task discover "<topic>"` turns a free-form topic into a structured `docs/requirements/<slug>.requirements.md`, which `/jira-task create --from-requirements <file>` can then consume to bulk-register Epic/Story/Sub-tasks.
-
-> **Shortcut**: `/jira-task auto <ID>` runs `start → approach → impl → test → review` automatically. Each step runs as an isolated sub-agent, and already-completed steps are skipped. If review fails, it auto-fixes and retries (up to 2×).
-
-> **Queue drain**: `/jira-task loop` runs `auto` + local merge for **every** init'ed task sequentially, rebasing the remaining worktrees onto the updated base after each merge. Tasks end up in "In Review" — verify on main, then `/jira-task done` each.
-
-Each step automatically posts a comment and/or attachment to the Jira issue and transitions its status.
+1. [5분 퀵스타트](#1-5분-퀵스타트)
+2. [동작 원리 — 두 개의 루프](#2-동작-원리--두-개의-루프)
+3. [Jira 연계 모델](#3-jira-연계-모델)
+4. [운영 규칙 — 꼭 알아야 할 것](#4-운영-규칙--꼭-알아야-할-것)
+5. [명령어 레퍼런스](#5-명령어-레퍼런스)
+6. [설정 레퍼런스](#6-설정-레퍼런스)
+7. [파일과 산출물](#7-파일과-산출물)
+8. [대시보드](#8-대시보드)
+9. [트러블슈팅](#9-트러블슈팅)
+10. [설계 문서와 개발](#10-설계-문서와-개발)
 
 ---
 
-## Key Features
-
-**Interactive Issue Creation** *(v0.12.0)*
-`/jira-task create [hint]` registers a brand-new Jira issue from conversation context. If context is thin, it asks a few batched questions; if the scope warrants it, it proposes a sub-task breakdown (with `Blocks` links for dependencies so downstream `init` can auto-detect ready-to-start sub-tasks). Supports linking to an existing epic — and if you've pinned one with `/jira-task epic set <key|name>`, every new issue is attached to it automatically (no epic pinned → created without one, as before).
-- **No raw `jira_create_issue` footguns**: the skill encodes the exact `mcp-atlassian` schema (e.g. `additional_fields` is a JSON string, `parent` is a bare key, `priority` is `{"name": "..."}`, `components` is a CSV string, `assignee` must be top-level).
-- **Auto sub-task decision**: the skill judges whether to split based on scope; no flag needed.
-- **Silent-skip guard**: re-fetches created issues to verify priority/labels actually landed (unknown `additional_fields` keys are otherwise dropped with only a warning).
-
-**Auto Mode** *(v0.9.0)*
-`/jira-task auto PROJ-123` runs the full `start → approach → impl → test → review` pipeline automatically.
-- **Sub-agent isolation**: Each step runs as an independent sub-agent, preventing context pollution between stages.
-- **Iterative review**: When review finds issues (gap analysis or code quality), auto-fix → test → review retries up to 2 times before stopping.
-- **Smart resume**: Already-completed steps are skipped based on `.jira-context.json`.
-- **Scope boundary**: `merge`, `pr`, `done` are excluded (cross-worktree / externally visible actions require manual confirmation).
-
-**Loop Mode** *(v0.46.0)*
-`/jira-task loop` drains the entire init'ed task queue: per task, it runs `auto` then a local merge (Jira → In Review), one task at a time.
-- **Base freshness**: After each merge, remaining worktree branches are rebased onto the updated base; a task whose rebase fails (conflict, dirty worktree) is deferred (not failed) and retried on the next loop run.
-- **Fail-fast**: Any `auto`/merge failure stops the whole loop with a resume-ready report — re-running `/jira-task loop` skips completed tasks.
-- **Human gate preserved**: `done` stays manual — verify the merged result on the base branch, then complete each task.
-
-**Interactive Setup Wizard** *(v0.6.0)*
-`/jira setup` guides you through prerequisites (uv, Python 3.10+), credential collection, MCP server registration, and connection validation — no manual CLI commands needed.
-
-**Multi-Worktree Parallel Development** *(v0.7.0)*
-`/jira-task init` supports three argument modes: count (`init 5` — bulk setup), issue key (`init PROJ-123` — sub-task analysis), or natural language (`init "auth 관련 작업"` — filtered search). Creates isolated git worktrees for each task.
-
-**Document Auto-generation**
-Generates requirements / approach / test report / review / PR description documents from dedicated templates under `templates/`, then immediately posts them as Jira attachments and comments via `scripts/jira-attach.sh`. No copy-paste required.
-
-**Reviewer Calibration Log** *(v0.22.x)*
-Each `/jira-task review` run appends a structured entry to `docs/review-log/` (redacted per the project's policy). `scripts/analyze-review-log.py` aggregates pass/fail rates and recurring findings over time so reviewer behavior doesn't silently drift toward self-praise.
-
-**Status Transition Automation**
-`start` → In Progress, `merge` → In Review, `done` → Done. Jira stays up to date without opening a browser.
-
-**Approach-Impl Gap Analysis**
-`/jira-task review` compares your approach document against actual code changes and flags discrepancies alongside code quality issues.
-
-**Session Continuity**
-Progress is tracked in `.jira-context.json`. Reopen Claude Code anytime and see exactly where you left off:
-```
-Progress: init ✓ → start ✓ → approach ✓ → impl → test → review → merge → pr → done
-```
-
----
-
-## Prerequisites
-
-| Requirement | Required | Purpose |
-|---|:---:|---|
-| [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | Yes | CLI environment |
-| Python 3.10+ + [uv](https://docs.astral.sh/uv/) | Yes | Run MCP server (`uvx mcp-atlassian`) |
-| [Git](https://git-scm.com/) | Yes | Branch / worktree management |
-| Jira Cloud account + API Token | Yes | Jira integration |
-| [GitHub CLI (`gh`)](https://cli.github.com/) | PR step only | Create GitHub PRs |
-
----
-
-## Quick Start
-
-```bash
-# 1. Install the plugin
-claude plugin marketplace add mzd-hseokkim/jira-claude-code-integration
-claude plugin install jira-integration@jira-claude-code-integration
-
-# 2. Register the Atlassian MCP server
-claude mcp add atlassian \
-  -e JIRA_URL=https://your-domain.atlassian.net \
-  -e JIRA_USERNAME=your-email@company.com \
-  -e JIRA_API_TOKEN=your-api-token \
-  -e JIRA_PROJECTS_FILTER=PROJ \
-  -- uvx mcp-atlassian
-
-# 3. Verify connection
-claude
-> /jira
-
-# 4a. (Optional) Create a brand-new issue interactively
-> /jira-task create auth 모듈에 OTP 2차 인증 추가    # → parent + sub-tasks + Blocks links
-
-# 4b. Fetch your top tasks and set up worktrees
-> /jira-task init 5
-
-# 5a. Loop mode — drain the whole queue in one command
-> /jira-task loop       # per task: auto → local merge (In Review), rebase the rest
-
-# 5b. Auto mode — run the full pipeline for one task
-> cd ../your-project_worktree/PROJ-123
-> /jira-task auto       # start → approach → impl → test → review
-
-# 5c. Or step-by-step (TASK-ID is auto-detected from branch/directory)
-> /jira-task start      # Transition to In Progress
-> /jira-task approach   # Generate approach doc (L1/L2/L3)
-> /jira-task impl       # Implement based on approach
-> /jira-task test       # Run tests + post report to Jira
-> /jira-task review     # Gap analysis + code review
-> /jira-task merge      # Auto-commit pending changes + no-ff merge
-
-# 6. Back in the main repo
-> cd ../your-project
-> /jira-task pr         # Push branch + create GitHub PR
-> /jira-task done       # Transition to Done + post summary
-```
-
----
-
-## Setup
-
-### Step 1: Install the Plugin
-
-```bash
-claude plugin marketplace add mzd-hseokkim/jira-claude-code-integration
-claude plugin install jira-integration@jira-claude-code-integration
-
-# For local dev / testing:
-claude --plugin-dir /path/to/jira-claude-code-integration
-```
-
-> **Tip**: Instead of running `claude mcp add` manually, you can use the interactive wizard after installing the plugin:
-> ```
-> > /jira setup
-> ```
-> The wizard checks prerequisites, collects your credentials, registers the MCP server, and validates the connection.
-
-### Step 2: Create a Jira API Token
-
-1. Go to https://id.atlassian.com/manage-profile/security/api-tokens
-2. Click **"Create API token"**
-3. Enter a label (e.g. `claude-code`) → **Create**
-4. Copy the token (shown only once)
-
-### Step 3: Register the MCP Server
-
-```bash
-claude mcp add atlassian \
-  -e JIRA_URL=https://your-domain.atlassian.net \
-  -e JIRA_USERNAME=your-email@company.com \
-  -e JIRA_API_TOKEN=your-api-token \
-  -e JIRA_PROJECTS_FILTER=PROJ \
-  -- uvx mcp-atlassian
-```
-
-This saves credentials to `.claude/settings.local.json`. **Add it to `.gitignore`**:
-```
-.claude/settings.local.json
-```
-
-| Variable | Required | Description |
-|---|:---:|---|
-| `JIRA_URL` | Yes | Jira Cloud URL (no trailing `/`) |
-| `JIRA_USERNAME` | Yes | Atlassian account email |
-| `JIRA_API_TOKEN` | Yes | API token from Step 2 |
-| `JIRA_PROJECTS_FILTER` | No | Comma-separated project keys (e.g. `PROJ,DEV`) |
-
-### Step 4: Verify Connection
-
-```bash
-claude
-> /jira
-```
-
----
-
-## Commands
-
-| Command | Run from | Description |
-|---|---|---|
-| `/jira` | anywhere | Connection status + help |
-| `/jira setup` | anywhere | **Interactive setup wizard** (prerequisites → credentials → MCP registration → validation) |
-| `/jira-task discover [topic]` | anywhere | **Turn a free-form topic into a requirements doc** (`docs/requirements/<slug>.requirements.md`) for `/jira-task create --from-requirements` |
-| `/jira-task epic [set\|show\|clear]` | anywhere | **Pin a project-local Epic scope** (`.jira-epic.json`, gitignored) — subsequent `create` attaches new issues under it |
-| `/jira-task create [hint]` | anywhere | **Interactively create a new Jira issue** with optional sub-tasks, dependency links, and epic linking |
-| `/jira-task init [N\|KEY\|desc]` | main repo | Fetch tasks + create worktrees (count, issue key, or natural language) |
-| `/jira-task auto <ID>` | worktree | **Auto-run full pipeline** with sub-agent isolation + iterative review |
-| `/jira-task loop` | main repo | **Drain the init'ed task queue** — auto + local merge per task, rebase between tasks |
-| `/jira-task start [ID]` | worktree | Start task (branch, In Progress) |
-| `/jira-task approach [ID]` | worktree | Generate `docs/approach/<ID>.approach.md` (L1/L2/L3 level-aware; replaces plan+design) |
-| `/jira-task impl [ID]` | worktree | Implement based on approach doc |
-| `/jira-task test [ID]` | worktree | Run tests + post report to Jira |
-| `/jira-task review [ID]` | worktree | Gap analysis + code review → Jira |
-| `/jira-task merge [ID]` | worktree | Auto-commit pending changes (junk excluded) + `--no-ff` local merge |
-| `/jira-task pr [ID]` | main repo | Push branch + create GitHub PR |
-| `/jira-task done [ID]` | main repo | Transition Done + post summary |
-| `/jira-task clean <ID...>\|--all\|--list` | main repo | Remove worktree, delete branch, clean MCP config + context |
-| `/jira-task report` | anywhere | My assigned issues status report |
-| `/jira-task status` | anywhere | Current active task status |
-
-### TASK-ID Auto-detection
-
-When working inside a worktree, `[ID]` can be omitted. It is resolved in this order:
-
-1. Git branch name: `feature/PROJ-123` → `PROJ-123`
-2. Current directory name matching `[A-Z]+-\d+`
-3. `.jira-context.json` active task ID
-
----
-
-## Project Structure
-
-```
-jira-claude-code-integration/
-├── .claude-plugin/
-│   ├── plugin.json              # Plugin manifest
-│   └── marketplace.json
-├── CLAUDE.md                    # Claude behavior instructions
-│
-├── commands/
-│   ├── jira.md                  # /jira
-│   ├── jira-task.md             # /jira-task (router)
-│   └── dashboard.md             # /dashboard (alias of /jira dashboard)
-│
-├── skills/                      # One SKILL.md per workflow step
-│   │                            # Heavy SKILLs use refs/ for split details:
-│   │                            #   skills/<name>/refs/<topic>.md is loaded
-│   │                            #   on demand by Read, not into the system
-│   │                            #   prompt. See SKILL bodies for explicit
-│   │                            #   `Read skills/<name>/refs/...` calls.
-│   ├── _shared/                 # script-lookup.md 등 공용 스니펫
-│   ├── jira-setup/              # interactive setup wizard
-│   ├── jira-dashboard/          # /jira dashboard 라우팅 SKILL
-│   ├── jira-task-discover/      # topic → requirements doc
-│   │   └── refs/                # conflict-detection / synthesis-confirm / trace-markers
-│   ├── jira-task-create/        # interactive issue creation
-│   │   └── refs/                # mcp-schema / from-requirements-mode
-│   ├── jira-task-init/
-│   │   └── refs/                # issue-key-mode / worktree-creation
-│   ├── jira-task-auto/          # auto-run full pipeline
-│   ├── jira-task-start/
-│   ├── jira-task-approach/      # level-aware approach doc (replaces plan+design)
-│   ├── jira-task-impl/
-│   ├── jira-task-test/
-│   ├── jira-task-review/        # heavy logic extracted to scripts/append-review-log.py
-│   ├── jira-local-merge/
-│   ├── jira-task-pr/
-│   ├── jira-task-done/
-│   ├── jira-task-clean/
-│   └── jira-task-report/
-│
-├── agents/                      # Subagent definitions
-│   └── jira-reviewer.md         # Gap analysis + code quality (forced delegation, opus)
-│
-├── hooks/                       # Session event hooks
-│   ├── hooks.json
-│   └── scripts/
-│       ├── session-start.js         # Show active task on startup
-│       ├── stop-sync.js             # Remind to sync Jira on exit
-│       ├── dashboard-ingest.sh      # Forward UserPromptSubmit/PreToolUse/PostToolUse/SubagentStop/Notification → POST /ingest
-│       ├── dashboard-ingest.test.sh # Unit test for dashboard-ingest.sh
-│       ├── stop-ingest.sh           # Forward Stop event (extracts last assistant text from transcript)
-│       ├── phase-gate.js            # Phase dependency hook (disabled by default)
-│       ├── phase-gate.config.json
-│       ├── phase-gate.test.js
-│       └── phase-gate.scenarios.test.js
-│
-├── scripts/                     # Helper scripts invoked by skills
-│   ├── jira-attach.sh             # Upload attachments via Jira REST API
-│   ├── jira-context-update.py     # merge/done: completedSteps/status 동기화
-│   ├── clean-worktree.py          # Worktree/branch cleanup helper
-│   ├── cleanup-worktree-mcp.py    # done: worktree 단위 MCP config 정리
-│   ├── analyze-review-log.py      # Reviewer calibration log analyzer
-│   ├── append-review-log.py       # /jira-task review: append entry to review-log
-│   ├── append-review-log-wrapper.sh # review SKILL → append-review-log.py wrapper
-│   ├── propagate-mcp-config.sh    # /jira-task init: propagate MCP config to worktree
-│   ├── dashboard-control.sh       # /jira dashboard start/stop/status/setup 제어
-│   ├── dashboard/                 # Dashboard 서버 + React SPA 소스
-│   └── review_log/                # Stored reviewer calibration entries
-│
-├── templates/                   # Document templates per workflow step
-│   ├── requirements.template.md
-│   ├── approach.template.md
-│   ├── test-report.template.md
-│   ├── review.template.md
-│   ├── pr-description.template.md
-│   └── report.template.md
-│
-├── docs/                        # Plugin reference docs
-│   ├── mcp-atlassian-tools.md   # Tool reference for the Atlassian MCP server
-│   └── review-log/              # Review log schema + sample entries
-│                                # (PDCA outputs approach/test/review/
-│                                #  requirements are gitignored as
-│                                #  per-task artifacts)
-│
-└── tests/                       # Python tests for analyze-review-log
-    ├── test_analyze_review_log.py
-    └── fixtures/
-```
-
-### Phase Gate (실험적 — 현재 비활성화)
-
-`/jira-task` 단계 호출 순서를 강제하는 PreToolUse hook이 코드베이스에 포함되어 있지만, **기본적으로 비활성화** 상태입니다. 활성화하려면 명시적으로 hook을 등록해야 합니다.
-
-**구현된 것** (Phase 1.2.1 ~ 1.2.4)
-
-- `hooks/scripts/phase-gate.config.json` — 12 phase 의존 그래프 + artifact 패턴
-- `hooks/scripts/phase-gate.js` — Node hook 스크립트 (의존성 미충족 시 차단, fail-open 설계)
-- `hooks/scripts/phase-gate.test.js`, `phase-gate.scenarios.test.js` — 단위 20 + 시나리오 5 테스트
-- bypass 메커니즘: `JIRA_PHASE_GATE_BYPASS=1` (1회성), `.jira-context.json`의 `bypassGate: true` (영속)
-
-**왜 비활성화 상태인가**
-
-이 플러그인은 본래 "원하는 단계만 골라 쓰는 도구함"으로 설계되었습니다 (작은 fix는 approach 생략, 문서 작업은 impl 생략 등). phase-gate를 켜면 모든 인접 단계가 강제 선행 조건이 되어 이 유연성을 깨뜨립니다. 따라서 강제 선형 워크플로를 원하는 팀만 명시적으로 켤 수 있도록 비활성화 상태로 둡니다.
-
-**활성화 방법**
-
-`hooks/hooks.json`의 `hooks` 객체에 다음 항목을 추가하세요:
-
-```json
-"PreToolUse": [
-  {
-    "matcher": "Skill",
-    "hooks": [
-      {
-        "type": "command",
-        "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/phase-gate.js",
-        "timeout": 5
-      }
-    ]
-  }
-]
-```
-
-**커스터마이즈**
-
-`phase-gate.config.json`을 편집해 의존성을 완화하거나(`requires` 비우기), 필수 artifact를 바꾸거나, 특정 단계를 `enforced: false`로 끌 수 있습니다.
-
-**테스트 실행**
-
-```bash
-npm test   # unit 20 + scenarios 5
-```
-
-### Worktree Layout
-
-```
-workspace/
-├── your-project/                  ← main repo (base branch)
-└── your-project_worktree/         ← created by /jira-task init
-    ├── PROJ-101/                  ← feature/PROJ-101 branch
-    ├── PROJ-102/
-    └── PROJ-103/
-```
-
----
-
-## Multi-Worktree Merge Strategy
-
-When multiple tasks touch the same files, merging in the wrong order causes conflicts.
-
-```
-Check for file overlap at design time
-├─ No overlap            → PR in any order
-├─ Overlap (independent releases) → Sequential rebase-and-merge
-└─ Overlap (release together)     → Integration branch strategy
-```
-
-Check before starting implementation:
-```bash
-git diff --name-only main feature/PROJ-101
-git diff --name-only main feature/PROJ-102
-```
-
-`/jira-task merge` is intentionally non-interactive — requesting a merge implies the work is ready and the strategy is decided:
-
-- **Auto-commit**: any uncommitted changes in the worktree are smart-committed first. Junk (`*.log`, `*.tmp`, `*.swp`, `nul`, `.DS_Store`, `Thumbs.db`) and `.gitignore`d files (`.jira-context.json`, `TASK-README.md`) are excluded; only meaningful source/doc/config changes are committed.
-- **Strategy**: always `--no-ff` (merge commit, preserves branch history — equivalent to GitHub "Create a merge commit"). No prompt.
-
----
-
-## Troubleshooting
-
-**"Atlassian MCP server not connected"**
-```bash
-claude mcp list                  # Check registered servers
-claude mcp get atlassian         # Verify env vars
-uvx mcp-atlassian                # Test server directly (Ctrl+C to stop)
-pip install uv                   # Install uv if missing
-```
-
-**"Transition failed"**
-```
-"Show available transitions for PROJ-123"
-```
-Transition names vary by Jira workflow. Common names: `To Do`, `In Progress`, `In Review`, `Done`.
-
-**"Authentication failed"**
-- Verify `JIRA_USERNAME` matches your Atlassian account email exactly
-- Confirm `JIRA_URL` has no trailing `/`
-- Check if the API token has expired
-
-**"`gh` CLI not found"**
-```bash
-# macOS
-brew install gh && gh auth login
-
-# Windows
-winget install GitHub.cli && gh auth login
-```
-
-**Worktree creation failed**
-```bash
-git rev-parse --git-dir          # Confirm you're in a git repo
-git branch -a | grep feature/    # Check for existing branches
-git worktree prune               # Clean stale worktree refs
-```
-
----
-
-## Dashboard
-
-A real-time activity monitor for every Claude Code worktree in your workspace. Hook events from each session (user prompts, tool calls, sub-agent lifecycle, final responses) stream into a browser UI via SSE so you can see at a glance which session is busy, which is waiting on you, and what each one just answered.
-
-### Quick Start (원클릭)
-
-Claude Code 안에서 슬래시 커맨드 한 줄로 Dashboard를 시작할 수 있습니다:
-
-```
-/jira dashboard
-```
-
-첫 실행 시 npm 의존성 설치와 UI 빌드를 자동으로 수행한 뒤 서버를 기동합니다.
-두 번째 이후 실행부터는 캐시 감지로 setup을 건너뛰고 바로 시작합니다.
-
-| 커맨드 | 동작 |
-|--------|------|
-| `/jira dashboard` | 상태 확인 → stopped이면 자동 setup+start |
-| `/jira dashboard start` | Dashboard 시작 |
-| `/jira dashboard stop` | Dashboard 중지 |
-| `/jira dashboard status` | 현재 상태 조회 (URL/PID/시작 시각) |
-| `/jira dashboard setup` | npm 의존성 설치 및 UI 빌드만 수행 |
-
-서버는 `http://127.0.0.1:8765`에 바인딩됩니다.
-
-### 수동 실행 (Troubleshooting)
-
-슬래시 커맨드 없이 직접 실행해야 하는 경우:
-
-```bash
-# 1) Install root deps (express, chokidar)
-npm install
-
-# 2) Install web deps and build the SPA bundle into scripts/dashboard/public/
-npm --prefix scripts/dashboard/web install
-npm --prefix scripts/dashboard/web run build
-
-# 3) Start the dashboard server
-npm run dashboard
-# or: node scripts/dashboard/server.js
-```
-
-After the first build, daily use is just `npm run dashboard`. Re-run the build step whenever the React source changes.
-
-The server binds to `http://127.0.0.1:8765` and opens your default browser automatically.
-
-```bash
-DASHBOARD_NO_OPEN=1 npm run dashboard   # suppress auto-open (CI / headless)
-PORT=9000 npm run dashboard              # override default port
-```
-
-### What you see on each card
-
-- **Header** — Jira task id (or directory name when no Jira context), issue type, **outlined status badge with leading dot** (Jira workflow status, distinct from agent activity), `⚙ N` cumulative tool calls in this session, `X분 전` last activity, and badges for `⏵ 응답 대기` / `stale` / `⛔ blocked × N`.
-- **SDLC stepper** — One chip per `/jira-task` step (init/start/approach/impl/test/review/merge/pr/done) coloured by `completedSteps` in `.jira-context.json`. Skipped intermediate steps after `done` are shown with strikethrough.
-- **Activity panel** — Last prompt, **Last response (final concluding line of Claude's reply)**, current tool-in-flight, sub-agent indicator, and a blocked flag. Prompt/response signals are persisted on the server independent of the activity ring buffer so they survive long tool-call bursts.
-- **Issue links** — Below the meta row, `blocks` / `blocked by` chips show related issue keys. Open blockers are highlighted; resolved ones are struck through.
-- **Card border state**:
-  - **Blue glow + pulse** = busy. Defined as "a `UserPromptSubmit` event without a matching `Stop` yet" — i.e. Claude is generating right now. Time-independent.
-  - **Amber glow + pulse + 응답 대기 badge** = busy *and* most recent `Notification` mentions permission/input/waiting.
-  - **Red left stripe + `⛔ blocked` badge** = at least one un-resolved `is blocked by` link.
-  - **Dim + `stale` badge** = Jira status is 완료 but the worktree still exists (cleanup candidate).
-- **Header bar (KITT)** — Top of viewport scans left-right while connected (SSE live). The connection chip in the top-right fills bottom-up to indicate countdown to the next jira-collector poll.
-- **Sort & filter** — Header has chips for sort key (activity / taskId / summary) and a search field that matches taskId / summary / branch / path.
-- **View toggle: Cards ↔ Graph** *(v0.30.x)* — Header has a Cards / Graph toggle. Graph mode renders worktrees as a force-directed graph (react-flow + d3-force) showing `blocks` / `parent` / `epic` relationships with color-coded edges, marching-ants flow direction, and arrow markers. Parent/epic edges anchor the hierarchy (parent on top, children below); blocks edges connect siblings. Click a node → side panel with the full WorktreeCard. Drag a node → it pins in place (simulation won't drag it back). Status/assignee chip filters dim non-matches; isolated nodes get a dashed border; cycle members get heavier red dashes.
-- **Cleanup button** *(v0.30.x)* — Cards in `stale` state (Jira `완료` but worktree alive) get a `🗑 정리` floating button on hover at the bottom-right. Click → confirm → server runs `git worktree remove` + `git branch -d`. Backend safety: only registered worktrees, only when status is done, dirty trees rejected, branch name read from store (no body injection).
-- **Cards without Jira context** (e.g. main repo while running `/jira dashboard`) show only directory + path + activity, with stepper and Jira-only fields hidden.
-
-### Hooks
-
-Hook events are wired in `hooks/hooks.json`, forwarded by two small scripts in `hooks/scripts/` to `POST /ingest`, then broadcast via SSE:
-
-| Hook | Forwarder | Used for |
-|------|-----------|----------|
-| `UserPromptSubmit` | `dashboard-ingest.sh` | Last prompt + busy detection |
-| `PreToolUse` | `dashboard-ingest.sh` | Current tool, tool-call counter |
-| `PostToolUse` | `dashboard-ingest.sh` | Closes a tool-in-flight marker |
-| `SubagentStop` | `dashboard-ingest.sh` | Sub-agent active indicator |
-| `Notification` | `dashboard-ingest.sh` | Awaiting / blocked detection |
-| `Stop` | `stop-ingest.sh` | Last response preview (reads `transcript_path`) |
-
-Each ingest is mapped to a worktree path and Jira task id via `.jira-context.json`. `SessionStart` and `Stop` also drive non-dashboard side-effects (Jira context injection, end-of-session reminder) — those forwarders are independent.
-
-### Logs
-
-Log file: `<workspaceRoot>/logs/dashboard-server.log`
-
-- Append-only JSON Lines format; no rotation in this release.
-- Sensitive fields (`apiToken`, `Authorization`) are automatically redacted to `[REDACTED]` before writing.
-- The server prints the absolute log path to stdout on startup.
-
-### Out of Scope
-
-- Log rotation / size capping
-- Authentication / remote access (currently localhost-only by design)
-- Browser env var (`BROWSER`) support on Linux
-- Windows PowerShell fallback (current: `cmd /c start`)
-- Fallback stdout URL prompt on browser-open failure
-
----
-
-## Roadmap
-
-- [x] Interactive setup wizard: `/jira setup` *(v0.6.0)*
-- [x] Auto mode: `/jira-task auto` *(v0.6.0)*
-- [x] Init argument expansion: count, issue key, natural language *(v0.7.0)*
-- [x] Iterative review: auto-fix + test + review retry loop *(v0.8.0)*
-- [x] Sub-agent isolation: each auto step in independent context *(v0.9.0)*
-- [x] Interactive issue creation: `/jira-task create` *(v0.12.0)*
-- [x] Requirements discovery: `/jira-task discover` → `docs/requirements/<slug>.requirements.md` *(v1.1.x)*
-- [x] Reviewer calibration log: review history analyzer (`scripts/analyze-review-log.py`) *(v0.22.x)*
-- [x] SKILL bloat refactor: 4 heavy SKILLs (create/discover/init/review) compressed from 1,989 → 921 lines (-54%) via `skills/<name>/refs/` split + script extraction *(v0.24.0)*
-- [x] Dashboard graph view: react-flow + d3-force visualization of `blocks` / `parent` / `epic` relationships with hierarchical force layout, drag-to-pin, status/assignee filters, isolated/cycle highlighting *(v0.30.x — Epic MAE-249)*
-- [x] Dashboard worktree cleanup button: in-card `🗑 정리` floating action for stale worktrees, with safety guards on the backend `POST /cleanup` *(v0.30.x)*
-- [x] Plan + Design → unified `/jira-task approach` (level-aware L1/L2/L3 sizing) *(v0.33.0 — MAE-350)*
-- [x] L3 Epic empty-child sequencing guard for `/jira-task auto` (early exit + guidance) *(v0.34.0 — MAE-364)*
-- [x] Auto SKILL.md hygiene: Scope Shortfall 출처 trail + PDCA 자동 분기 안내 *(v0.34.0 — MAE-366)*
-- [ ] Bitbucket Cloud + GitLab MR support for `/jira-task pr`
-- [ ] Jira Server / Data Center (Personal Access Token)
-- [ ] Sub-task auto-creation from approach doc task breakdown
-- [ ] Time tracking: auto-log work sessions to Jira
-- [ ] CI/CD result posting (GitHub Actions, Bitbucket Pipelines)
-- [ ] Slack / Teams notifications on PR creation and task completion
-- [ ] English documentation for all templates
-
----
-
-## License
-
-MIT
-
----
-
-<a name="korean"></a>
-
-## 한국어 요약
-
-이 플러그인은 **Jira + Claude Code를 연결하는 개발 워크플로우 자동화 도구**입니다.
-
-### 대시보드
-
-Claude Code 안에서 `/jira dashboard` 한 줄로 셋업·기동을 자동 수행합니다. 첫 실행 시 npm 의존성 설치와 UI 빌드를 자동으로 처리하고, 두 번째부터는 캐시 감지로 즉시 시작합니다.
-
-| 커맨드 | 동작 |
-|--------|------|
-| `/jira dashboard` | 상태 확인 → stopped이면 자동 setup+start |
-| `/jira dashboard start/stop/status/setup` | 개별 액션 |
-
-서버는 `http://127.0.0.1:8765`에 바인딩되며 기본 브라우저가 자동으로 열립니다. 수동 실행은 `npm run dashboard`로도 가능 (CI/헤드리스: `DASHBOARD_NO_OPEN=1`, 포트 변경: `PORT=9000`).
-
-각 worktree 카드는 다음을 보여줍니다:
-
-- **상단 배지**: Jira 워크플로 상태(outlined + 좌측 dot), 누적 도구 호출 수(`⚙ N`), 마지막 활동 상대시간, 상태별 배지(`⏵ 응답 대기` / `stale` / `⛔ blocked × N`)
-- **SDLC stepper**: `.jira-context.json`의 `completedSteps` 기반 단계 진행. `done` 후 건너뛴 중간 단계는 취소선 표시
-- **활동 패널**: 마지막 prompt, **마지막 응답의 결론 줄**, 진행 중 도구, sub-agent / blocked 상태. prompt/response 신호는 ring buffer와 별도로 서버에 보존되어 도구 호출 폭주에도 사라지지 않음
-- **이슈 링크**: `blocks` / `blocked by` 칩 표시. 미해결 blocker는 강조, 완료된 것은 취소선
-- **카드 보더 상태**:
-  - **파란 펄스 = busy** — `UserPromptSubmit` 이후 `Stop`이 아직 안 옴(시간 임계값 없음, "지금 응답 생성 중")
-  - **앰버 펄스 + 응답 대기 배지** — busy + 최근 `Notification`이 permission/input/waiting을 포함
-  - **빨간 좌측 stripe + ⛔ blocked 배지** — 미해결 `is blocked by` 링크 존재
-  - **dim + stale 배지** — Jira 상태가 완료인데 worktree가 아직 살아있음(정리 대상)
-- **상단 KITT 바**: SSE 연결 시 좌→우 스캔. LIVE 칩은 다음 jira-collector polling까지의 진행률을 아래→위로 fill
-- **정렬/필터**: 헤더에 정렬 칩(최근활동 / 이슈키 / summary) + 제목 검색 필드(taskId/summary/branch/path 매치)
-- **카드/그래프 뷰 토글** *(v0.30.x)*: 헤더에서 두 모드 전환. 그래프 모드는 worktree를 force-directed 그래프(react-flow + d3-force)로 렌더링하여 `blocks` / `parent` / `epic` 관계를 색상 분리된 엣지(흐르는 점선 + 화살표)로 표시. parent/epic edge가 계층(부모 위, 자식 아래)을 형성하고 blocks edge는 형제 노드를 연결. 노드 클릭 → 우측 사이드 패널에 풀 카드, 노드 드래그 → 그 자리 고정(simulation이 끌어당기지 않음). status/assignee 필터·고립 노드(dashed border)·순환 엣지(굵은 빨간 점선) 강조 지원
-- **정리 버튼** *(v0.30.x)*: stale 상태(Jira 완료 + worktree 생존) 카드 우하단에 hover 시 `🗑 정리` floating 버튼 노출. 클릭 → confirm → 서버가 `git worktree remove` + `git branch -d` 실행. 백엔드 안전장치(등록된 worktree만, 완료 상태만, dirty 거부, branch 이름은 store에서만 조회)
-- **Jira context 없는 카드**(예: 메인 레포): 디렉토리명·path·활동만 표시, stepper와 Jira 전용 필드는 숨김
-
-Hook 흐름: `hooks/hooks.json` → `hooks/scripts/dashboard-ingest.sh`(UserPromptSubmit·PreToolUse·PostToolUse·SubagentStop·Notification) / `hooks/scripts/stop-ingest.sh`(Stop, transcript에서 마지막 assistant 텍스트 추출) → `POST /ingest` → SSE. 서버 로그는 `<workspaceRoot>/logs/dashboard-server.log`(JSON Lines, 민감 필드 자동 redact).
-
-### 핵심 특징
-
-- **`/jira-task discover [주제]`** — 자연어 주제를 **요구사항 문서(`docs/requirements/<slug>.requirements.md`)로 변환**. `/jira-task create --from-requirements <파일>`과 자연 연동되어 Epic/Story/Sub-task 일괄 등록의 입력으로 사용됨 *(v1.1.x)*
-- **`/jira-task create [힌트]`** — 대화 컨텍스트 기반으로 **신규 Jira 이슈를 대화형 생성**. 범위가 크면 서브태스크 분해를 스킬이 직접 제안하고, 의존성은 `Blocks` 링크로 등록되어 이후 `init`의 "착수 가능 분석"과 자연 연동. 기존 에픽 연결 지원. `mcp-atlassian`의 `jira_create_issue` 필드 규약(JSON string `additional_fields`, bare-key `parent`, CSV `components` 등)을 스킬에 박아 반복 실패 방지 *(v0.12.0)*
-- `/jira-task init` — 숫자(`init 5`), 이슈 키(`init PROJ-123`), 자연어(`init "인증 관련"`) 세 가지 모드로 **worktree 일괄 생성** *(v0.7.0)*
-- **Auto 모드** (`/jira-task auto PROJ-123`): 각 단계를 **독립 sub-agent**로 실행하여 컨텍스트 오염 방지. review 미통과 시 **자동 수정 → 재테스트 → 재리뷰** 최대 2회 반복 *(v0.9.0)*
-- **설정 위자드** (`/jira setup`): 사전 요건 확인 → 자격증명 입력 → MCP 등록 → 연결 검증 대화형 안내 *(v0.6.0)*
-- 접근 설계(approach) → 구현 → 테스트 → 리뷰 → PR → 완료까지 **전 단계 커맨드화** (plan/design 두 단계는 v0.33.0에서 `approach`로 통합)
-- 각 단계 완료 시 **Jira 코멘트·첨부파일·상태 전이 자동 처리**
-- approach 문서와 실제 구현 코드 간 **Gap 자동 분석**
-- **Reviewer Calibration Log** — 매 review 결과를 `docs/review-log/`에 누적하고 `scripts/analyze-review-log.py`로 통과율·반복 지적 패턴을 분석해 리뷰어 self-praise drift 방지 *(v0.22.x)*
-- `.jira-context.json`으로 **세션 간 진행 상황 자동 복원**
+## 1. 5분 퀵스타트
+
+### 준비물
+
+| 항목 | 용도 |
+|---|---|
+| Claude Code | 플러그인 실행 환경 |
+| Python 3.10+ 와 `uv` | Jira MCP 서버(`uvx mcp-atlassian`) 실행 |
+| Git | 브랜치·worktree |
+| Jira Cloud 계정 + [API 토큰](https://id.atlassian.com/manage-profile/security/api-tokens) | Jira 연동 |
+| `gh` CLI | `/jira-task pr`에서만 필요 |
 
 ### 설치
 
@@ -663,19 +45,351 @@ claude plugin marketplace add mzd-hseokkim/jira-claude-code-integration
 claude plugin install jira-integration@jira-claude-code-integration
 ```
 
-플러그인 설치 후 `/jira setup`을 실행하면 대화형으로 MCP 서버를 설정할 수 있습니다. 또는 직접 등록:
+### Jira 연결
+
+프로젝트 루트에서 Claude Code를 열고:
+
+```
+/jira setup
+```
+
+마법사가 Jira URL·이메일·API 토큰을 묻고 MCP 서버(`atlassian`)를 등록한 뒤 연결을 검증합니다. 자격증명은 `.claude/settings.local.json`에 저장됩니다 (커밋 금지 — `.gitignore`에 있는지 확인).
+
+### 첫 실행 — 이슈 큐를 끝까지 돌리기
+
+```
+/jira-task init MAE-100        # 부모 이슈의 하위작업들을 큐로 잡고 worktree 생성
+/jira-task loop                # 큐를 순서대로 소진: 태스크마다 자동 파이프라인 + 로컬 병합
+```
+
+`loop`가 끝나면 이런 리포트가 나옵니다:
+
+```
+🔁 Loop 완료 — 통과 2 / 격리 1 / 미착수 0
+✅ 클린 통과 (검토 중, 사람 확인만 필요):
+   MAE-101  +115/-0, 5 files — …
+   MAE-103  +64/-9, 5 files — …
+⛔ 격리 — 결정 필요:
+   MAE-102  [stage-failed] test FAIL … — 권장: /jira-task impl MAE-102
+```
+
+통과한 태스크는 main에서 동작을 확인하고 `/jira-task done <KEY>`로 닫습니다. 격리된 태스크만 사람이 들여다보면 됩니다.
+
+이슈 하나만 처리하려면 `init` 대신 해당 이슈의 worktree에서 `/jira-task auto <KEY>`를 쓰고, 단계를 하나씩 직접 밟고 싶으면 `start → approach → impl → test → review → merge`를 개별 명령으로 실행합니다.
+
+---
+
+## 2. 동작 원리 — 두 개의 루프
+
+이 플러그인은 **단계 루프**(태스크 안)와 **태스크 루프**(태스크 사이) 두 층으로 돌아갑니다.
+
+```mermaid
+flowchart LR
+  subgraph loop["/jira-task loop — 태스크 루프"]
+    direction LR
+    Q[큐: 이슈 A, B, C] --> A
+    subgraph A["auto — 단계 루프 (태스크 1건)"]
+      direction LR
+      S[start] --> AP[approach] --> IT[impl + test] --> R{review 게이트}
+      R -- 통과 --> OK[완료]
+      R -- 미통과 --> F[fix: 센서 루프] --> R
+    end
+    OK --> M[local merge] --> N[다음 태스크]
+    A -. 실패 .-> QT[격리 후 다음 태스크]
+  end
+  N --> RPT[예외 리포트]
+  QT --> RPT
+```
+
+### 단계 루프 (`auto`)
+
+한 태스크를 `start → approach → impl+test → review` 순으로 처리합니다. 각 단계는 **격리된 sub-agent**로 실행되어 서로의 컨텍스트를 오염시키지 않고, 단계마다 적절한 모델이 배정됩니다 (start: haiku / approach: opus / impl+test: sonnet / review: L1이면 sonnet, 그 외 opus).
+
+- **리뷰 게이트**: 리뷰어는 "증거를 열어보기 전엔 전부 미충족"이라는 Default-FAIL 계약으로 판정합니다. 설계-구현 매칭률과 Critical 건수가 구조화된 값으로 나오고, 게이트는 이 값을 코드로 판정합니다.
+- **fix 루프**: 게이트 미통과 시 수정 agent가 투입됩니다. 수정 agent는 안쪽에서 lint·typecheck·**관련 테스트만** 도는 싼 센서 루프(최대 5회)로 수렴시킨 뒤, 전체 테스트와 재리뷰를 각 1회만 돌립니다. 재리뷰는 직전 지적 항목과 수정 파일만 다시 보는 delta 모드입니다. 바깥 루프 상한은 2회.
+- **중단 조건**: 매칭률 < 70% 또는 Critical ≥ 3이면 "스코프 누락"으로 보고 fix 루프에 들어가지 않습니다. 센서 루프가 5회 안에 green이 안 되면 재리뷰 없이 중단합니다. 이 경우 모두 사람에게 결정이 넘어옵니다.
+
+이 제어 흐름 전체는 프롬프트가 아니라 **Workflow 스크립트**(`scripts/auto.workflow.js`)가 결정론적으로 실행합니다. 순서·분기·재시도에 LLM 판단이 개입하지 않습니다.
+
+### 태스크 루프 (`loop`)
+
+`init`으로 잡은 큐를 순서대로 소진합니다. 태스크마다 `auto` → 로컬 `--no-ff` 병합 → 남은 worktree를 최신 base로 rebase.
+
+- **격리(quarantine)**: 어떤 태스크가 게이트에 걸리거나, 단계가 실패하거나, 병합·rebase가 충돌하면 **그 태스크만 보류하고 다음으로 계속**합니다. 루프 전체가 멈추지 않습니다.
+- **전체 중단은 시스템 실패일 때만**: 서로 다른 태스크가 같은 단계에서 연속 2건 실패하거나, 인증(401/403)·MCP 연결·base 손상 같은 인프라 신호가 보이면 멈춥니다.
+- **예외 리포트**: 끝나면 "통과 목록 / 격리 목록 + 권장 조치"를 한 장으로 보여줍니다. 격리 태스크는 사유를 해결하고 `loop`를 다시 실행하면 자동 재시도됩니다.
+
+### 사람의 자리
+
+| 지점 | 누가 | 왜 |
+|---|---|---|
+| 이슈 작성 / 큐 구성 | 사람 | 무엇을 할지는 사람이 정함 |
+| start → review → merge | 자동 | 검증 가능한 산출물이 있는 단계 |
+| merge 후 main 확인 → `done` | 사람 | 병합 결과를 실제로 보는 게이트 (의도된 설계) |
+| 격리 태스크 처리 | 사람 | 자동으로 못 메우는 종류의 문제 |
+| `pr` | 사람이 트리거 | 외부 공개 행위 |
+
+---
+
+## 3. Jira 연계 모델
+
+### 이슈 하나 = 브랜치 + worktree + 컨텍스트 파일
+
+| Jira | 로컬 |
+|---|---|
+| 이슈 키 `MAE-123` | 브랜치 `feature/MAE-123` |
+| | worktree `../<프로젝트>_worktree/MAE-123/` |
+| | 그 안의 `.jira-context.json` (진행 단계·상태·캐시) |
+
+메인 레포의 `.jira-context.json`은 **큐 전체**(`tasks[]`)를 담는 aggregate이고, 각 worktree의 것은 그 태스크 하나의 상태입니다. 둘 다 gitignore 대상입니다.
+
+이슈 타입별 처리 단위:
+- **하위작업(Subtask) · 작업(Task) · 버그** → 1건 = 1 worktree. `init <부모키>`는 부모의 미완료 하위작업을 전부 큐로 잡습니다.
+- **Story** → 보통 하위작업으로 분해된 뒤 처리 (`discover`/`create`가 분해를 제안·생성).
+- **Epic** → 직접 처리하지 않음. `approach`가 Epic에서 호출되면 자식 Story 시퀀싱만 내고 끝납니다.
+
+### 명령별 Jira 부수효과
+
+각 명령이 Jira에 남기는 것. 코멘트 제목은 영어, 본문은 한국어입니다.
+
+| 단계 | 상태 전이 | 코멘트 | 첨부 |
+|---|---|---|---|
+| `init` | — | Worktree Initialized | — |
+| `start` | 할 일 → **진행 중** (+ 담당자를 나로 지정) | Start Work | — |
+| `approach` | — | Approach Document Created (레벨·핵심 1줄) | `<KEY>.approach.md` |
+| `impl` | — | Implementation Complete (변경 파일) | — |
+| `test` | — | Test Results (PASS/FAIL 표) | 테스트 리포트, 실패 스크린샷 |
+| `review` | — | Code Review Complete (결과·매칭률·리뷰어 서명) | `<KEY>.review.md` |
+| `merge` | 진행 중 → **검토 중** | Task Merged Locally (커밋·파일·라인 수) | — |
+| `pr` | — | PR 링크 | — |
+| `done` | 검토 중 → **완료** | Task Completed (요약) | — |
+
+상태명은 Jira 프로젝트의 워크플로를 따릅니다 (영문 프로젝트면 To Do / In Progress / In Review / Done). 전이 전에는 항상 가능한 전이 목록을 조회하고, 전이 후 재조회로 실제 상태를 확인합니다.
+
+**격리는 Jira를 건드리지 않습니다.** `loop`가 태스크를 보류해도 상태 전이나 코멘트가 없습니다 — 격리는 로컬 워크플로 상태(`.jira-context.json`의 `deferred`)일 뿐이라, Jira에서는 마지막으로 성공한 단계의 상태 그대로 보입니다.
+
+### 이슈를 만드는 길 / 가져오는 길
+
+```
+[만드는 길]  /jira-task epic set <EPIC>  →  /jira-task discover <주제>  →  /jira-task create --from-requirements <문서>
+[가져오는 길]                                                              /jira-task init <부모키 | N | 자연어>
+```
+
+- `epic set`: 프로젝트에 Epic 스코프를 고정(`.jira-epic.json`). 이후 `create`가 만드는 이슈는 자동으로 그 Epic에 연결됩니다.
+- `discover <주제>`: 코드베이스를 보고 질문하며 요구사항 문서(`docs/requirements/<주제>.requirements.md`)를 씁니다. 말미에 이슈 분해안(L1 단일 / L2 Story+하위작업 / L3 Epic+Story)을 제안합니다. Jira에는 아무것도 만들지 않습니다.
+- `create`: 대화로 이슈를 만들거나, `--from-requirements`로 요구사항 문서의 분해안을 그대로 등록합니다.
+- `init`: 이미 있는 이슈를 가져옵니다. 부모 키를 주면 미완료 하위작업을 의존성(`is blocked by`) 분석 후 착수 가능한 것만 큐에 넣고, 숫자를 주면 나에게 할당된 고우선순위 N건을 잡습니다.
+
+### 현황 보기
+
+- `/jira-task status` — 현재 디렉터리의 활성 태스크 + Jira 최신 상태
+- `/jira-task report` — 나에게 할당된 이슈를 상태별로 분류한 리포트 (Scrum이면 활성 스프린트 기준)
+- [대시보드](#8-대시보드) — 모든 worktree의 진행 단계·도구 호출·Jira 상태를 실시간 카드로
+
+---
+
+## 4. 운영 규칙 — 꼭 알아야 할 것
+
+### worktree에서 실행한다
+
+`start` 이후의 단계(`approach`/`impl`/`test`/`review`/`auto`)는 **그 태스크의 worktree를 현재 디렉터리로** 실행합니다. 그래야 구현이 worktree 브랜치에 들어가고 컨텍스트 파일도 맞는 것을 읽습니다. `loop`는 태스크마다 worktree 진입·복귀를 알아서 처리하므로 메인 레포에서 실행하면 됩니다. `merge`/`pr`/`clean`/`done`은 메인 레포에서.
+
+### 작업 규모 레벨 — L1 / L2 / L3
+
+`approach`가 이슈 규모를 판정해 산출물 분량과 리뷰 깊이를 맞춥니다.
+
+| 레벨 | 기준 (issuetype 폴백) | approach 산출물 |
+|---|---|---|
+| L1 | Subtask / Task / Bug | 5줄 요약 (변경 영역·핵심 결정·검증·리스크·롤백) |
+| L2 | Story | 한 페이지 (아키텍처·구현 계획·결정·테스트 계획·리스크) |
+| L3 | Epic | 자식 Story 시퀀싱만 |
+
+L1이라도 데이터 모델·트랜잭션 경계·외부 API 계약·동시성·보안 경계를 건드리면 L2로 자동 승급됩니다. 판정은 한 줄로 통보되고, "L1로 줄여줘" 같은 자연어로 바꿀 수 있습니다. `create`가 이슈를 만들 때 `breakdownLevel`을 기록해 두면 그 값이 우선합니다.
+
+### PDCA 권고 — 단계 스킵
+
+`start`가 이슈 성격을 보고 `approach`와 `test` 두 단계에 한해 "스킵 가능"을 권고합니다 (예: 문서만 바꾸는 변경은 test 스킵). `auto`는 이 권고를 자동 적용하되 사용자가 `--skip`으로 명시한 것이 우선합니다. `impl`·`review`·`merge`는 절대 스킵되지 않습니다.
+
+### 게이트 임계값
+
+| 게이트 | 기준 |
+|---|---|
+| review 통과 | 리뷰어 Approve (매칭률 ≥ 90%, Critical 0 — Warning/Info는 차단하지 않음) |
+| fix 루프 진입 | 매칭률 ≥ 70% 이고 Critical < 3 (아니면 스코프 누락으로 즉시 중단) |
+| fix 루프 상한 | 바깥 2회, 안쪽 센서 루프 5회 |
+
+매칭률 임계값은 worktree `.jira-context.json`의 `reviewGate.matchRateThreshold`로 바꿀 수 있습니다.
+
+### 격리 종류와 대응
+
+| `deferredKind` | 뜻 | 권장 조치 |
+|---|---|---|
+| `scope-shortfall` | 설계 대비 구현이 크게 모자람 | 부분 수용 `merge` 후 나머지는 별도 이슈로, 또는 worktree에서 추가 구현 후 `review` |
+| `gate-exhausted` | fix 루프로 수렴 실패 | `docs/review/<KEY>.review.md` 확인 → 수동 수정 → `test` → `review` |
+| `stage-failed` | 어떤 단계가 실패 | 실패 단계부터 직접: `/jira-task <단계> <KEY>` |
+| `merge-failed` | base 병합 충돌 | worktree에서 충돌 해결 후 `loop` 재실행 |
+| `rebase-conflict` | 앞 태스크 병합 후 rebase 충돌 | worktree에서 해결(또는 미커밋 정리) 후 `loop` 재실행 |
+
+### 중단 후 재개
+
+모든 단계는 `.jira-context.json`의 `completedSteps`에 기록됩니다. `auto`나 `loop`를 다시 실행하면 끝난 단계는 건너뛰고 남은 것만 실행합니다. 격리 태스크도 다음 `loop`에서 자동 재시도됩니다.
+
+---
+
+## 5. 명령어 레퍼런스
+
+`/jira-task <action> [인자]`. TASK-ID는 생략하면 브랜치명(`feature/<KEY>`) → 디렉터리명 → 컨텍스트 파일 순으로 자동 감지합니다.
+
+**이슈 만들기**
+
+| 명령 | 설명 |
+|---|---|
+| `epic set <키\|이름>` / `show` / `clear` | 프로젝트 Epic 스코프 고정·조회·해제 |
+| `discover <주제> [--lite] [--from <파일>]` | 요구사항 문서 + 이슈 분해 제안 |
+| `create [힌트]` / `create --from-requirements <문서>` | 이슈 생성 (하위작업·Blocks 링크·Epic 연결 자동) |
+
+**큐와 자동 실행**
+
+| 명령 | 설명 |
+|---|---|
+| `init [N \| 부모키 \| 자연어]` | 태스크 조회 + worktree 일괄 생성 (큐 구성) |
+| `loop [--skip <단계,...>]` | 큐 소진: 태스크마다 auto + 로컬 병합, 격리 후 계속, 예외 리포트 |
+| `auto <KEY> [--skip <단계,...>]` | 한 태스크의 start→review 자동 실행 (worktree에서) |
+
+**개별 단계**
+
+| 명령 | 설명 |
+|---|---|
+| `start <KEY>` | 브랜치/worktree 생성, 진행 중 전이, PDCA 권고 |
+| `approach <KEY>` | 레벨별 접근 설계 문서 (`plan`/`design`은 구버전 별칭) |
+| `impl <KEY>` | approach 기반 구현 + 종료 시 lint 1회 |
+| `test <KEY>` | 테스트 작성·실행 (Playwright / vitest·jest / pytest / custom 자동 감지) + Jira 리포트 |
+| `review <KEY>` | 독립 리뷰어의 Gap 분석 + 코드 리뷰 → Jira |
+| `merge <KEY>` | 로컬 `--no-ff` 병합, 검토 중 전이 (메인 레포에서) |
+| `pr <KEY>` | `gh pr create` + Jira 링크 (merge 선행, 메인 레포에서) |
+| `done <KEY>` | 요약 게시 + 완료 전이 |
+
+**조회와 정리**
+
+| 명령 | 설명 |
+|---|---|
+| `status` | 활성 태스크 + Jira 상태 |
+| `report` | 할당 이슈 현황 리포트 |
+| `clean [KEY ...] \| --all \| --list` | worktree·브랜치 정리 (메인 레포에서, dry-run 후 확인) |
+
+**그 외**
+
+| 명령 | 설명 |
+|---|---|
+| `/jira setup` | Jira MCP 등록 마법사 |
+| `/jira` | 연결 상태·도움말 |
+| `/jira dashboard [start\|stop\|status\|setup]` (또는 `/dashboard`) | 대시보드 제어 |
+
+---
+
+## 6. 설정 레퍼런스
+
+### 환경변수
+
+`/jira setup`이 MCP 서버 등록 시 함께 저장합니다. 직접 등록하려면:
 
 ```bash
 claude mcp add atlassian \
   -e JIRA_URL=https://your-domain.atlassian.net \
-  -e JIRA_USERNAME=your-email@company.com \
+  -e JIRA_USERNAME=you@company.com \
   -e JIRA_API_TOKEN=your-api-token \
+  -e JIRA_PROJECTS_FILTER=PROJ \
   -- uvx mcp-atlassian
 ```
 
-자세한 설정은 [상세 설정 섹션](#setup-·-상세-설정)을 참고하세요.
+| 변수 | 필수 | 설명 |
+|---|---|---|
+| `JIRA_URL` | ✓ | Jira Cloud URL (끝에 `/` 없이) |
+| `JIRA_USERNAME` | ✓ | Atlassian 계정 이메일 |
+| `JIRA_API_TOKEN` | ✓ | API 토큰 |
+| `JIRA_PROJECTS_FILTER` | | MCP 서버가 노출할 프로젝트 키 (쉼표 구분) |
+| `JIRA_DEFAULT_PROJECT` | | **플러그인 자체 변수** — 설정하면 모든 JQL에 `project = …`가 붙고 `create`가 프로젝트를 묻지 않음. MCP 서버 변수가 아니므로 `.claude/settings.local.json`의 `env`나 셸 환경에 설정 |
 
-### 기타
+### worktree로의 MCP 전파
 
-- 커맨드 목록, Worktree 전략, 트러블슈팅 등 상세 내용은 영문 섹션에 동일하게 기술되어 있습니다.
-- 이슈·제안은 [GitHub Issues](https://github.com/mzd-hseokkim/jira-claude-code-integration/issues)에 남겨주세요.
+worktree는 별도 프로젝트 루트로 인식되어 MCP 설정이 자동 상속되지 않습니다. `init`/`start`가 `scripts/propagate-mcp-config.sh`로 `atlassian` 설정을 worktree에 복사합니다. worktree에서 `.mcp.json`을 처음 로드할 때 신뢰 승인 프롬프트가 한 번 뜰 수 있습니다.
+
+### Phase Gate (선택, 기본 비활성)
+
+단계 순서를 훅으로 강제하는 기능입니다 (예: approach 없이 impl 금지). 기본은 꺼져 있습니다 — 이 플러그인은 필요한 단계만 골라 쓰는 도구함이라 강제 선형화가 유연성을 해치기 때문입니다. 켜려면 `hooks/hooks.json`의 `PreToolUse`에 `hooks/scripts/phase-gate.js`를 등록합니다. 우회: `JIRA_PHASE_GATE_BYPASS=1`(1회) 또는 `.jira-context.json`의 `bypassGate: true`. 의존 그래프는 `hooks/scripts/phase-gate.config.json`.
+
+---
+
+## 7. 파일과 산출물
+
+```
+<프로젝트>/
+├── .jira-context.json          # aggregate — 큐 전체 (gitignore)
+├── .jira-epic.json             # Epic 스코프 (gitignore)
+├── docs/
+│   ├── requirements/<주제>.requirements.md   # discover 산출물
+│   ├── approach/<KEY>.approach.md            # 접근 설계
+│   ├── test/<KEY>.test-report.md             # 테스트 리포트 (L2+)
+│   ├── review/<KEY>.review.md                # 리뷰 리포트
+│   ├── review-log/                           # 리뷰 판정 로그 (jsonl) — 리뷰어 보정·오탐 추적용
+│   └── run-log/                              # auto/loop 실행 로그 (jsonl) — 단계 소요·fix 횟수·격리 기록
+└── ../<프로젝트>_worktree/<KEY>/
+    ├── .jira-context.json      # 태스크 하나의 상태 (gitignore)
+    └── TASK-README.md          # 이슈 요약 (gitignore)
+```
+
+- `docs/approach`, `review-log`, `run-log`는 merge로 main에 들어옵니다. `docs/review`·`test`·`requirements`는 기본 gitignore입니다 (프로젝트 정책에 따라 조정).
+- `review-log`와 `run-log`는 하니스 자체의 관측 데이터입니다 — 리뷰 오탐률, 단계별 소요, fix 루프 빈도, 격리 사유가 쌓여 이후 튜닝의 근거가 됩니다. 스키마는 각 디렉터리의 README 참고.
+- 문서 템플릿은 `templates/` (approach / requirements / test-report / review / pr-description / report).
+
+---
+
+## 8. 대시보드
+
+```
+/jira dashboard          # 상태 확인 후 꺼져 있으면 설치+기동
+```
+
+`http://127.0.0.1:8765`에서 워크스페이스의 모든 worktree를 카드로 보여줍니다 — Jira 상태 배지, 진행 단계(stepper), 도구 호출 수, 마지막 프롬프트/응답, 진행 중 도구, blocked/stale 배지, 이슈 간 `blocks` 링크 그래프. 플러그인 훅이 보내는 이벤트를 SSE로 받아 실시간 갱신됩니다. stale 카드는 🗑 버튼으로 worktree·브랜치를 정리할 수 있습니다.
+
+수동 실행: `npm install && npm run dashboard:build && npm run dashboard` (포트 변경 `PORT=9000`, 브라우저 자동 열기 억제 `DASHBOARD_NO_OPEN=1`). 로그는 `logs/dashboard-server.log`. localhost 전용이며 인증이 없습니다.
+
+---
+
+## 9. 트러블슈팅
+
+| 증상 | 원인 / 조치 |
+|---|---|
+| Jira 도구(`mcp__atlassian__*`)가 안 보임 | 세션 시작 시 MCP 서버가 늦게 붙은 경우. `/mcp`에서 atlassian 재연결 또는 세션 재시작 |
+| `401 Unauthorized` | 토큰 만료·오타. `/jira setup`으로 재등록 |
+| `uvx: command not found` | `uv` 미설치 (`pip install uv` 또는 공식 설치 스크립트). Windows는 Store 스텁 python 주의 |
+| auto가 "cwd 불일치"로 중단 | worktree가 아닌 곳에서 실행. 해당 worktree로 이동해 재실행 (`loop`는 자동 처리) |
+| worktree에서 Jira 도구 없음 | MCP 전파 누락. 메인 레포에서 `bash scripts/propagate-mcp-config.sh <repoRoot> <worktree>` 또는 `/jira setup` |
+| 이슈 생성 시 "유효한 이슈 유형" 오류 | 프로젝트가 로컬라이즈된 타입명을 씀 (예: 한국어 프로젝트는 `작업`, 하위작업은 `Subtask`). `create`는 프로젝트 메타를 조회해 맞추지만 직접 호출 시 주의 |
+| 플러그인 업데이트가 반영 안 됨 | `claude plugin marketplace update jira-claude-code-integration` → `claude plugin update jira-integration@jira-claude-code-integration` → 세션 재시작 |
+| `loop`가 시작부터 전체 중단 | 시스템 실패 판정(인증/MCP/base). 리포트의 "판정 근거"를 보고 원인 해결 후 재실행 — 완료 태스크는 건너뜀 |
+
+---
+
+## 10. 설계 문서와 개발
+
+이 플러그인의 오케스트레이션 설계와 개선 이력은 `tasks/`에 있습니다:
+
+- `tasks/loop-engineering-roadmap.md` — 개선 로드맵 인덱스 (구현 현황 포함)
+- `tasks/auto-workflow-design.md` — auto의 Workflow 스크립트화
+- `tasks/sensor-loop-design.md` — fix 루프의 센서 루프·delta 재리뷰
+- `tasks/loop-quarantine-design.md` — loop 격리·예외 리포트
+- `tasks/retro-skill-design.md`, `tasks/l1-fastpath-design.md` — 예정 항목
+
+플러그인을 수정할 때의 컨벤션은 `CLAUDE.md`, Atlassian MCP 도구 레퍼런스는 `docs/mcp-atlassian-tools.md`를 참고하세요.
+
+```bash
+npm test                              # phase-gate 훅 테스트
+python -m unittest discover tests     # 스크립트 단위 테스트
+npm run test:dashboard                # 대시보드 테스트
+claude --plugin-dir .                 # 로컬 개발용 로드
+```
+
+## License
+
+MIT
