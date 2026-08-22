@@ -1,5 +1,7 @@
 # jira-integration · Claude Code Plugin
 
+> Current version: 0.52.0
+
 **[English]** | [한국어](#korean)
 
 [![Version](https://img.shields.io/badge/version-0.34.0-blue)](#)
