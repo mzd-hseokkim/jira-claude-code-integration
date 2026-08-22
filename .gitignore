@@ -12,6 +12,7 @@ __pycache__/
 
 # MCP config (contains credentials)
 .mcp.json
+.codex/
 
 # Build
 dist/
