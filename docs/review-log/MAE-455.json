@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MAE-455",
+  "entries": [
+    {
+      "taskId": "MAE-455",
+      "timestamp": "2026-08-22T18:04:14Z",
+      "reviewerVersion": "f4d4f5466560",
+      "outcome": "pass",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "high",
+          "file": "docs/run-log/README.md",
+          "line": 22,
+          "category": "doc-accuracy",
+          "message": "스키마 문서는 매 줄에 전체 필드(reason 포함)가 있다고 서술하지만, 실제 docs/run-log/_index.jsonl의 기존 라인(MAE-453, harnessVersion 0.52.0)에는 reason 필드가 없음 — 구버전 로그와의 스키마 불일치/호환성 안내가 문서에 없음"
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 1,
+        "medium": 0,
+        "low": 0,
+        "info": 0
+      },
+      "falsePositive": null,
+      "userOverride": null,
+      "timings": {
+        "gapSec": 58,
+        "lintSec": null,
+        "qualitySec": 86,
+        "totalSec": 279
+      }
+    }
+  ]
+}
