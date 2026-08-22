@@ -14,7 +14,7 @@ Exit codes:
     1  Fatal I/O failure (caller는 non-blocking으로 취급)
 
 설계: tasks/retro-skill-design.md §2. 한 줄 스키마:
-    { taskId, timestamp, kind, status, failedStage, stagesRun, skipped,
+    { taskId, timestamp, kind, status, failedStage, reason, stagesRun, skipped,
       fixAttempts, innerLoopIterations, breakdownLevel,
       stageDurationsSec, harnessVersion }
 """
@@ -87,6 +87,7 @@ def build_entry(task_id, result, ctx, kind):
         "kind": kind,
         "status": result.get("status"),
         "failedStage": result.get("failedStage"),
+        "reason": result.get("reason"),  # aborted 사유 — loop 격리 분류·인프라 시그니처 판정 입력
         "stagesRun": [s for s in completed if s != "init"],
         "skipped": {"user": skipped.get("user") or [], "pdca": skipped.get("pdca") or []},
         "fixAttempts": result.get("fixAttempts", 0),

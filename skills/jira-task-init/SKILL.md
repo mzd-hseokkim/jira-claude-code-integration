@@ -197,7 +197,7 @@ Use mcp__atlassian__jira_add_comment:
 }
 ```
 
-**원본 레포에도** `.jira-context.json` 저장 (전체 태스크 목록용). **기존 aggregate가 있으면 통째로 덮어쓰지 말고 병합한다**: 기존 `tasks[]`에 같은 `taskId` 항목이 있으면 그 항목의 `completedSteps`·`deferred`·`deferredReason`·타임스탬프를 보존하고(없는 신규 태스크만 추가), 최상위 필드는 갱신 — 진행 중 큐를 리셋하면 loop/resume이 깨진다.
+**원본 레포에도** `.jira-context.json` 저장 (전체 태스크 목록용). **기존 aggregate가 있으면 통째로 덮어쓰지 말고 병합한다**: 기존 `tasks[]`에 같은 `taskId` 항목이 있으면 그 항목의 `completedSteps`·`deferred`·`deferredKind`·`deferredReason`·타임스탬프를 보존하고(없는 신규 태스크만 추가), 최상위 필드는 갱신 — 진행 중 큐를 리셋하면 loop/resume이 깨진다.
 
 ```json
 {

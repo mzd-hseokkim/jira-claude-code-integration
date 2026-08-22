@@ -1,7 +1,7 @@
 # Loop 실패 격리 (Quarantine) — 설계
 
 > 개선안 3번. `tasks/loop-engineering-roadmap.md` 참조. 의존: 1번 — loop 자체는 무수정이지만, auto의 구조화 반환(status 분류)이 격리 판정의 입력이므로 1번 선행이 전제.
-> 상태: 설계 (미구현)
+> 상태: 구현됨 (v0.55.0) — §5 auto-done opt-in은 미구현(후순위 유지). 검증은 다음 다중 태스크 loop 실행에서
 
 ---
 
