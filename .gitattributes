@@ -1,0 +1,3 @@
+# Workflow 스크립트는 Claude Code Workflow 승인 다이얼로그가 \r(CR)을 제어문자로 거부하므로
+# Windows checkout(core.autocrlf) / 플러그인 캐시 clone에서도 반드시 LF를 유지해야 한다.
+scripts/*.workflow.js text eol=lf

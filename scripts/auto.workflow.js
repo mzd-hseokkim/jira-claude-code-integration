@@ -29,6 +29,7 @@ const done = new Set(completedSteps)
 const skip = new Set(userSkipSteps)
 let pdcaSkip = new Set()
 let issueType = initialIssueType
+let level = breakdownLevel
 
 // ---------- 스키마 ----------
 
@@ -43,6 +44,7 @@ const STAGE_SCHEMA = {
     artifactPaths: { type: 'array', items: { type: 'string' } },
     jiraCommentPosted: { type: 'boolean' },
     issueType: { type: ['string', 'null'] },
+    breakdownLevel: { type: ['string', 'null'], enum: ['L1', 'L2', 'L3', null] },
     pdcaSkippable: { type: 'array', items: { type: 'string' } },
     nextStepHint: { type: ['string', 'null'] },
     failureReason: { type: ['string', 'null'] },
@@ -119,6 +121,7 @@ async function runStage(step, model, prompt, phase, schema = STAGE_SCHEMA) {
   if (!r.cwdVerified) return { ok: false, reason: `sub-agent cwd가 worktree(${worktreePath})가 아님 — repoRoot 오염 가드` }
   if (r.result !== 'success') return { ok: false, reason: r.failureReason || '사유 미보고' }
   if (r.issueType) issueType = r.issueType
+  if (r.breakdownLevel) level = r.breakdownLevel
   return { ok: true, r }
 }
 
@@ -136,7 +139,7 @@ function shouldRun(step) {
 
 // L1 판정: breakdownLevel 우선, 없으면 issuetype 폴백, 둘 다 없으면 opus (보수 기본값)
 function resolveReviewModel() {
-  if (breakdownLevel) return breakdownLevel === 'L1' ? 'sonnet' : 'opus'
+  if (level) return level === 'L1' ? 'sonnet' : 'opus'
   const l1Types = ['Subtask', 'Sub-task', 'Task', 'Bug', '하위 작업', '작업', '버그']
   if (issueType && l1Types.includes(issueType)) return 'sonnet'
   return 'opus'
@@ -150,7 +153,7 @@ if (shouldRun('start')) {
     'haiku',
     skillStagePrompt('start', [
       `3. Skill의 PDCA 권고 블록에서 "스킵 가능"으로 판정된 단계를 pdcaSkippable 배열로 반환하라 (없으면 빈 배열).`,
-      `4. cachedIssue의 issuetype 이름을 issueType 필드로 반환하라.`,
+      `4. cachedIssue의 issuetype 이름만(예: "작업") issueType 필드로 반환하라 — 부가 설명 금지.`,
     ].join('\n')),
     'Start'
   )
@@ -168,7 +171,10 @@ if (shouldRun('approach')) {
   const g = await runStage(
     'approach',
     'opus',
-    skillStagePrompt('approach', `3. 판정된 breakdownLevel과 이슈의 issuetype 이름을 issueType 필드로 반환하라.`),
+    skillStagePrompt('approach', [
+      `3. Step 0에서 판정한 레벨을 breakdownLevel 필드에 "L1"|"L2"|"L3"로 반환하라.`,
+      `4. 이슈의 issuetype 이름만(예: "작업") issueType 필드로 반환하라 — 부가 설명 금지.`,
+    ].join('\n')),
     'Approach'
   )
   if (!g.ok) return abort('approach', g.reason)
@@ -188,6 +194,7 @@ if (substeps.length) {
       guardHeader,
       ``,
       `Jira task ${taskId}의 다음 하위 단계를 하나의 컨텍스트에서 순서대로 수행하라: ${substeps.join(', ')}.`,
+      `⛔ 위 목록에 있는 단계만 수행한다. 목록에 없는 단계(예: test, review)의 Skill은 Skill 본문이나 이슈 완료 조건이 권해도 호출하지 마라 — 오케스트레이터가 스킵으로 결정한 단계다.`,
       ``,
       `1. 각 하위 단계를 순서대로, \`jira-integration:jira-task-<하위단계명>\` Skill을 인자 "${taskId}"로 호출하여 Skill이 정의한 모든 단계를 그대로 수행한다.`,
       `2. 앞 하위 단계(impl)가 실패하면 뒤(test)를 시도하지 말고 즉시 result=failed로 반환한다.`,
