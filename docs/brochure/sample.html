@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLM Router — One Endpoint. Every LLM Provider.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --black: #000000; --blush: #eee5e9; --paprika: #cf5c36;
+      --blush-5: rgba(238,229,233,0.05); --blush-8: rgba(238,229,233,0.08);
+      --blush-12: rgba(238,229,233,0.12); --blush-20: rgba(238,229,233,0.20);
+      --blush-40: rgba(238,229,233,0.40); --blush-60: rgba(238,229,233,0.60);
+      --paprika-15: rgba(207,92,54,0.15); --paprika-30: rgba(207,92,54,0.30);
+      --radius: 12px; --max: 1200px;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; background: var(--black); color: var(--blush); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: var(--black); } ::-webkit-scrollbar-thumb { background: var(--blush-20); border-radius: 3px; }
+    .container { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+    .tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--paprika); border: 1px solid var(--paprika-30); background: var(--paprika-15); padding: 5px 12px; border-radius: 100px; }
+    .tag::before { content: ''; width: 6px; height: 6px; background: var(--paprika); border-radius: 50%; display: inline-block; }
+    .section-label { font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--paprika); margin-bottom: 16px; }
+    h2.section-title { font-size: clamp(28px, 4vw, 44px); font-weight: 800; color: var(--blush); line-height: 1.15; margin-bottom: 16px; }
+    p.section-sub { font-size: 17px; color: var(--blush-60); max-width: 560px; line-height: 1.7; }
+    .fade-in { opacity: 0; transform: translateY(28px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+    /* Nav */
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; border-bottom: 1px solid var(--blush-8); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); background: rgba(0,0,0,0.7); }
+    .nav-inner { max-width: var(--max); margin: 0 auto; padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; }
+    .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; color: var(--blush); text-decoration: none; }
+    .nav-logo-icon { width: 32px; height: 32px; background: var(--paprika); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; color: var(--blush); font-family: 'JetBrains Mono', monospace; }
+    .nav-links { display: flex; align-items: center; gap: 8px; }
+    .nav-links a { font-size: 14px; color: var(--blush-60); text-decoration: none; padding: 6px 12px; border-radius: 6px; transition: color 0.2s, background 0.2s; }
+    .nav-links a:hover { color: var(--blush); background: var(--blush-5); }
+    .btn-nav { font-size: 13px !important; font-weight: 600 !important; color: var(--blush) !important; background: var(--blush-8) !important; border: 1px solid var(--blush-20) !important; padding: 6px 16px !important; border-radius: 8px !important; transition: background 0.2s !important; }
+    .btn-nav:hover { background: var(--blush-12) !important; }
+    .lang-toggle { display: flex; align-items: center; cursor: pointer; background: var(--blush-5); border: 1px solid var(--blush-12); color: var(--blush-60); padding: 7px 10px; border-radius: 8px; transition: all 0.2s; }
+    .lang-toggle:hover { border-color: var(--blush-20); color: var(--blush); }
+    .lang-toggle .lang-flag { font-size: 15px; }
+
+    /* Hero */
+    #hero { padding-top: 160px; padding-bottom: 120px; position: relative; overflow: hidden; text-align: center; }
+    .hero-glow { position: absolute; top: -200px; left: 50%; transform: translateX(-50%); width: 800px; height: 600px; background: radial-gradient(ellipse at center, rgba(207,92,54,0.18) 0%, transparent 65%); pointer-events: none; }
+    .hero-content { position: relative; z-index: 1; }
+    .hero-tag { margin-bottom: 28px; }
+    .hero-title { font-size: clamp(40px, 7vw, 80px); font-weight: 800; line-height: 1.05; color: var(--blush); letter-spacing: -0.03em; margin-bottom: 24px; }
+    .hero-title em { font-style: normal; background: linear-gradient(135deg, var(--paprika) 0%, #e8825a 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero-sub { font-size: clamp(16px, 2vw, 20px); color: var(--blush-60); max-width: 620px; margin: 0 auto 40px; line-height: 1.6; }
+    .hero-ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 60px; }
+    .btn-primary { display: inline-flex; align-items: center; gap: 8px; background: var(--paprika); color: var(--blush); font-size: 15px; font-weight: 600; padding: 13px 28px; border-radius: 10px; text-decoration: none; transition: opacity 0.2s, transform 0.2s; border: none; cursor: pointer; }
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-secondary { display: inline-flex; align-items: center; gap: 8px; background: var(--blush-8); color: var(--blush); font-size: 15px; font-weight: 600; padding: 13px 28px; border-radius: 10px; text-decoration: none; border: 1px solid var(--blush-12); transition: background 0.2s, transform 0.2s; }
+    .btn-secondary:hover { background: var(--blush-12); transform: translateY(-1px); }
+    .hero-code-wrap { max-width: 680px; margin: 0 auto; background: var(--blush-5); border: 1px solid var(--blush-12); border-radius: 14px; overflow: hidden; }
+    .code-titlebar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--blush-8); background: var(--blush-5); }
+    .dot { width: 11px; height: 11px; border-radius: 50%; } .dot-r { background: #ff5f57; } .dot-y { background: #ffbd2e; } .dot-g { background: #28c840; }
+    .code-file { font-size: 12px; color: var(--blush-40); margin-left: 8px; font-family: 'JetBrains Mono', monospace; }
+    pre.hero-code { padding: 24px; text-align: left; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 13.5px; line-height: 1.7; }
+    .c-comment { color: #5a6472; } .c-keyword { color: #e0a370; } .c-string { color: #8fc; }
+    .c-string-strike { color: #5a6472; text-decoration: line-through; } .c-highlight { color: var(--paprika); font-weight: 500; }
+    .c-var { color: #79b4f7; } .c-fn { color: #c3a6ff; }
+    .provider-strip { margin-top: 80px; text-align: center; }
+    .provider-strip p { font-size: 13px; color: var(--blush-40); margin-bottom: 24px; letter-spacing: 0.05em; text-transform: uppercase; }
+    .providers { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; }
+    .provider-badge { display: flex; align-items: center; gap: 8px; background: var(--blush-5); border: 1px solid var(--blush-8); padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--blush-60); transition: border-color 0.2s, color 0.2s; }
+    .provider-badge:hover { border-color: var(--blush-20); color: var(--blush); }
+    .provider-badge .picon { font-size: 16px; }
+
+    /* How */
+    #how { padding: 120px 0; border-top: 1px solid var(--blush-8); }
+    .how-header { text-align: center; margin-bottom: 64px; }
+    .how-header p.section-sub { margin: 0 auto; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .step { padding: 40px 32px; text-align: center; background: var(--blush-5); border: 1px solid var(--blush-8); border-radius: var(--radius); }
+    .step-num { width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--paprika); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: var(--paprika); margin: 0 auto 20px; background: var(--paprika-15); }
+    .step h3 { font-size: 18px; font-weight: 700; color: var(--blush); margin-bottom: 10px; }
+    .step p { font-size: 14px; color: var(--blush-60); line-height: 1.6; }
+    .step-code { margin-top: 16px; background: rgba(0,0,0,0.4); border: 1px solid var(--blush-8); border-radius: 8px; padding: 12px 14px; text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.5; color: var(--blush-60); }
+
+    /* Stats */
+    #stats { padding: 80px 0; background: linear-gradient(180deg, transparent 0%, var(--paprika-15) 50%, transparent 100%); border-top: 1px solid var(--blush-8); border-bottom: 1px solid var(--blush-8); }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; text-align: center; }
+    .stat-item { padding: 24px; }
+    .stat-num { font-size: clamp(36px, 5vw, 56px); font-weight: 800; color: var(--blush); letter-spacing: -0.03em; line-height: 1; margin-bottom: 8px; }
+    .stat-num span { color: var(--paprika); }
+    .stat-label { font-size: 14px; color: var(--blush-60); }
+
+    /* Features */
+    #features { padding: 120px 0; }
+    .features-header { text-align: center; margin-bottom: 64px; }
+    .features-header p.section-sub { margin: 0 auto; }
+    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .feature-card { background: var(--blush-5); border: 1px solid var(--blush-8); border-radius: var(--radius); padding: 32px; transition: border-color 0.25s, background 0.25s, transform 0.25s; cursor: default; }
+    .feature-card:hover { border-color: var(--blush-20); background: var(--blush-8); transform: translateY(-3px); }
+    .feature-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--paprika-15); border: 1px solid var(--paprika-30); display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 20px; }
+    .feature-card h3 { font-size: 17px; font-weight: 700; color: var(--blush); margin-bottom: 10px; }
+    .feature-card p { font-size: 14px; color: var(--blush-60); line-height: 1.65; }
+
+    /* Code Compare */
+    #code-example { padding: 120px 0; border-top: 1px solid var(--blush-8); }
+    .code-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 48px; }
+    .code-panel { background: var(--blush-5); border: 1px solid var(--blush-8); border-radius: var(--radius); overflow: hidden; }
+    .code-panel-header { padding: 12px 16px; border-bottom: 1px solid var(--blush-8); display: flex; align-items: center; gap: 8px; }
+    .code-panel-label { font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 4px; }
+    .label-before { background: rgba(124,124,124,0.2); color: #7c7c7c; }
+    .label-after  { background: var(--paprika-15); color: var(--paprika); }
+    .code-panel pre { padding: 24px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.7; overflow-x: auto; }
+
+    /* Detail */
+    #detail { padding: 120px 0; border-top: 1px solid var(--blush-8); }
+    .detail-row { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; padding: 80px 0; border-bottom: 1px solid var(--blush-8); }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row.reverse .detail-text { order: 2; }
+    .detail-row.reverse .detail-visual { order: 1; }
+    .detail-text h3 { font-size: clamp(22px, 3vw, 32px); font-weight: 800; color: var(--blush); margin-bottom: 16px; line-height: 1.2; }
+    .detail-text p { font-size: 15px; color: var(--blush-60); line-height: 1.7; margin-bottom: 20px; }
+    .feature-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .feature-list li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--blush-60); }
+    .feature-list li::before { content: ''; flex-shrink: 0; margin-top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--paprika); }
+    .detail-visual { background: var(--blush-5); border: 1px solid var(--blush-8); border-radius: 16px; padding: 32px; min-height: 280px; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+    .visual-row { display: flex; align-items: center; gap: 12px; background: var(--blush-5); border: 1px solid var(--blush-8); border-radius: 8px; padding: 12px 16px; }
+    .visual-icon { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+    .visual-row-text { flex: 1; }
+    .visual-row-text .vt { font-size: 13px; font-weight: 600; color: var(--blush); }
+    .visual-row-text .vs { font-size: 11px; color: var(--blush-40); }
+    .visual-badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; }
+    .badge-green  { background: rgba(40,200,100,0.15); color: #4ecb80; }
+    .badge-yellow { background: rgba(255,189,46,0.15); color: #ffbd2e; }
+    .badge-blue   { background: rgba(121,180,247,0.15); color: #79b4f7; }
+    .badge-red    { background: var(--paprika-15); color: var(--paprika); }
+    .mini-chart { display: flex; align-items: flex-end; gap: 4px; height: 60px; margin-top: 8px; }
+    .bar { flex: 1; border-radius: 3px 3px 0 0; background: var(--blush-12); }
+    .bar.active { background: var(--paprika); opacity: 0.8; }
+
+    /* Compare */
+    #compare { padding: 120px 0; border-top: 1px solid var(--blush-8); }
+    .compare-header { text-align: center; margin-bottom: 56px; }
+    .compare-header p.section-sub { margin: 0 auto; }
+    .compare-wrap { overflow-x: auto; border: 1px solid var(--blush-8); border-radius: 16px; background: var(--blush-5); }
+    table.compare { width: 100%; border-collapse: collapse; min-width: 680px; }
+    table.compare th, table.compare td { padding: 15px 20px; border-bottom: 1px solid var(--blush-8); }
+    table.compare thead th { font-size: 12.5px; font-weight: 700; color: var(--blush); text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
+    table.compare thead th:first-child { text-align: left; }
+    table.compare thead th.col-router { color: var(--paprika); }
+    table.compare tbody td { font-size: 14px; color: var(--blush-60); }
+    table.compare tbody td.cap { color: var(--blush); font-weight: 500; }
+    table.compare td.cell { text-align: center; font-weight: 700; font-size: 16px; }
+    .router-cell { background: var(--paprika-15); }
+    table.compare thead th.router-cell { border-top-right-radius: 0; }
+    .mark-yes { color: #4ecb80; } .mark-partial { color: #ffbd2e; } .mark-no { color: #6b6b6b; }
+    table.compare tbody tr:last-child td { border-bottom: none; }
+    .compare-foot { text-align: center; font-size: 12px; color: var(--blush-40); margin-top: 20px; }
+
+    /* CTA */
+    #cta { padding: 120px 0; border-top: 1px solid var(--blush-8); text-align: center; position: relative; overflow: hidden; }
+    .cta-glow { position: absolute; bottom: -200px; left: 50%; transform: translateX(-50%); width: 600px; height: 500px; background: radial-gradient(ellipse at center, rgba(207,92,54,0.2) 0%, transparent 65%); pointer-events: none; }
+    #cta h2 { font-size: clamp(32px, 5vw, 56px); font-weight: 800; color: var(--blush); margin-bottom: 16px; line-height: 1.15; }
+    #cta p { font-size: 18px; color: var(--blush-60); margin-bottom: 40px; }
+    .cta-code { display: inline-flex; align-items: center; gap: 16px; background: var(--blush-5); border: 1px solid var(--blush-12); border-radius: 10px; padding: 14px 24px; margin-bottom: 40px; font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--blush-60); }
+    .cta-code button { background: none; border: none; cursor: pointer; color: var(--blush-40); font-size: 16px; transition: color 0.2s; padding: 0; }
+    .cta-code button:hover { color: var(--blush); }
+    .cta-btns { display: flex; gap: 12px; justify-content: center; }
+
+    /* Footer */
+    footer { border-top: 1px solid var(--blush-8); padding: 48px 0; }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; }
+    .footer-logo { font-size: 14px; font-weight: 700; color: var(--blush-40); }
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a { font-size: 13px; color: var(--blush-40); text-decoration: none; transition: color 0.2s; }
+    .footer-links a:hover { color: var(--blush); }
+    .footer-copy { font-size: 13px; color: var(--blush-40); margin-top: 24px; text-align: center; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .steps { grid-template-columns: 1fr; }
+      .features-grid { grid-template-columns: 1fr 1fr; }
+      .code-compare { grid-template-columns: 1fr; }
+      .detail-row { display: flex; flex-direction: column; gap: 32px; }
+      .detail-row.reverse .detail-text, .detail-row.reverse .detail-visual { order: unset; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .features-grid { grid-template-columns: 1fr; }
+      .nav-links a:not(.btn-nav):not(.lang-toggle) { display: none; }
+      .footer-inner { flex-direction: column; gap: 20px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <div class="nav-logo-icon">R</div>
+      LLM Router
+    </a>
+    <div class="nav-links">
+      <a href="#features" data-i18n="nav.features">Features</a>
+      <a href="#code-example" data-i18n="nav.quickstart">Quickstart</a>
+      <a href="#compare" data-i18n="nav.compare">Compare</a>
+      <a href="#detail" data-i18n="nav.enterprise">Enterprise</a>
+      <button class="lang-toggle" onclick="toggleLang()" aria-label="Toggle language">
+        <img id="lang-btn-flag" src="https://flagcdn.com/w20/kr.png" width="20" height="15" alt="한국어" style="display:block;border-radius:2px;flex-shrink:0">
+      </button>
+      <a href="https://github.com/mzd-hseokkim/llm-router" class="btn-nav" data-i18n="nav.github">GitHub →</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section id="hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-tag fade-in">
+        <span class="tag" data-i18n="hero.tag">OpenAI + Anthropic Compatible · Self-Hosted</span>
+      </div>
+      <h1 class="hero-title fade-in" style="transition-delay:0.1s" data-i18n-html="hero.title">
+        One Endpoint.<br /><em>Every LLM Provider.</em>
+      </h1>
+      <p class="hero-sub fade-in" style="transition-delay:0.15s" data-i18n-html="hero.sub">
+        Route, optimize, and control all your LLM traffic through a single API.
+        Change only <code style="font-family:'JetBrains Mono',monospace;font-size:0.9em;background:var(--blush-8);padding:2px 6px;border-radius:4px">base_url</code> — everything else stays the same.
+      </p>
+      <div class="hero-ctas fade-in" style="transition-delay:0.2s">
+        <a href="#code-example" class="btn-primary" data-i18n="hero.cta1">Get Started →</a>
+        <a href="https://github.com/mzd-hseokkim/llm-router" class="btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          <span data-i18n="hero.github">View on GitHub</span>
+        </a>
+      </div>
+      <div class="hero-code-wrap fade-in" style="transition-delay:0.25s">
+        <div class="code-titlebar">
+          <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+          <span class="code-file">main.py</span>
+        </div>
+        <pre class="hero-code"><span class="c-keyword">from</span> openai <span class="c-keyword">import</span> OpenAI
+
+<span class="c-comment"># Before — direct provider access</span>
+<span class="c-comment"># client = OpenAI(base_url=<span class="c-string-strike">"https://api.openai.com/v1"</span>)</span>
+
+<span class="c-comment"># After — one line change, unlimited power</span>
+client = <span class="c-fn">OpenAI</span>(
+    base_url=<span class="c-highlight">"http://your-llm-router/v1"</span>,
+    api_key=<span class="c-string">"sk-vk-your-virtual-key"</span>
+)
+
+response = client.chat.completions.<span class="c-fn">create</span>(
+    model=<span class="c-string">"gpt-4o"</span>,        <span class="c-comment"># or "claude-sonnet-4-6", "gemini-1.5-pro", "grok-2"</span>
+    messages=[{<span class="c-string">"role"</span>: <span class="c-string">"user"</span>, <span class="c-string">"content"</span>: <span class="c-string">"Hello"</span>}]
+)
+<span class="c-comment"># Gateway handles routing, fallback, cost tracking — automatically.</span></pre>
+      </div>
+    </div>
+    <div class="provider-strip fade-in" style="transition-delay:0.35s">
+      <p data-i18n="hero.providers">Works with every major provider</p>
+      <div class="providers">
+        <div class="provider-badge"><span class="picon">⬛</span> OpenAI</div>
+        <div class="provider-badge"><span class="picon">🟠</span> Anthropic</div>
+        <div class="provider-badge"><span class="picon">🔵</span> Google Gemini</div>
+        <div class="provider-badge"><span class="picon">✖️</span> xAI Grok</div>
+        <div class="provider-badge"><span class="picon">☁️</span> Azure OpenAI</div>
+        <div class="provider-badge"><span class="picon">🟡</span> AWS Bedrock</div>
+        <div style="flex-basis:100%;height:0"></div>
+        <div class="provider-badge"><span class="picon">⚡</span> Mistral</div>
+        <div class="provider-badge"><span class="picon">🌊</span> Cohere</div>
+        <div class="provider-badge"><span class="picon">🧭</span> Voyage</div>
+        <div class="provider-badge"><span class="picon">🦙</span> Ollama</div>
+        <div class="provider-badge"><span class="picon">⚙️</span> vLLM · TGI · LM Studio</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How it Works -->
+<section id="how">
+  <div class="container">
+    <div class="how-header fade-in">
+      <p class="section-label" data-i18n="how.label">How It Works</p>
+      <h2 class="section-title" data-i18n="how.title">Up and running in minutes</h2>
+      <p class="section-sub" data-i18n="how.sub">Deploy the Gateway, point your SDK at it, and gain instant control over every LLM call your team makes.</p>
+    </div>
+    <div class="steps">
+      <div class="step fade-in" style="transition-delay:0.05s">
+        <div class="step-num">1</div>
+        <h3 data-i18n="how.s1.title">Point Your SDK</h3>
+        <p data-i18n-html="how.s1.p">Change <code style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--paprika)">base_url</code> to the Gateway. No other code changes needed. Fully OpenAI-compatible.</p>
+        <div class="step-code"><span style="color:#79b4f7">base_url</span>=<span style="color:#8fc">"http://gateway/v1"</span></div>
+      </div>
+      <div class="step fade-in" style="transition-delay:0.1s">
+        <div class="step-num">2</div>
+        <h3 data-i18n="how.s2.title">Gateway Routes Intelligently</h3>
+        <p data-i18n="how.s2.p">Configured fallback chains route each request to the right provider. Circuit breakers automatically skip unhealthy providers — your traffic keeps flowing.</p>
+        <div class="step-code"><span style="color:#79b4f7">fallback</span>: <span style="color:#8fc">[openai, anthropic, gemini]</span></div>
+      </div>
+      <div class="step fade-in" style="transition-delay:0.15s">
+        <div class="step-num">3</div>
+        <h3 data-i18n="how.s3.title">You Stay in Control</h3>
+        <p data-i18n="how.s3.p">Set budgets, rate limits, guardrails, and audit policies from the Admin Dashboard. Costs never spiral.</p>
+        <div class="step-code"><span style="color:#79b4f7">budget</span>: <span style="color:#e0a370">$500</span>/month<br /><span style="color:#79b4f7">rpm_limit</span>: <span style="color:#e0a370">1000</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<section id="stats">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat-item fade-in">
+        <div class="stat-num"><span>~</span>2<span>ms</span></div>
+        <div class="stat-label" data-i18n="stats.l1">Gateway overhead (P95)</div>
+      </div>
+      <div class="stat-item fade-in" style="transition-delay:0.05s">
+        <div class="stat-num">5<span>k+</span></div>
+        <div class="stat-label" data-i18n="stats.l2">Requests/sec · 0 errors</div>
+      </div>
+      <div class="stat-item fade-in" style="transition-delay:0.1s">
+        <div class="stat-num">12<span>+</span></div>
+        <div class="stat-label" data-i18n="stats.l3">LLM providers + self-hosted</div>
+      </div>
+      <div class="stat-item fade-in" style="transition-delay:0.15s">
+        <div class="stat-num"><span>&lt;</span>6<span>MB</span></div>
+        <div class="stat-label" data-i18n="stats.l4">Idle memory footprint</div>
+      </div>
+    </div>
+    <p style="text-align:center;font-size:12px;color:var(--blush-40);margin-top:24px" data-i18n="stats.note">Measured on a single 1 vCPU / 512 MB instance (mock backend). Real-world latency is dominated by upstream model time.</p>
+  </div>
+</section>
+
+<!-- Features Grid -->
+<section id="features">
+  <div class="container">
+    <div class="features-header fade-in">
+      <p class="section-label" data-i18n="feat.label">Features</p>
+      <h2 class="section-title" data-i18n="feat.title">Everything your LLM stack needs</h2>
+      <p class="section-sub" data-i18n="feat.sub">From startup to enterprise scale — the Gateway grows with you.</p>
+    </div>
+    <div class="features-grid">
+<div class="feature-card fade-in" style="transition-delay:0.05s"><div class="feature-icon">🔒</div><h3 data-i18n="feat.f2.t">Zero-Exposure Key Security</h3><p data-i18n="feat.f2.p">Provider API keys are encrypted with AES-256-GCM and never leave the Gateway. Clients see only virtual keys — Provider credentials stay hidden.</p></div>
+      <div class="feature-card fade-in" style="transition-delay:0.1s"><div class="feature-icon">💰</div><h3 data-i18n="feat.f3.t">Cost Control & Chargeback</h3><p data-i18n="feat.f3.p">Per-team soft/hard budgets, real-time cost tracking, and automated chargeback reports. Know exactly where every dollar goes.</p></div>
+      <div class="feature-card fade-in" style="transition-delay:0.1s"><div class="feature-icon">⚡</div><h3 data-i18n="feat.f5.t">Exact-Match Caching</h3><p data-i18n="feat.f5.p">Redis-backed exact-match caching for temperature=0 requests. Identical prompts skip the model entirely — instant response, zero cost.</p></div>
+      <div class="feature-card fade-in"><div class="feature-icon">🛡️</div><h3 data-i18n="feat.f7.t">Guardrails & PII Protection</h3><p data-i18n="feat.f7.p">Block prompt injections, mask PII before it reaches any model, and enforce content policies — at the gateway layer, before any token is spent.</p></div>
+      <div class="feature-card fade-in" style="transition-delay:0.05s"><div class="feature-icon">🔄</div><h3 data-i18n="feat.f8.t">Failover & Circuit Breakers</h3><p data-i18n="feat.f8.p">Automatic provider failover with weighted load balancing. Circuit breakers isolate failing providers so your service stays up.</p></div>
+      <div class="feature-card fade-in" style="transition-delay:0.1s"><div class="feature-icon">📊</div><h3 data-i18n="feat.f9.t">Full Observability</h3><p data-i18n="feat.f9.p">OpenTelemetry tracing, Prometheus metrics, Langfuse export, immutable audit logs with GDPR/HIPAA retention, and Slack/email alerting.</p></div>
+      <div class="feature-card fade-in"><div class="feature-icon">🔀</div><h3 data-i18n="feat.f10.t">OpenAI + Anthropic Native</h3><p data-i18n="feat.f10.p">Serve both the OpenAI API (chat, responses, embeddings) and the Anthropic Messages API natively. Point either SDK at one base_url — no rewrites.</p></div>
+      <div class="feature-card fade-in" style="transition-delay:0.05s"><div class="feature-icon">🧠</div><h3 data-i18n="feat.f11.t">Intelligent ML Routing</h3><p data-i18n="feat.f11.p">A learned classifier scores cost vs. quality per request and picks the optimal provider. Run A/B tests and promote the winner automatically.</p></div>
+      <div class="feature-card fade-in" style="transition-delay:0.1s"><div class="feature-icon">🌍</div><h3 data-i18n="feat.f12.t">Data Residency & MCP</h3><p data-i18n="feat.f12.p">Enforce GDPR/HIPAA region routing, and run a central Model Context Protocol hub (stdio, WebSocket, SSE) — all from one self-hosted gateway.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Code Compare -->
+<section id="code-example">
+  <div class="container">
+    <div class="fade-in">
+      <p class="section-label" data-i18n="code.label">Quickstart</p>
+      <h2 class="section-title" data-i18n="code.title">Zero migration effort</h2>
+      <p class="section-sub" data-i18n="code.sub">If you already use the OpenAI SDK, you're already compatible. One line.</p>
+    </div>
+    <div class="code-compare">
+      <div class="code-panel fade-in" style="transition-delay:0.05s">
+        <div class="code-panel-header">
+          <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+          <span class="code-panel-label label-before" data-i18n="code.before">Before</span>
+          <span style="font-size:12px;color:var(--blush-40);font-family:'JetBrains Mono',monospace;margin-left:4px">direct_openai.py</span>
+        </div>
+        <pre><span class="c-keyword">from</span> openai <span class="c-keyword">import</span> OpenAI
+
+client = <span class="c-fn">OpenAI</span>(
+    api_key=<span class="c-string">"sk-..."</span>  <span class="c-comment"># exposed to every dev</span>
+)
+
+<span class="c-comment"># No routing, no fallback</span>
+<span class="c-comment"># No cost control</span>
+<span class="c-comment"># No audit trail</span>
+<span class="c-comment"># No rate limiting</span>
+
+response = client.chat.completions.<span class="c-fn">create</span>(
+    model=<span class="c-string">"gpt-4o"</span>,
+    messages=[...]
+)</pre>
+      </div>
+      <div class="code-panel fade-in" style="transition-delay:0.1s">
+        <div class="code-panel-header">
+          <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+          <span class="code-panel-label label-after" data-i18n="code.after">After</span>
+          <span style="font-size:12px;color:var(--blush-40);font-family:'JetBrains Mono',monospace;margin-left:4px">with_router.py</span>
+        </div>
+        <pre><span class="c-keyword">from</span> openai <span class="c-keyword">import</span> OpenAI
+
+client = <span class="c-fn">OpenAI</span>(
+    <span class="c-highlight">base_url=<span class="c-string">"http://llm-router/v1"</span>,</span>
+    api_key=<span class="c-string">"sk-vk-team-key"</span>  <span class="c-comment"># virtual key</span>
+)
+
+<span class="c-comment"># ✓ Auto-routing + failover</span>
+<span class="c-comment"># ✓ Budget enforcement</span>
+<span class="c-comment"># ✓ Full audit log</span>
+<span class="c-comment"># ✓ Rate limiting per team</span>
+
+response = client.chat.completions.<span class="c-fn">create</span>(
+    model=<span class="c-string">"gpt-4o"</span>,
+    messages=[...]
+)</pre>
+      </div>
+    </div>
+    <div style="margin-top:16px;text-align:center;font-size:14px;color:var(--blush-40)" class="fade-in">
+      <span data-i18n="code.compat">Works with Python, TypeScript, Go, Ruby, curl — any OpenAI-compatible client.</span>
+    </div>
+  </div>
+</section>
+
+<!-- Detail -->
+<section id="detail">
+  <div class="container">
+    <!-- Row 2 -->
+    <div class="detail-row reverse fade-in">
+      <div class="detail-text">
+        <p class="section-label" data-i18n="d2.label">Enterprise Ready</p>
+        <h3 data-i18n="d2.title">Built for teams, trusted by organizations</h3>
+        <p data-i18n="d2.p">Per-team budgets and rate limits, immutable audit logs, and data residency enforcement — everything ops and compliance teams need.</p>
+        <ul class="feature-list">
+          <li data-i18n="d2.l1">Per-key rate limits (RPM / TPM) and hard budget caps</li>
+          <li data-i18n="d2.l2">Automated chargeback reports by team or cost center</li>
+          <li data-i18n="d2.l3">SOC2-grade immutable audit logs with retention policies</li>
+          <li data-i18n="d2.l4">Data residency enforcement for GDPR and HIPAA</li>
+        </ul>
+      </div>
+      <div class="detail-visual">
+        <div style="font-size:12px;color:var(--blush-40);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em" data-i18n="d2.v.label">Team Budget Overview</div>
+        <div class="visual-row"><div class="visual-icon" style="background:rgba(40,200,100,0.12)">💼</div><div class="visual-row-text"><div class="vt" data-i18n="d2.v1.t">Engineering</div><div class="vs">$320 / $500</div></div><span class="visual-badge badge-green">64%</span></div>
+        <div class="visual-row" style="margin-top:8px"><div class="visual-icon" style="background:rgba(255,189,46,0.12)">📊</div><div class="visual-row-text"><div class="vt" data-i18n="d2.v2.t">Data Science</div><div class="vs">$440 / $500</div></div><span class="visual-badge badge-yellow">88%</span></div>
+        <div class="visual-row" style="margin-top:8px"><div class="visual-icon" style="background:rgba(40,200,100,0.12)">🎨</div><div class="visual-row-text"><div class="vt" data-i18n="d2.v3.t">Product</div><div class="vs">$85 / $200</div></div><span class="visual-badge badge-green">43%</span></div>
+        <div class="mini-chart">
+          <div class="bar" style="height:40%"></div><div class="bar" style="height:55%"></div><div class="bar" style="height:45%"></div>
+          <div class="bar active" style="height:64%"></div><div class="bar" style="height:58%"></div><div class="bar active" style="height:72%"></div>
+          <div class="bar" style="height:60%"></div><div class="bar active" style="height:88%"></div><div class="bar" style="height:50%"></div>
+          <div class="bar" style="height:43%"></div><div class="bar active" style="height:67%"></div><div class="bar" style="height:55%"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Row 3 -->
+    <div class="detail-row fade-in">
+      <div class="detail-text">
+        <p class="section-label" data-i18n="d3.label">Security & Compliance</p>
+        <h3 data-i18n="d3.title">Provider keys never leave the Gateway</h3>
+        <p data-i18n="d3.p">AES-256-GCM encrypted key storage means your OpenAI, Anthropic, and Gemini keys are invisible to clients, developers, and logs. Add guardrails to filter content before it ever reaches a model.</p>
+        <ul class="feature-list">
+          <li data-i18n="d3.l1">AES-256-GCM encrypted provider key storage</li>
+          <li data-i18n="d3.l2">PII detection and masking in requests and responses</li>
+          <li data-i18n="d3.l3">Prompt injection detection and blocking</li>
+          <li data-i18n="d3.l4">Content policy enforcement at the gateway layer</li>
+          <li data-i18n="d3.l5">On-premises and air-gap deployment supported</li>
+        </ul>
+      </div>
+      <div class="detail-visual">
+        <div style="font-size:12px;color:var(--blush-40);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em" data-i18n="d3.v.label">Guardrail Events</div>
+        <div class="visual-row"><div class="visual-icon" style="background:var(--paprika-15)">🛡️</div><div class="visual-row-text"><div class="vt" data-i18n="d3.v1.t">PII Masked</div><div class="vs" data-i18n="d3.v1.s">email redacted before Anthropic call</div></div><span class="visual-badge badge-yellow" data-i18n="d3.v1.b">Masked</span></div>
+        <div class="visual-row" style="margin-top:8px"><div class="visual-icon" style="background:var(--paprika-15)">⛔</div><div class="visual-row-text"><div class="vt" data-i18n="d3.v2.t">Prompt Injection Blocked</div><div class="vs">"ignore previous instructions…"</div></div><span class="visual-badge badge-red" data-i18n="d3.v2.b">Blocked</span></div>
+        <div class="visual-row" style="margin-top:8px"><div class="visual-icon" style="background:rgba(40,200,100,0.12)">🔑</div><div class="visual-row-text"><div class="vt" data-i18n="d3.v3.t">Key Exchange</div><div class="vs" data-i18n="d3.v3.s">virtual → provider key (server-side only)</div></div><span class="visual-badge badge-green" data-i18n="d3.v3.b">Secure</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Compare -->
+<section id="compare">
+  <div class="container">
+    <div class="compare-header fade-in">
+      <p class="section-label" data-i18n="cmp.label">Why LLM Router</p>
+      <h2 class="section-title" data-i18n="cmp.title">Enterprise gateway features, none of the lock-in</h2>
+      <p class="section-sub" data-i18n="cmp.sub">Everything a managed gateway gives you — running on your own infrastructure, open source, in a single Go binary.</p>
+    </div>
+    <div class="compare-wrap fade-in">
+      <table class="compare">
+        <thead>
+          <tr>
+            <th data-i18n="cmp.col1">Capability</th>
+            <th class="col-router router-cell" data-i18n="cmp.col2">LLM Router</th>
+            <th data-i18n="cmp.col3">Managed SaaS gateway</th>
+            <th data-i18n="cmp.col4">DIY / Python proxy</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="cap" data-i18n="cmp.r1">Self-hosted — data never leaves your infra</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-no">✕</td><td class="cell mark-yes">✓</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r2">Open source · no per-request markup</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-no">✕</td><td class="cell mark-yes">✓</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r3">OpenAI + Anthropic native APIs</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-partial">~</td><td class="cell mark-partial">~</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r4">12+ providers + self-hosted models (Ollama/vLLM)</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-yes">✓</td><td class="cell mark-partial">~</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r5">Encrypted provider key vault (AES-256-GCM)</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-yes">✓</td><td class="cell mark-no">✕</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r6">Built-in guardrails (PII · injection · LLM-judge)</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-partial">~</td><td class="cell mark-no">✕</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r7">Budgets, chargeback &amp; cost control</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-yes">✓</td><td class="cell mark-no">✕</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r8">Data residency (GDPR/HIPAA) + immutable audit</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-partial">~</td><td class="cell mark-no">✕</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r9">ML-based routing &amp; A/B testing</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-partial">~</td><td class="cell mark-no">✕</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r10">Single Go binary · ~2ms overhead · &lt;6MB RAM</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-partial">~</td><td class="cell mark-no">✕</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="compare-foot" data-i18n="cmp.foot">Reflects the typical positioning of each category. ✓ built-in · ~ varies or paid add-on · ✕ not available.</p>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta">
+  <div class="cta-glow"></div>
+  <div class="container" style="position:relative;z-index:1">
+    <p class="section-label" style="justify-content:center;display:flex;margin-bottom:20px" data-i18n="cta.label">Deploy Now</p>
+    <h2 class="fade-in" data-i18n-html="cta.title">Deploy in minutes.<br />Scale to millions.</h2>
+    <p class="fade-in" style="transition-delay:0.05s" data-i18n="cta.sub">Self-hosted, open source, and built for Go's performance.</p>
+    <div class="cta-code fade-in" style="transition-delay:0.1s">
+      <span><span style="color:var(--blush-40)">$</span> <span>docker compose up -d</span></span>
+      <button onclick="copyCmd(this)" title="Copy">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </button>
+    </div>
+    <div class="cta-btns fade-in" style="transition-delay:0.15s">
+      <a href="https://github.com/mzd-hseokkim/llm-router" class="btn-primary" data-i18n="cta.btn1">Get Started on GitHub →</a>
+      <a href="#features" class="btn-secondary" data-i18n="cta.btn2">Explore Features</a>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-logo">⬛ LLM Router</div>
+      <div class="footer-links">
+        <a href="#" data-i18n="foot.docs">Documentation</a>
+        <a href="https://github.com/mzd-hseokkim/llm-router">GitHub</a>
+        <a href="#" data-i18n="foot.changelog">Changelog</a>
+        <a href="#" data-i18n="foot.license">License</a>
+      </div>
+    </div>
+    <p class="footer-copy" data-i18n="foot.copy">Open source · Built with Go · MIT License</p>
+  </div>
+</footer>
+
+<script>
+// ─── Translations ───
+const T = {
+  en: {
+    'nav.features':  'Features',
+    'nav.quickstart':'Quickstart',
+    'nav.compare':   'Compare',
+    'nav.enterprise':'Enterprise',
+    'nav.github':    'GitHub →',
+    'hero.github':   'View on GitHub',
+    'hero.tag':      'OpenAI + Anthropic Compatible · Self-Hosted',
+    'hero.title':    'One Endpoint.<br /><em>Every LLM Provider.</em>',
+    'hero.sub':      'Route, optimize, and control all your LLM traffic through a single API. Change only <code style="font-family:\'JetBrains Mono\',monospace;font-size:0.9em;background:var(--blush-8);padding:2px 6px;border-radius:4px">base_url</code> — everything else stays the same.',
+    'hero.cta1':     'Get Started →',
+    'hero.providers':'Works with every major provider',
+    'how.label':     'How It Works',
+    'how.title':     'Up and running in minutes',
+    'how.sub':       'Deploy the Gateway, point your SDK at it, and gain instant control over every LLM call your team makes.',
+    'how.s1.title':  'Point Your SDK',
+    'how.s1.p':      'Change <code style="font-size:12px;font-family:\'JetBrains Mono\',monospace;color:var(--paprika)">base_url</code> to the Gateway. No other code changes needed. Fully OpenAI-compatible.',
+    'how.s2.title':  'Gateway Routes Intelligently',
+    'how.s2.p':      'Configured fallback chains route each request to the right provider. Circuit breakers automatically skip unhealthy providers — your traffic keeps flowing.',
+    'how.s3.title':  'You Stay in Control',
+    'how.s3.p':      'Set budgets, rate limits, guardrails, and audit policies from the Admin Dashboard. Costs never spiral.',
+    'stats.l1':      'Gateway overhead (P95)',
+    'stats.l2':      'Requests/sec · 0 errors',
+    'stats.l3':      'LLM providers + self-hosted',
+    'stats.l4':      'Idle memory footprint',
+    'stats.note':    'Measured on a single 1 vCPU / 512 MB instance (mock backend). Real-world latency is dominated by upstream model time.',
+    'feat.label':    'Features',
+    'feat.title':    'Everything your LLM stack needs',
+    'feat.sub':      'From startup to enterprise scale — the Gateway grows with you.',
+    'feat.f2.t':     'Zero-Exposure Key Security',
+    'feat.f2.p':     'Provider API keys are encrypted with AES-256-GCM and never leave the Gateway. Clients see only virtual keys — Provider credentials stay hidden.',
+    'feat.f3.t':     'Cost Control & Chargeback',
+    'feat.f3.p':     'Per-team soft/hard budgets, real-time cost tracking, and automated chargeback reports. Know exactly where every dollar goes.',
+    'feat.f5.t':     'Exact-Match Caching',
+    'feat.f5.p':     'Redis-backed exact-match caching for temperature=0 requests. Identical prompts skip the model entirely — instant response, zero cost.',
+    'feat.f7.t':     'Guardrails & PII Protection',
+    'feat.f7.p':     'Block prompt injections, mask PII before it reaches any model, and enforce content policies — at the gateway layer, before any token is spent.',
+    'feat.f8.t':     'Failover & Circuit Breakers',
+    'feat.f8.p':     'Automatic provider failover with weighted load balancing. Circuit breakers isolate failing providers so your service stays up.',
+    'feat.f9.t':     'Full Observability',
+    'feat.f9.p':     'OpenTelemetry tracing, Prometheus metrics, Langfuse export, immutable audit logs with GDPR/HIPAA retention, and Slack/email alerting.',
+    'feat.f10.t':    'OpenAI + Anthropic Native',
+    'feat.f10.p':    'Serve both the OpenAI API (chat, responses, embeddings) and the Anthropic Messages API natively. Point either SDK at one base_url — no rewrites.',
+    'feat.f11.t':    'Intelligent ML Routing',
+    'feat.f11.p':    'A learned classifier scores cost vs. quality per request and picks the optimal provider. Run A/B tests and promote the winner automatically.',
+    'feat.f12.t':    'Data Residency & MCP',
+    'feat.f12.p':    'Enforce GDPR/HIPAA region routing, and run a central Model Context Protocol hub (stdio, WebSocket, SSE) — all from one self-hosted gateway.',
+    'code.label':    'Quickstart',
+    'code.title':    'Zero migration effort',
+    'code.sub':      "If you already use the OpenAI SDK, you're already compatible. One line.",
+    'code.before':   'Before',
+    'code.after':    'After',
+    'code.compat':   'Works with Python, TypeScript, Go, Ruby, curl — any OpenAI-compatible client.',
+    'd2.label':      'Enterprise Ready',
+    'd2.title':      'Built for teams, trusted by organizations',
+    'd2.p':          'Per-team budgets and rate limits, immutable audit logs, and data residency enforcement — everything ops and compliance teams need.',
+    'd2.l1':         'Per-key rate limits (RPM / TPM) and hard budget caps',
+    'd2.l2':         'Automated chargeback reports by team or cost center',
+    'd2.l3':         'SOC2-grade immutable audit logs with retention policies',
+    'd2.l4':         'Data residency enforcement for GDPR and HIPAA',
+    'd2.v.label':    'Team Budget Overview',
+    'd2.v1.t':       'Engineering',
+    'd2.v2.t':       'Data Science',
+    'd2.v3.t':       'Product',
+    'd3.label':      'Security & Compliance',
+    'd3.title':      'Provider keys never leave the Gateway',
+    'd3.p':          'AES-256-GCM encrypted key storage means your OpenAI, Anthropic, and Gemini keys are invisible to clients, developers, and logs. Add guardrails to filter content before it ever reaches a model.',
+    'd3.l1':         'AES-256-GCM encrypted provider key storage',
+    'd3.l2':         'PII detection and masking in requests and responses',
+    'd3.l3':         'Prompt injection detection and blocking',
+    'd3.l4':         'Content policy enforcement at the gateway layer',
+    'd3.l5':         'On-premises and air-gap deployment supported',
+    'd3.v.label':    'Guardrail Events',
+    'd3.v1.t':       'PII Masked',
+    'd3.v1.s':       'email redacted before Anthropic call',
+    'd3.v1.b':       'Masked',
+    'd3.v2.t':       'Prompt Injection Blocked',
+    'd3.v2.b':       'Blocked',
+    'd3.v3.t':       'Key Exchange',
+    'd3.v3.s':       'virtual → provider key (server-side only)',
+    'd3.v3.b':       'Secure',
+    'cmp.label':     'Why LLM Router',
+    'cmp.title':     'Enterprise gateway features, none of the lock-in',
+    'cmp.sub':       'Everything a managed gateway gives you — running on your own infrastructure, open source, in a single Go binary.',
+    'cmp.col1':      'Capability',
+    'cmp.col2':      'LLM Router',
+    'cmp.col3':      'Managed SaaS gateway',
+    'cmp.col4':      'DIY / Python proxy',
+    'cmp.r1':        'Self-hosted — data never leaves your infra',
+    'cmp.r2':        'Open source · no per-request markup',
+    'cmp.r3':        'OpenAI + Anthropic native APIs',
+    'cmp.r4':        '12+ providers + self-hosted models (Ollama/vLLM)',
+    'cmp.r5':        'Encrypted provider key vault (AES-256-GCM)',
+    'cmp.r6':        'Built-in guardrails (PII · injection · LLM-judge)',
+    'cmp.r7':        'Budgets, chargeback & cost control',
+    'cmp.r8':        'Data residency (GDPR/HIPAA) + immutable audit',
+    'cmp.r9':        'ML-based routing & A/B testing',
+    'cmp.r10':       'Single Go binary · ~2ms overhead · <6MB RAM',
+    'cmp.foot':      'Reflects the typical positioning of each category. ✓ built-in · ~ varies or paid add-on · ✕ not available.',
+    'cta.label':     'Deploy Now',
+    'cta.title':     'Deploy in minutes.<br />Scale to millions.',
+    'cta.sub':       "Self-hosted, open source, and built for Go's performance.",
+    'cta.btn1':      'Get Started on GitHub →',
+    'cta.btn2':      'Explore Features',
+    'foot.docs':     'Documentation',
+    'foot.changelog':'Changelog',
+    'foot.license':  'License',
+    'foot.copy':     'Open source · Built with Go · MIT License',
+  },
+  ko: {
+    'nav.features':  '기능',
+    'nav.quickstart':'빠른 시작',
+    'nav.compare':   '비교',
+    'nav.enterprise':'엔터프라이즈',
+    'nav.github':    'GitHub →',
+    'hero.github':   'GitHub 보기',
+    'hero.tag':      'OpenAI · Anthropic 호환 · 셀프호스팅',
+    'hero.title':    '엔드포인트 하나로,<br /><em>모든 LLM 프로바이더를.</em>',
+    'hero.sub':      '<code style="font-family:\'JetBrains Mono\',monospace;font-size:0.9em;background:var(--blush-8);padding:2px 6px;border-radius:4px">base_url</code> 하나만 바꾸면 됩니다.<BR> 라우팅, 비용 제어, 보안은 게이트웨이가 알아서 처리합니다.',
+    'hero.cta1':     '시작하기 →',
+    'hero.providers':'주요 프로바이더를 전부 지원합니다',
+    'how.label':     '작동 방식',
+    'how.title':     '세팅은 몇 분이면 충분합니다',
+    'how.sub':       '게이트웨이를 띄우고 SDK를 연결하면, 팀의 모든 LLM 호출을 바로 손에 넣을 수 있습니다.',
+    'how.s1.title':  'SDK 연결',
+    'how.s1.p':      '<code style="font-size:12px;font-family:\'JetBrains Mono\',monospace;color:var(--paprika)">base_url</code>만 게이트웨이 주소로 바꾸면 끝입니다. 다른 코드는 건드릴 필요 없고, OpenAI SDK와 100% 호환됩니다.',
+    'how.s2.title':  '자동으로 최적 경로 선택',
+    'how.s2.p':      '설정한 폴백 체인이 요청을 적합한 프로바이더로 라우팅합니다. 서킷 브레이커가 이상 프로바이더를 자동으로 건너뛰어 트래픽이 끊기지 않습니다.',
+    'how.s3.title':  '제어권은 팀에게',
+    'how.s3.p':      '예산, 요청률, 가드레일, 감사 정책을 Admin 대시보드에서 손쉽게 설정할 수 있습니다. 비용이 예상 밖으로 튀는 일은 없습니다.',
+    'stats.l1':      '게이트웨이 오버헤드 (P95)',
+    'stats.l2':      '초당 요청 · 에러 0건',
+    'stats.l3':      'LLM 프로바이더 + 자체 호스팅',
+    'stats.l4':      '유휴 메모리 사용량',
+    'stats.note':    '1 vCPU / 512 MB 단일 인스턴스(mock 백엔드) 측정값. 실제 지연은 대부분 모델 응답 시간이 좌우합니다.',
+    'feat.label':    '기능',
+    'feat.title':    'LLM 인프라에 필요한 건 다 있습니다',
+    'feat.sub':      '스타트업이든 대기업이든 — 규모에 맞게 함께 커갑니다.',
+    'feat.f2.t':     '프로바이더 키 완전 은폐',
+    'feat.f2.p':     'AES-256-GCM으로 암호화한 프로바이더 키는 게이트웨이 밖으로 절대 나가지 않습니다. 클라이언트에는 가상 키만 보입니다.',
+    'feat.f3.t':     '비용 제어 & 차지백',
+    'feat.f3.p':     '팀별 예산 한도 설정, 실시간 비용 모니터링, 자동 차지백 리포트. 비용이 어디서 얼마나 나가는지 한눈에 파악하세요.',
+    'feat.f5.t':     '정확 매칭 캐시',
+    'feat.f5.p':     'temperature=0 요청에 한해 Redis 기반 정확 매칭 캐시를 적용합니다. 동일한 프롬프트는 모델을 거치지 않고 즉시 응답 — 비용 없이.',
+    'feat.f7.t':     '가드레일 & PII 보호',
+    'feat.f7.p':     '프롬프트 인젝션 차단, 모델에 닿기 전 PII 자동 마스킹, 콘텐츠 정책 강제. 토큰이 소모되기 전, 게이트웨이 선에서 막습니다.',
+    'feat.f8.t':     '자동 폴백 & 서킷 브레이커',
+    'feat.f8.p':     '가중 로드 밸런싱으로 트래픽을 분산하고, 프로바이더 장애 시 자동으로 전환합니다. 서킷 브레이커가 이상 징후를 실시간으로 감지합니다.',
+    'feat.f9.t':     '완전한 관측성',
+    'feat.f9.p':     'OpenTelemetry 트레이싱, Prometheus 메트릭, Langfuse 연동, GDPR/HIPAA 보존 정책이 적용된 불변 감사 로그, Slack·이메일 알림까지 갖췄습니다.',
+    'feat.f10.t':    'OpenAI + Anthropic 네이티브',
+    'feat.f10.p':    'OpenAI API(chat·responses·embeddings)와 Anthropic Messages API를 둘 다 네이티브로 제공합니다. 어느 SDK든 base_url 한 줄만 바꾸면 됩니다.',
+    'feat.f11.t':    '지능형 ML 라우팅',
+    'feat.f11.p':    '학습된 분류기가 요청마다 비용 대 품질을 점수화해 최적 프로바이더를 고릅니다. A/B 테스트로 승자를 자동 전환할 수도 있습니다.',
+    'feat.f12.t':    '데이터 레지던시 & MCP',
+    'feat.f12.p':    'GDPR/HIPAA 지역 라우팅을 강제하고, Model Context Protocol 허브(stdio·WebSocket·SSE)를 운영합니다 — 모두 셀프호스팅 게이트웨이 하나에서.',
+    'code.label':    '빠른 시작',
+    'code.title':    '마이그레이션이 필요 없습니다',
+    'code.sub':      'OpenAI SDK를 쓰고 있다면 이미 호환됩니다. 딱 한 줄만 바꾸면 됩니다.',
+    'code.before':   '변경 전',
+    'code.after':    '변경 후',
+    'code.compat':   'Python, TypeScript, Go, Ruby, curl — OpenAI 호환 클라이언트라면 뭐든 됩니다.',
+    'd2.label':      '엔터프라이즈',
+    'd2.title':      '팀을 위해 만들고, 조직이 믿고 쓰는',
+    'd2.p':          '가상 키별 예산·속도 제한, 불변 감사 로그, 데이터 레지던시 강제 라우팅 — 운영팀과 컴플라이언스팀이 요구하는 것들.',
+    'd2.l1':         '가상 키별 RPM/TPM 속도 제한 및 하드 예산 한도',
+    'd2.l2':         '팀·비용 센터별 자동 차지백 리포트',
+    'd2.l3':         '보존 정책이 적용된 SOC2급 불변 감사 로그',
+    'd2.l4':         'GDPR · HIPAA 데이터 레지던시 강제 라우팅',
+    'd2.v.label':    '팀 예산 현황',
+    'd2.v1.t':       '엔지니어링',
+    'd2.v2.t':       '데이터 사이언스',
+    'd2.v3.t':       '프로덕트',
+    'd3.label':      '보안 & 컴플라이언스',
+    'd3.title':      '프로바이더 키는 게이트웨이 밖으로 나가지 않습니다',
+    'd3.p':          'AES-256-GCM 암호화로 OpenAI, Anthropic, Gemini 키를 완전히 숨깁니다. 클라이언트, 개발자, 로그 어디에도 실제 키는 보이지 않습니다. 가드레일을 설정해 콘텐츠가 모델에 닿기 전에 걸러내세요.',
+    'd3.l1':         'AES-256-GCM 암호화 프로바이더 키 보관',
+    'd3.l2':         '요청·응답의 PII 자동 감지 및 마스킹',
+    'd3.l3':         '프롬프트 인젝션 실시간 감지 및 차단',
+    'd3.l4':         '게이트웨이 레이어에서 콘텐츠 정책 강제 적용',
+    'd3.l5':         '온프레미스 · 에어갭 환경 배포 지원',
+    'd3.v.label':    '가드레일 이벤트',
+    'd3.v1.t':       'PII 마스킹',
+    'd3.v1.s':       'Anthropic 호출 전 이메일 주소 마스킹',
+    'd3.v1.b':       '마스킹',
+    'd3.v2.t':       '프롬프트 인젝션 차단',
+    'd3.v2.b':       '차단',
+    'd3.v3.t':       '키 교환',
+    'd3.v3.s':       '가상 키 → 프로바이더 키 (서버 내부)',
+    'd3.v3.b':       '안전',
+    'cmp.label':     '왜 LLM Router인가',
+    'cmp.title':     '관리형 게이트웨이의 모든 기능, 종속성은 없이',
+    'cmp.sub':       '관리형 게이트웨이가 주는 모든 것을 — 우리 인프라 위에서, 오픈소스로, Go 바이너리 하나로.',
+    'cmp.col1':      '기능',
+    'cmp.col2':      'LLM Router',
+    'cmp.col3':      '관리형 SaaS 게이트웨이',
+    'cmp.col4':      '직접 구축 / Python 프록시',
+    'cmp.r1':        '셀프호스팅 — 데이터가 인프라 밖으로 나가지 않음',
+    'cmp.r2':        '오픈소스 · 요청당 추가 과금 없음',
+    'cmp.r3':        'OpenAI + Anthropic 네이티브 API',
+    'cmp.r4':        '12개+ 프로바이더 + 자체 호스팅 모델(Ollama/vLLM)',
+    'cmp.r5':        '암호화 프로바이더 키 보관소 (AES-256-GCM)',
+    'cmp.r6':        '내장 가드레일 (PII · 인젝션 · LLM-judge)',
+    'cmp.r7':        '예산 · 차지백 · 비용 제어',
+    'cmp.r8':        '데이터 레지던시(GDPR/HIPAA) + 불변 감사 로그',
+    'cmp.r9':        'ML 기반 라우팅 & A/B 테스트',
+    'cmp.r10':       'Go 바이너리 하나 · ~2ms 오버헤드 · 6MB 미만 RAM',
+    'cmp.foot':      '각 범주의 일반적인 포지셔닝 기준입니다. ✓ 기본 제공 · ~ 제품별 상이/유료 추가 · ✕ 미지원.',
+    'cta.label':     '지금 바로 배포',
+    'cta.title':     '배포는 몇 분이면 충분합니다.<br />확장은 무한대로.',
+    'cta.sub':       '셀프호스팅, 오픈소스, Go의 성능으로 구동됩니다.',
+    'cta.btn1':      'GitHub에서 시작하기 →',
+    'cta.btn2':      '기능 둘러보기',
+    'foot.docs':     '문서',
+    'foot.changelog':'변경 이력',
+    'foot.license':  '라이선스',
+    'foot.copy':     '오픈소스 · Go로 만들었습니다 · MIT 라이선스',
+  }
+};
+
+// ─── i18n engine ───
+let lang = 'en';
+
+function applyLang() {
+  const dict = T[lang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const v = dict[el.dataset.i18n];
+    if (v !== undefined) el.textContent = v;
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const v = dict[el.dataset.i18nHtml];
+    if (v !== undefined) el.innerHTML = v;
+  });
+  const flagEl = document.getElementById('lang-btn-flag');
+  flagEl.src = lang === 'en' ? 'https://flagcdn.com/w20/kr.png' : 'https://flagcdn.com/w20/us.png';
+  flagEl.alt = lang === 'en' ? '한국어' : 'English';
+  document.documentElement.lang = lang === 'en' ? 'en' : 'ko';
+  document.title = lang === 'en'
+    ? 'LLM Router — One Endpoint. Every LLM Provider.'
+    : 'LLM Router — 하나의 엔드포인트. 모든 LLM 프로바이더.';
+}
+
+function toggleLang() {
+  lang = lang === 'en' ? 'ko' : 'en';
+  applyLang();
+}
+
+// ─── Scroll fade-in ───
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }
+  });
+}, { threshold: 0.12 });
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+// ─── Nav scroll ───
+const navEl = document.querySelector('nav');
+window.addEventListener('scroll', () => {
+  navEl.style.borderBottomColor = window.scrollY > 20 ? 'rgba(238,229,233,0.12)' : 'rgba(238,229,233,0.08)';
+}, { passive: true });
+
+// ─── Copy button ───
+function copyCmd(btn) {
+  navigator.clipboard.writeText('docker compose up -d');
+  const svg = btn.innerHTML;
+  btn.innerHTML = '✓'; btn.style.color = '#4ecb80';
+  setTimeout(() => { btn.innerHTML = svg; btn.style.color = ''; }, 1500);
+}
+</script>
+</body>
+</html>

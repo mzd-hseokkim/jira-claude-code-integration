@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI-Native SDLC Harness — Your backlog, executed by agents.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --black: #000000; --blush: #eee5e9; --paprika: #cf5c36;
+      --blush-5: rgba(238,229,233,0.05); --blush-8: rgba(238,229,233,0.08);
+      --blush-12: rgba(238,229,233,0.12); --blush-20: rgba(238,229,233,0.20);
+      --blush-40: rgba(238,229,233,0.40); --blush-60: rgba(238,229,233,0.60);
+      --paprika-15: rgba(207,92,54,0.15); --paprika-30: rgba(207,92,54,0.30);
+      --radius: 12px; --max: 1200px;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; background: var(--black); color: var(--blush); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: var(--black); } ::-webkit-scrollbar-thumb { background: var(--blush-20); border-radius: 3px; }
+    .container { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+    .tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--paprika); border: 1px solid var(--paprika-30); background: var(--paprika-15); padding: 5px 12px; border-radius: 100px; }
+    .tag::before { content: ''; width: 6px; height: 6px; background: var(--paprika); border-radius: 50%; display: inline-block; }
+    .section-label { font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--paprika); margin-bottom: 16px; }
+    h2.section-title { font-size: clamp(28px, 4vw, 44px); font-weight: 800; color: var(--blush); line-height: 1.15; margin-bottom: 16px; }
+    p.section-sub { font-size: 17px; color: var(--blush-60); max-width: 560px; line-height: 1.7; }
+    .fade-in { opacity: 0; transform: translateY(28px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+    /* Nav */
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; border-bottom: 1px solid var(--blush-8); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); background: rgba(0,0,0,0.7); }
+    .nav-inner { max-width: var(--max); margin: 0 auto; padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; }
+    .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; color: var(--blush); text-decoration: none; }
+    .nav-logo-icon { width: 32px; height: 32px; background: var(--paprika); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; color: var(--blush); font-family: 'JetBrains Mono', monospace; }
+    .nav-links { display: flex; align-items: center; gap: 8px; }
+    .nav-links a { font-size: 14px; color: var(--blush-60); text-decoration: none; padding: 6px 12px; border-radius: 6px; transition: color 0.2s, background 0.2s; }
+    .nav-links a:hover { color: var(--blush); background: var(--blush-5); }
+    .btn-nav { font-size: 13px !important; font-weight: 600 !important; color: var(--blush) !important; background: var(--blush-8) !important; border: 1px solid var(--blush-20) !important; padding: 6px 16px !important; border-radius: 8px !important; transition: background 0.2s !important; }
+    .btn-nav:hover { background: var(--blush-12) !important; }
+    .lang-toggle { display: flex; align-items: center; cursor: pointer; background: var(--blush-5); border: 1px solid var(--blush-12); color: var(--blush-60); padding: 7px 10px; border-radius: 8px; transition: all 0.2s; }
+    .lang-toggle:hover { border-color: var(--blush-20); color: var(--blush); }
+    .lang-toggle .lang-flag { font-size: 15px; }
+
+    /* Hero */
+    #hero { padding-top: 160px; padding-bottom: 120px; position: relative; overflow: hidden; text-align: center; }
+    .hero-glow { position: absolute; top: -200px; left: 50%; transform: translateX(-50%); width: 800px; height: 600px; background: radial-gradient(ellipse at center, rgba(207,92,54,0.18) 0%, transparent 65%); pointer-events: none; }
+    .hero-content { position: relative; z-index: 1; }
+    .hero-tag { margin-bottom: 28px; }
+    .hero-title { font-size: clamp(40px, 7vw, 80px); font-weight: 800; line-height: 1.05; color: var(--blush); letter-spacing: -0.03em; margin-bottom: 24px; }
+    .hero-title em { font-style: normal; background: linear-gradient(135deg, var(--paprika) 0%, #e8825a 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero-sub { font-size: clamp(16px, 2vw, 20px); color: var(--blush-60); max-width: 620px; margin: 0 auto 40px; line-height: 1.6; }
+    .hero-ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 60px; }
+    .btn-primary { display: inline-flex; align-items: center; gap: 8px; background: var(--paprika); color: var(--blush); font-size: 15px; font-weight: 600; padding: 13px 28px; border-radius: 10px; text-decoration: none; transition: opacity 0.2s, transform 0.2s; border: none; cursor: pointer; }
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-secondary { display: inline-flex; align-items: center; gap: 8px; background: var(--blush-8); color: var(--blush); font-size: 15px; font-weight: 600; padding: 13px 28px; border-radius: 10px; text-decoration: none; border: 1px solid var(--blush-12); transition: background 0.2s, transform 0.2s; }
+    .btn-secondary:hover { background: var(--blush-12); transform: translateY(-1px); }
+    .hero-code-wrap { max-width: 680px; margin: 0 auto; background: var(--blush-5); border: 1px solid var(--blush-12); border-radius: 14px; overflow: hidden; }
+    .code-titlebar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--blush-8); background: var(--blush-5); }
+    .dot { width: 11px; height: 11px; border-radius: 50%; } .dot-r { background: #ff5f57; } .dot-y { background: #ffbd2e; } .dot-g { background: #28c840; }
+    .code-file { font-size: 12px; color: var(--blush-40); margin-left: 8px; font-family: 'JetBrains Mono', monospace; }
+    pre.hero-code { padding: 24px; text-align: left; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 13.5px; line-height: 1.7; }
+    .c-comment { color: #5a6472; } .c-keyword { color: #e0a370; } .c-string { color: #8fc; }
+    .c-string-strike { color: #5a6472; text-decoration: line-through; } .c-highlight { color: var(--paprika); font-weight: 500; }
+    .c-var { color: #79b4f7; } .c-fn { color: #c3a6ff; } .c-ok { color: #4ecb80; }
+    .provider-strip { margin-top: 80px; text-align: center; }
+    .provider-strip p { font-size: 13px; color: var(--blush-40); margin-bottom: 24px; letter-spacing: 0.05em; text-transform: uppercase; }
+    .providers { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; }
+    .provider-badge { display: flex; align-items: center; gap: 8px; background: var(--blush-5); border: 1px solid var(--blush-8); padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--blush-60); transition: border-color 0.2s, color 0.2s; }
+    .provider-badge:hover { border-color: var(--blush-20); color: var(--blush); }
+    .provider-badge .picon { font-size: 16px; }
+
+    /* How */
+    #how { padding: 120px 0; border-top: 1px solid var(--blush-8); }
+    .how-header { text-align: center; margin-bottom: 64px; }
+    .how-header p.section-sub { margin: 0 auto; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .step { padding: 40px 32px; text-align: center; background: var(--blush-5); border: 1px solid var(--blush-8); border-radius: var(--radius); }
+    .step-num { width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--paprika); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: var(--paprika); margin: 0 auto 20px; background: var(--paprika-15); }
+    .step h3 { font-size: 18px; font-weight: 700; color: var(--blush); margin-bottom: 10px; }
+    .step p { font-size: 14px; color: var(--blush-60); line-height: 1.6; }
+    .step-code { margin-top: 16px; background: rgba(0,0,0,0.4); border: 1px solid var(--blush-8); border-radius: 8px; padding: 12px 14px; text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.5; color: var(--blush-60); }
+
+    /* Stats */
+    #stats { padding: 80px 0; background: linear-gradient(180deg, transparent 0%, var(--paprika-15) 50%, transparent 100%); border-top: 1px solid var(--blush-8); border-bottom: 1px solid var(--blush-8); }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; text-align: center; }
+    .stat-item { padding: 24px; }
+    .stat-num { font-size: clamp(36px, 5vw, 56px); font-weight: 800; color: var(--blush); letter-spacing: -0.03em; line-height: 1; margin-bottom: 8px; }
+    .stat-num span { color: var(--paprika); }
+    .stat-label { font-size: 14px; color: var(--blush-60); }
+
+    /* Features */
+    #features { padding: 120px 0; }
+    .features-header { text-align: center; margin-bottom: 64px; }
+    .features-header p.section-sub { margin: 0 auto; }
+    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .feature-card { background: var(--blush-5); border: 1px solid var(--blush-8); border-radius: var(--radius); padding: 32px; transition: border-color 0.25s, background 0.25s, transform 0.25s; cursor: default; }
+    .feature-card:hover { border-color: var(--blush-20); background: var(--blush-8); transform: translateY(-3px); }
+    .feature-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--paprika-15); border: 1px solid var(--paprika-30); display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 20px; }
+    .feature-card h3 { font-size: 17px; font-weight: 700; color: var(--blush); margin-bottom: 10px; }
+    .feature-card p { font-size: 14px; color: var(--blush-60); line-height: 1.65; }
+
+    /* Code Compare */
+    #code-example { padding: 120px 0; border-top: 1px solid var(--blush-8); }
+    .code-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 48px; }
+    .code-panel { background: var(--blush-5); border: 1px solid var(--blush-8); border-radius: var(--radius); overflow: hidden; }
+    .code-panel-header { padding: 12px 16px; border-bottom: 1px solid var(--blush-8); display: flex; align-items: center; gap: 8px; }
+    .code-panel-label { font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 4px; }
+    .label-before { background: rgba(124,124,124,0.2); color: #7c7c7c; }
+    .label-after  { background: var(--paprika-15); color: var(--paprika); }
+    .code-panel pre { padding: 24px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.7; overflow-x: auto; }
+
+    /* Detail */
+    #detail { padding: 120px 0; border-top: 1px solid var(--blush-8); }
+    .detail-row { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; padding: 80px 0; border-bottom: 1px solid var(--blush-8); }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row.reverse .detail-text { order: 2; }
+    .detail-row.reverse .detail-visual { order: 1; }
+    .detail-text h3 { font-size: clamp(22px, 3vw, 32px); font-weight: 800; color: var(--blush); margin-bottom: 16px; line-height: 1.2; }
+    .detail-text p { font-size: 15px; color: var(--blush-60); line-height: 1.7; margin-bottom: 20px; }
+    .feature-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .feature-list li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--blush-60); }
+    .feature-list li::before { content: ''; flex-shrink: 0; margin-top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--paprika); }
+    .detail-visual { background: var(--blush-5); border: 1px solid var(--blush-8); border-radius: 16px; padding: 32px; min-height: 280px; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+    .visual-row { display: flex; align-items: center; gap: 12px; background: var(--blush-5); border: 1px solid var(--blush-8); border-radius: 8px; padding: 12px 16px; }
+    .visual-icon { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+    .visual-row-text { flex: 1; }
+    .visual-row-text .vt { font-size: 13px; font-weight: 600; color: var(--blush); }
+    .visual-row-text .vs { font-size: 11px; color: var(--blush-40); }
+    .visual-badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; }
+    .badge-green  { background: rgba(40,200,100,0.15); color: #4ecb80; }
+    .badge-yellow { background: rgba(255,189,46,0.15); color: #ffbd2e; }
+    .badge-blue   { background: rgba(121,180,247,0.15); color: #79b4f7; }
+    .badge-red    { background: var(--paprika-15); color: var(--paprika); }
+    .mini-chart { display: flex; align-items: flex-end; gap: 4px; height: 60px; margin-top: 8px; }
+    .bar { flex: 1; border-radius: 3px 3px 0 0; background: var(--blush-12); }
+    .bar.active { background: var(--paprika); opacity: 0.8; }
+
+    /* Compare */
+    #compare { padding: 120px 0; border-top: 1px solid var(--blush-8); }
+    .compare-header { text-align: center; margin-bottom: 56px; }
+    .compare-header p.section-sub { margin: 0 auto; }
+    .compare-wrap { overflow-x: auto; border: 1px solid var(--blush-8); border-radius: 16px; background: var(--blush-5); }
+    table.compare { width: 100%; border-collapse: collapse; min-width: 680px; }
+    table.compare th, table.compare td { padding: 15px 20px; border-bottom: 1px solid var(--blush-8); }
+    table.compare thead th { font-size: 12.5px; font-weight: 700; color: var(--blush); text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
+    table.compare thead th:first-child { text-align: left; }
+    table.compare thead th.col-router { color: var(--paprika); }
+    table.compare tbody td { font-size: 14px; color: var(--blush-60); }
+    table.compare tbody td.cap { color: var(--blush); font-weight: 500; }
+    table.compare td.cell { text-align: center; font-weight: 700; font-size: 16px; }
+    .router-cell { background: var(--paprika-15); }
+    table.compare thead th.router-cell { border-top-right-radius: 0; }
+    .mark-yes { color: #4ecb80; } .mark-partial { color: #ffbd2e; } .mark-no { color: #6b6b6b; }
+    table.compare tbody tr:last-child td { border-bottom: none; }
+    .compare-foot { text-align: center; font-size: 12px; color: var(--blush-40); margin-top: 20px; }
+
+    /* CTA */
+    #cta { padding: 120px 0; border-top: 1px solid var(--blush-8); text-align: center; position: relative; overflow: hidden; }
+    .cta-glow { position: absolute; bottom: -200px; left: 50%; transform: translateX(-50%); width: 600px; height: 500px; background: radial-gradient(ellipse at center, rgba(207,92,54,0.2) 0%, transparent 65%); pointer-events: none; }
+    #cta h2 { font-size: clamp(32px, 5vw, 56px); font-weight: 800; color: var(--blush); margin-bottom: 16px; line-height: 1.15; }
+    #cta p { font-size: 18px; color: var(--blush-60); margin-bottom: 40px; }
+    .cta-code { display: inline-flex; align-items: center; gap: 16px; background: var(--blush-5); border: 1px solid var(--blush-12); border-radius: 10px; padding: 14px 24px; margin-bottom: 40px; font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--blush-60); }
+    .cta-code button { background: none; border: none; cursor: pointer; color: var(--blush-40); font-size: 16px; transition: color 0.2s; padding: 0; }
+    .cta-code button:hover { color: var(--blush); }
+    .cta-btns { display: flex; gap: 12px; justify-content: center; }
+
+    /* Footer */
+    footer { border-top: 1px solid var(--blush-8); padding: 48px 0; }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; }
+    .footer-logo { font-size: 14px; font-weight: 700; color: var(--blush-40); }
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a { font-size: 13px; color: var(--blush-40); text-decoration: none; transition: color 0.2s; }
+    .footer-links a:hover { color: var(--blush); }
+    .footer-copy { font-size: 13px; color: var(--blush-40); margin-top: 24px; text-align: center; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .steps { grid-template-columns: 1fr; }
+      .features-grid { grid-template-columns: 1fr 1fr; }
+      .code-compare { grid-template-columns: 1fr; }
+      .detail-row { display: flex; flex-direction: column; gap: 32px; }
+      .detail-row.reverse .detail-text, .detail-row.reverse .detail-visual { order: unset; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .features-grid { grid-template-columns: 1fr; }
+      .nav-links a:not(.btn-nav):not(.lang-toggle) { display: none; }
+      .footer-inner { flex-direction: column; gap: 20px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <div class="nav-logo-icon">H</div>
+      SDLC Harness
+    </a>
+    <div class="nav-links">
+      <a href="#how" data-i18n="nav.how">How It Works</a>
+      <a href="#features" data-i18n="nav.features">Features</a>
+      <a href="#code-example" data-i18n="nav.quickstart">Quickstart</a>
+      <a href="#compare" data-i18n="nav.compare">Compare</a>
+      <button class="lang-toggle" onclick="toggleLang()" aria-label="Toggle language">
+        <img id="lang-btn-flag" src="https://flagcdn.com/w20/kr.png" width="20" height="15" alt="한국어" style="display:block;border-radius:2px;flex-shrink:0">
+      </button>
+      <a href="https://github.com/mzd-hseokkim/jira-claude-code-integration" class="btn-nav" data-i18n="nav.github">GitHub →</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section id="hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-tag fade-in">
+        <span class="tag" data-i18n="hero.tag">Claude Code Plugin · Jira-Native</span>
+      </div>
+      <h1 class="hero-title fade-in" style="transition-delay:0.1s" data-i18n-html="hero.title">
+        The harness for an<br /><em>AI-Native SDLC.</em>
+      </h1>
+      <p class="hero-sub fade-in" style="transition-delay:0.15s" data-i18n-html="hero.sub">
+        From discover to done, a Jira issue becomes an executable workflow.
+        Claude Code agents run every phase — and every result syncs back to Jira automatically.
+      </p>
+      <div class="hero-ctas fade-in" style="transition-delay:0.2s">
+        <a href="#code-example" class="btn-primary" data-i18n="hero.cta1">Get Started →</a>
+        <a href="https://github.com/mzd-hseokkim/jira-claude-code-integration" class="btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          <span data-i18n="hero.github">View on GitHub</span>
+        </a>
+      </div>
+      <div class="hero-code-wrap fade-in" style="transition-delay:0.25s">
+        <div class="code-titlebar">
+          <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+          <span class="code-file">claude code — terminal</span>
+        </div>
+        <pre class="hero-code"><span class="c-var">&gt;</span> /jira-task auto <span class="c-highlight">MAE-413</span>
+
+  <span class="c-ok">✓</span> start      <span class="c-comment"># 브랜치와 worktree 만들고 In Progress로</span>
+  <span class="c-ok">✓</span> approach   <span class="c-comment"># L2 규모로 설계 문서 쓰고 Jira에 첨부</span>
+  <span class="c-ok">✓</span> impl       <span class="c-comment"># 구현하고 커밋</span>
+  <span class="c-ok">✓</span> test       <span class="c-comment"># 테스트 돌리고 리포트 게시</span>
+  <span class="c-ok">✓</span> review     <span class="c-comment"># 독립 리뷰어(Opus)가 설계와 맞춰 보고 Jira에</span>
+  <span class="c-keyword">→</span> done       <span class="c-comment"># 완료 요약 남기고 Done으로</span>
+
+<span class="c-comment"># 이슈 하나, 명령 하나. 확인은 길목에서만 하면 됩니다.</span></pre>
+      </div>
+    </div>
+    <div class="provider-strip fade-in" style="transition-delay:0.35s">
+      <p data-i18n="hero.providers">Built on the tools you already use</p>
+      <div class="providers">
+        <div class="provider-badge"><span class="picon">🧠</span> Claude Code</div>
+        <div class="provider-badge"><span class="picon">🔷</span> Jira Cloud</div>
+        <div class="provider-badge"><span class="picon">🔌</span> MCP (atlassian)</div>
+        <div class="provider-badge"><span class="picon">🌳</span> Git Worktrees</div>
+        <div class="provider-badge"><span class="picon">🔀</span> GitHub PR</div>
+        <div class="provider-badge"><span class="picon">🚦</span> Phase-Gate Hooks</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How it Works -->
+<section id="how">
+  <div class="container">
+    <div class="how-header fade-in">
+      <p class="section-label" data-i18n="how.label">How It Works</p>
+      <h2 class="section-title" data-i18n="how.title">From issue to merge — without leaving the terminal</h2>
+      <p class="section-sub" data-i18n="how.sub">Turn a backlog item into an executable workflow, let the harness run the phases, and supervise at the gates.</p>
+    </div>
+    <div class="steps">
+      <div class="step fade-in" style="transition-delay:0.05s">
+        <div class="step-num">1</div>
+        <h3 data-i18n="how.s1.title">Turn issues into workflows</h3>
+        <p data-i18n="how.s1.p">Discover requirements, create issues, and batch-provision an isolated git worktree per task — all from Jira.</p>
+        <div class="step-code"><span style="color:#79b4f7">/jira-task</span> init <span style="color:#e0a370">3</span></div>
+      </div>
+      <div class="step fade-in" style="transition-delay:0.1s">
+        <div class="step-num">2</div>
+        <h3 data-i18n="how.s2.title">The harness runs the phases</h3>
+        <p data-i18n="how.s2.p">approach → impl → test → review run in sequence inside isolated sub-agents. On a failed review it auto-fixes and retries.</p>
+        <div class="step-code"><span style="color:#79b4f7">/jira-task</span> auto <span style="color:#cf5c36">MAE-413</span></div>
+      </div>
+      <div class="step fade-in" style="transition-delay:0.15s">
+        <div class="step-num">3</div>
+        <h3 data-i18n="how.s3.title">You supervise at the gates</h3>
+        <p data-i18n="how.s3.p">Phase gates enforce step order and an independent reviewer guards quality. Progress lands in Jira in real time.</p>
+        <div class="step-code"><span style="color:#79b4f7">gate</span>: approach <span style="color:#4ecb80">✓</span> → impl<br /><span style="color:#79b4f7">review</span>: <span style="color:#4ecb80">independent · Opus</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<section id="stats">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat-item fade-in">
+        <div class="stat-num">11</div>
+        <div class="stat-label" data-i18n="stats.l1">Lifecycle phases (discover→done)</div>
+      </div>
+      <div class="stat-item fade-in" style="transition-delay:0.05s">
+        <div class="stat-num">1<span>×</span></div>
+        <div class="stat-label" data-i18n="stats.l2">Command for the full workflow</div>
+      </div>
+      <div class="stat-item fade-in" style="transition-delay:0.1s">
+        <div class="stat-num">L1<span>·</span>L2<span>·</span>L3</div>
+        <div class="stat-label" data-i18n="stats.l3">Effort-aware approach docs</div>
+      </div>
+      <div class="stat-item fade-in" style="transition-delay:0.15s">
+        <div class="stat-num">100<span>%</span></div>
+        <div class="stat-label" data-i18n="stats.l4">Jira sync — no manual updates</div>
+      </div>
+    </div>
+    <p style="text-align:center;font-size:12px;color:var(--blush-40);margin-top:24px" data-i18n="stats.note">Self-hosted Claude Code plugin · MCP-atlassian · git worktrees · MIT licensed.</p>
+  </div>
+</section>
+
+<!-- Features Grid -->
+<section id="features">
+  <div class="container">
+    <div class="features-header fade-in">
+      <p class="section-label" data-i18n="feat.label">Features</p>
+      <h2 class="section-title" data-i18n="feat.title">An AI-native lifecycle, not another CRUD bot</h2>
+      <p class="section-sub" data-i18n="feat.sub">Every phase of the SDLC is an agent-executable step — guarded, isolated, and synced.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card fade-in" style="transition-delay:0.05s"><div class="feature-icon">🔁</div><h3 data-i18n="feat.f1.t">Full-lifecycle automation</h3><p data-i18n="feat.f1.p">discover · create · init · start · approach · impl · test · review · merge · pr · done — eleven phases, one harness, one command away.</p></div>
+      <div class="feature-card fade-in" style="transition-delay:0.1s"><div class="feature-icon">🌳</div><h3 data-i18n="feat.f2.t">Per-task worktree isolation</h3><p data-i18n="feat.f2.p">Every task runs in its own git worktree, so several tasks can move in parallel without ever colliding on a branch.</p></div>
+      <div class="feature-card fade-in" style="transition-delay:0.1s"><div class="feature-icon">🚦</div><h3 data-i18n="feat.f3.t">Phase-gate guardrails</h3><p data-i18n="feat.f3.p">Hooks enforce step dependencies — you can't jump to impl before the approach is done. Advisory by default, never silently skipped.</p></div>
+      <div class="feature-card fade-in"><div class="feature-icon">🧭</div><h3 data-i18n="feat.f4.t">Effort-aware approach docs</h3><p data-i18n="feat.f4.p">One command sizes the work as L1, L2, or L3 and scales the design doc to match. No 10-page spec for a one-line fix.</p></div>
+      <div class="feature-card fade-in" style="transition-delay:0.05s"><div class="feature-icon">🔍</div><h3 data-i18n="feat.f5.t">Independent code reviewer</h3><p data-i18n="feat.f5.p">A dedicated reviewer sub-agent runs design-vs-implementation gap analysis, lint/format checks, and candid quality review — no self-praise bias.</p></div>
+      <div class="feature-card fade-in" style="transition-delay:0.1s"><div class="feature-icon">🔄</div><h3 data-i18n="feat.f6.t">Bi-directional Jira sync</h3><p data-i18n="feat.f6.p">Status changes, comments, and attachments post to Jira at every step. Progress is kept on the side, so you can pick up right where you left off after a break.</p></div>
+      <div class="feature-card fade-in"><div class="feature-icon">⚡</div><h3 data-i18n="feat.f7.t">Auto mode with self-repair</h3><p data-i18n="feat.f7.p">Run start→review unattended. On a failing review the harness fixes and retries up to twice, and skips phases already completed.</p></div>
+      <div class="feature-card fade-in" style="transition-delay:0.05s"><div class="feature-icon">🧠</div><h3 data-i18n="feat.f8.t">Cache-first fetching</h3><p data-i18n="feat.f8.p">Once an issue is fetched, it stays in memory. The same session never hits the API twice for the same data.</p></div>
+      <div class="feature-card fade-in" style="transition-delay:0.1s"><div class="feature-icon">📊</div><h3 data-i18n="feat.f9.t">Relationship dashboard</h3><p data-i18n="feat.f9.p">A force-graph dashboard visualizes blocks, parent, and epic links with status and assignee filters — isolated nodes and cycles surface instantly.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Code Compare -->
+<section id="code-example">
+  <div class="container">
+    <div class="fade-in">
+      <p class="section-label" data-i18n="code.label">Quickstart</p>
+      <h2 class="section-title" data-i18n="code.title">From ten manual steps to one</h2>
+      <p class="section-sub" data-i18n="code.sub">The same lifecycle you run by hand today — driven end to end, synced as it goes.</p>
+    </div>
+    <div class="code-compare">
+      <div class="code-panel fade-in" style="transition-delay:0.05s">
+        <div class="code-panel-header">
+          <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+          <span class="code-panel-label label-before" data-i18n="code.before">Before</span>
+          <span style="font-size:12px;color:var(--blush-40);font-family:'JetBrains Mono',monospace;margin-left:4px">by_hand.sh</span>
+        </div>
+        <pre><span class="c-comment"># 이슈 열고 상태도 일일이 바꾸고</span>
+<span class="c-comment"># 브랜치 만들고 어디까지 했는지 직접 챙기고</span>
+git checkout -b feature/MAE-413
+
+<span class="c-comment"># 설계는 머릿속에, 문서는 늘 나중 일</span>
+<span class="c-comment"># 구현하고 테스트하고 내 코드 내가 리뷰</span>
+
+<span class="c-comment"># 끝나면 Jira 코멘트 손으로 작성</span>
+<span class="c-comment"># 상태도 직접 Done으로</span>
+<span class="c-comment"># 결국 진행 상황은 사람 머릿속에만</span></pre>
+      </div>
+      <div class="code-panel fade-in" style="transition-delay:0.1s">
+        <div class="code-panel-header">
+          <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+          <span class="code-panel-label label-after" data-i18n="code.after">After</span>
+          <span style="font-size:12px;color:var(--blush-40);font-family:'JetBrains Mono',monospace;margin-left:4px">with_harness</span>
+        </div>
+        <pre><span class="c-var">&gt;</span> /jira-task auto <span class="c-highlight">MAE-413</span>
+
+<span class="c-comment"># ✓ worktree로 격리하고 브랜치는 알아서</span>
+<span class="c-comment"># ✓ 규모에 맞춘 설계 문서</span>
+<span class="c-comment"># ✓ 구현하고 테스트하고 독립 리뷰까지</span>
+<span class="c-comment"># ✓ 막히면 고쳐서 다시 시도</span>
+<span class="c-comment"># ✓ 코멘트도 첨부도 상태 변경도 자동</span>
+<span class="c-comment"># ✓ 세션이 끊겨도 그대로 이어서</span>
+
+<span class="c-comment"># 사람은 길목에서 확인만 하면 됩니다.</span></pre>
+      </div>
+    </div>
+    <div style="margin-top:16px;text-align:center;font-size:14px;color:var(--blush-40)" class="fade-in">
+      <span data-i18n="code.compat">Run the whole pipeline, or any single phase — discover · start · approach · impl · test · review · merge · pr · done.</span>
+    </div>
+  </div>
+</section>
+
+<!-- Detail -->
+<section id="detail">
+  <div class="container">
+    <!-- Row 1 -->
+    <div class="detail-row reverse fade-in">
+      <div class="detail-text">
+        <p class="section-label" data-i18n="d2.label">Parallel by Design</p>
+        <h3 data-i18n="d2.title">Many tasks at once, zero collisions</h3>
+        <p data-i18n="d2.p">Each task gets its own git worktree and feature branch, so several flows run side by side without ever stepping on each other. Provision an entire sprint in one command.</p>
+        <ul class="feature-list">
+          <li data-i18n="d2.l1">One isolated worktree + branch per task</li>
+          <li data-i18n="d2.l2">Batch-provision by count, issue key, or natural language</li>
+          <li data-i18n="d2.l3">Progress tracked in .jira-context.json across sessions</li>
+          <li data-i18n="d2.l4">Clean up worktrees and branches when a task is done</li>
+        </ul>
+      </div>
+      <div class="detail-visual">
+        <div style="font-size:12px;color:var(--blush-40);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em" data-i18n="d2.v.label">Active Worktrees</div>
+        <div class="visual-row"><div class="visual-icon" style="background:rgba(40,200,100,0.12)">🌳</div><div class="visual-row-text"><div class="vt">MAE-413</div><div class="vs" data-i18n="d2.v1.s">review · 접근 설계 → 구현 완료</div></div><span class="visual-badge badge-green" data-i18n="d2.v1.b">In Review</span></div>
+        <div class="visual-row" style="margin-top:8px"><div class="visual-icon" style="background:rgba(121,180,247,0.12)">🌳</div><div class="visual-row-text"><div class="vt">MAE-350</div><div class="vs" data-i18n="d2.v2.s">impl · 테스트 작성 중</div></div><span class="visual-badge badge-blue" data-i18n="d2.v2.b">In Progress</span></div>
+        <div class="visual-row" style="margin-top:8px"><div class="visual-icon" style="background:rgba(255,189,46,0.12)">🌳</div><div class="visual-row-text"><div class="vt">MAE-372</div><div class="vs" data-i18n="d2.v3.s">approach · 설계 검토 대기</div></div><span class="visual-badge badge-yellow" data-i18n="d2.v3.b">Approach</span></div>
+        <div class="mini-chart">
+          <div class="bar active" style="height:90%"></div><div class="bar active" style="height:80%"></div><div class="bar" style="height:55%"></div>
+          <div class="bar active" style="height:70%"></div><div class="bar" style="height:45%"></div><div class="bar active" style="height:65%"></div>
+          <div class="bar" style="height:50%"></div><div class="bar active" style="height:60%"></div><div class="bar" style="height:40%"></div>
+          <div class="bar active" style="height:75%"></div><div class="bar" style="height:52%"></div><div class="bar" style="height:48%"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Row 2 -->
+    <div class="detail-row fade-in">
+      <div class="detail-text">
+        <p class="section-label" data-i18n="d3.label">Guarded & Supervised</p>
+        <h3 data-i18n="d3.title">Agents do the work — gates keep it honest</h3>
+        <p data-i18n="d3.p">Phase gates enforce the right order, an independent reviewer audits the diff against the design, and auto mode repairs failures before they reach you. The human stays in the loop where it matters.</p>
+        <ul class="feature-list">
+          <li data-i18n="d3.l1">Phase-gate hooks enforce step dependencies</li>
+          <li data-i18n="d3.l2">Independent reviewer: design-vs-impl gap analysis</li>
+          <li data-i18n="d3.l3">Auto-fix and retry on a failed review (up to 2×)</li>
+          <li data-i18n="d3.l4">Findings and reports posted straight to Jira</li>
+        </ul>
+      </div>
+      <div class="detail-visual">
+        <div style="font-size:12px;color:var(--blush-40);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em" data-i18n="d3.v.label">Pipeline Events</div>
+        <div class="visual-row"><div class="visual-icon" style="background:var(--paprika-15)">🚦</div><div class="visual-row-text"><div class="vt" data-i18n="d3.v1.t">Phase gate</div><div class="vs" data-i18n="d3.v1.s">approach 미완료 → impl 차단</div></div><span class="visual-badge badge-yellow" data-i18n="d3.v1.b">Blocked</span></div>
+        <div class="visual-row" style="margin-top:8px"><div class="visual-icon" style="background:rgba(121,180,247,0.12)">🔍</div><div class="visual-row-text"><div class="vt" data-i18n="d3.v2.t">Independent review</div><div class="vs" data-i18n="d3.v2.s">설계 대비 누락 2건 발견</div></div><span class="visual-badge badge-blue" data-i18n="d3.v2.b">Gap found</span></div>
+        <div class="visual-row" style="margin-top:8px"><div class="visual-icon" style="background:rgba(40,200,100,0.12)">⚡</div><div class="visual-row-text"><div class="vt" data-i18n="d3.v3.t">Auto-fix + retry</div><div class="vs" data-i18n="d3.v3.s">수정 후 재리뷰 통과 → Done</div></div><span class="visual-badge badge-green" data-i18n="d3.v3.b">Passed</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Compare -->
+<section id="compare">
+  <div class="container">
+    <div class="compare-header fade-in">
+      <p class="section-label" data-i18n="cmp.label">Why the Harness</p>
+      <h2 class="section-title" data-i18n="cmp.title">A lifecycle engine, not a chat-to-Jira shim</h2>
+      <p class="section-sub" data-i18n="cmp.sub">Most Jira + AI tools stop at reading and writing tickets. The harness runs the whole development lifecycle.</p>
+    </div>
+    <div class="compare-wrap fade-in">
+      <table class="compare">
+        <thead>
+          <tr>
+            <th data-i18n="cmp.col1">Capability</th>
+            <th class="col-router router-cell" data-i18n="cmp.col2">SDLC Harness</th>
+            <th data-i18n="cmp.col3">Jira AI assistant</th>
+            <th data-i18n="cmp.col4">DIY scripts / manual</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="cap" data-i18n="cmp.r1">Runs the full lifecycle (discover→done)</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-no">✕</td><td class="cell mark-partial">~</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r2">Bi-directional Jira sync (status · comment · attach)</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-partial">~</td><td class="cell mark-no">✕</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r3">Per-task git worktree isolation</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-no">✕</td><td class="cell mark-partial">~</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r4">Effort-aware approach docs (L1/L2/L3)</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-no">✕</td><td class="cell mark-no">✕</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r5">Independent reviewer · gap analysis</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-no">✕</td><td class="cell mark-no">✕</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r6">Phase-gate dependency guardrails</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-no">✕</td><td class="cell mark-no">✕</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r7">Auto mode with self-repair &amp; retry</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-no">✕</td><td class="cell mark-no">✕</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r8">Progress tracked across sessions</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-partial">~</td><td class="cell mark-no">✕</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r9">Self-hosted · open source (MIT)</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-no">✕</td><td class="cell mark-yes">✓</td></tr>
+          <tr><td class="cap" data-i18n="cmp.r10">Native Claude Code plugin</td><td class="cell router-cell mark-yes">✓</td><td class="cell mark-partial">~</td><td class="cell mark-no">✕</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="compare-foot" data-i18n="cmp.foot">Reflects the typical positioning of each category. ✓ built-in · ~ varies or partial · ✕ not available.</p>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta">
+  <div class="cta-glow"></div>
+  <div class="container" style="position:relative;z-index:1">
+    <p class="section-label" style="justify-content:center;display:flex;margin-bottom:20px" data-i18n="cta.label">Install Now</p>
+    <h2 class="fade-in" data-i18n-html="cta.title">Stop updating tickets.<br />Start shipping them.</h2>
+    <p class="fade-in" style="transition-delay:0.05s" data-i18n="cta.sub">A self-hosted, open-source Claude Code plugin. Install from the marketplace in seconds.</p>
+    <div class="cta-code fade-in" style="transition-delay:0.1s">
+      <span><span style="color:var(--blush-40)">$</span> <span>claude plugin marketplace add mzd-hseokkim/jira-claude-code-integration</span></span>
+      <button onclick="copyCmd(this)" title="Copy">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </button>
+    </div>
+    <div class="cta-btns fade-in" style="transition-delay:0.15s">
+      <a href="https://github.com/mzd-hseokkim/jira-claude-code-integration" class="btn-primary" data-i18n="cta.btn1">Get Started on GitHub →</a>
+      <a href="#features" class="btn-secondary" data-i18n="cta.btn2">Explore Features</a>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-logo">⬛ AI-Native SDLC Harness</div>
+      <div class="footer-links">
+        <a href="https://github.com/mzd-hseokkim/jira-claude-code-integration" data-i18n="foot.docs">Documentation</a>
+        <a href="https://github.com/mzd-hseokkim/jira-claude-code-integration">GitHub</a>
+        <a href="#how" data-i18n="foot.workflow">Workflow</a>
+        <a href="#compare" data-i18n="foot.license">Compare</a>
+      </div>
+    </div>
+    <p class="footer-copy" data-i18n="foot.copy">Open source · Claude Code plugin · MIT License</p>
+  </div>
+</footer>
+
+<script>
+// ─── Translations ───
+const T = {
+  en: {
+    'nav.how':       'How It Works',
+    'nav.features':  'Features',
+    'nav.quickstart':'Quickstart',
+    'nav.compare':   'Compare',
+    'nav.github':    'GitHub →',
+    'hero.github':   'View on GitHub',
+    'hero.tag':      'Claude Code Plugin · Jira-Native',
+    'hero.title':    'The harness for an<br /><em>AI-Native SDLC.</em>',
+    'hero.sub':      'From discover to done, a Jira issue becomes an executable workflow. Claude Code agents run every phase — and every result syncs back to Jira automatically.',
+    'hero.cta1':     'Get Started →',
+    'hero.providers':'Built on the tools you already use',
+    'how.label':     'How It Works',
+    'how.title':     'From issue to merge — without leaving the terminal',
+    'how.sub':       'Turn a backlog item into an executable workflow, let the harness run the phases, and supervise at the gates.',
+    'how.s1.title':  'Turn issues into workflows',
+    'how.s1.p':      'Discover requirements, create issues, and batch-provision an isolated git worktree per task — all from Jira.',
+    'how.s2.title':  'The harness runs the phases',
+    'how.s2.p':      'approach → impl → test → review run in sequence inside isolated sub-agents. On a failed review it auto-fixes and retries.',
+    'how.s3.title':  'You supervise at the gates',
+    'how.s3.p':      'Phase gates enforce step order and an independent reviewer guards quality. Progress lands in Jira in real time.',
+    'stats.l1':      'Lifecycle phases (discover→done)',
+    'stats.l2':      'Command for the full workflow',
+    'stats.l3':      'Effort-aware approach docs',
+    'stats.l4':      'Jira sync — no manual updates',
+    'stats.note':    'Self-hosted Claude Code plugin · MCP-atlassian · git worktrees · MIT licensed.',
+    'feat.label':    'Features',
+    'feat.title':    'An AI-native lifecycle, not another CRUD bot',
+    'feat.sub':      'Every phase of the SDLC is an agent-executable step — guarded, isolated, and synced.',
+    'feat.f1.t':     'Full-lifecycle automation',
+    'feat.f1.p':     'discover · create · init · start · approach · impl · test · review · merge · pr · done — eleven phases, one harness, one command away.',
+    'feat.f2.t':     'Per-task worktree isolation',
+    'feat.f2.p':     'Every task runs in its own git worktree, so several tasks can move in parallel without ever colliding on a branch.',
+    'feat.f3.t':     'Phase-gate guardrails',
+    'feat.f3.p':     "Hooks enforce step dependencies — you can't jump to impl before the approach is done. Advisory by default, never silently skipped.",
+    'feat.f4.t':     'Effort-aware approach docs',
+    'feat.f4.p':     'One command sizes the work as L1, L2, or L3 and scales the design doc to match. No 10-page spec for a one-line fix.',
+    'feat.f5.t':     'Independent code reviewer',
+    'feat.f5.p':     'A dedicated reviewer sub-agent runs design-vs-implementation gap analysis, lint/format checks, and candid quality review — no self-praise bias.',
+    'feat.f6.t':     'Bi-directional Jira sync',
+    'feat.f6.p':     'Status changes, comments, and attachments post to Jira at every step. Progress is kept on the side, so you can pick up right where you left off after a break.',
+    'feat.f7.t':     'Auto mode with self-repair',
+    'feat.f7.p':     'Run start→review unattended. On a failing review the harness fixes and retries up to twice, and skips phases already completed.',
+    'feat.f8.t':     'Cache-first fetching',
+    'feat.f8.p':     'Once an issue is fetched, it stays in memory. The same session never hits the API twice for the same data.',
+    'feat.f9.t':     'Relationship dashboard',
+    'feat.f9.p':     'A force-graph dashboard visualizes blocks, parent, and epic links with status and assignee filters — isolated nodes and cycles surface instantly.',
+    'code.label':    'Quickstart',
+    'code.title':    'From ten manual steps to one',
+    'code.sub':      'The same lifecycle you run by hand today — driven end to end, synced as it goes.',
+    'code.before':   'Before',
+    'code.after':    'After',
+    'code.compat':   'Run the whole pipeline, or any single phase — discover · start · approach · impl · test · review · merge · pr · done.',
+    'd2.label':      'Parallel by Design',
+    'd2.title':      'Many tasks at once, zero collisions',
+    'd2.p':          'Each task gets its own git worktree and feature branch, so several flows run side by side without ever stepping on each other. Provision an entire sprint in one command.',
+    'd2.l1':         'One isolated worktree + branch per task',
+    'd2.l2':         'Batch-provision by count, issue key, or natural language',
+    'd2.l3':         'Progress tracked in .jira-context.json across sessions',
+    'd2.l4':         'Clean up worktrees and branches when a task is done',
+    'd2.v.label':    'Active Worktrees',
+    'd2.v1.s':       'review · approach → impl complete',
+    'd2.v1.b':       'In Review',
+    'd2.v2.s':       'impl · writing tests',
+    'd2.v2.b':       'In Progress',
+    'd2.v3.s':       'approach · awaiting design review',
+    'd2.v3.b':       'Approach',
+    'd3.label':      'Guarded & Supervised',
+    'd3.title':      'Agents do the work — gates keep it honest',
+    'd3.p':          'Phase gates enforce the right order, an independent reviewer audits the diff against the design, and auto mode repairs failures before they reach you. The human stays in the loop where it matters.',
+    'd3.l1':         'Phase-gate hooks enforce step dependencies',
+    'd3.l2':         'Independent reviewer: design-vs-impl gap analysis',
+    'd3.l3':         'Auto-fix and retry on a failed review (up to 2×)',
+    'd3.l4':         'Findings and reports posted straight to Jira',
+    'd3.v.label':    'Pipeline Events',
+    'd3.v1.t':       'Phase gate',
+    'd3.v1.s':       'approach incomplete → impl blocked',
+    'd3.v1.b':       'Blocked',
+    'd3.v2.t':       'Independent review',
+    'd3.v2.s':       '2 gaps found vs. the design',
+    'd3.v2.b':       'Gap found',
+    'd3.v3.t':       'Auto-fix + retry',
+    'd3.v3.s':       'fixed, re-reviewed, passed → Done',
+    'd3.v3.b':       'Passed',
+    'cmp.label':     'Why the Harness',
+    'cmp.title':     'A lifecycle engine, not a chat-to-Jira shim',
+    'cmp.sub':       'Most Jira + AI tools stop at reading and writing tickets. The harness runs the whole development lifecycle.',
+    'cmp.col1':      'Capability',
+    'cmp.col2':      'SDLC Harness',
+    'cmp.col3':      'Jira AI assistant',
+    'cmp.col4':      'DIY scripts / manual',
+    'cmp.r1':        'Runs the full lifecycle (discover→done)',
+    'cmp.r2':        'Bi-directional Jira sync (status · comment · attach)',
+    'cmp.r3':        'Per-task git worktree isolation',
+    'cmp.r4':        'Effort-aware approach docs (L1/L2/L3)',
+    'cmp.r5':        'Independent reviewer · gap analysis',
+    'cmp.r6':        'Phase-gate dependency guardrails',
+    'cmp.r7':        'Auto mode with self-repair & retry',
+    'cmp.r8':        'Progress tracked across sessions',
+    'cmp.r9':        'Self-hosted · open source (MIT)',
+    'cmp.r10':       'Native Claude Code plugin',
+    'cmp.foot':      'Reflects the typical positioning of each category. ✓ built-in · ~ varies or partial · ✕ not available.',
+    'cta.label':     'Install Now',
+    'cta.title':     'One issue. One command.<br />The harness does the rest.',
+    'cta.sub':       'A self-hosted, open-source Claude Code plugin. Install from the marketplace in seconds.',
+    'cta.btn1':      'Get Started on GitHub →',
+    'cta.btn2':      'Explore Features',
+    'foot.docs':     'Documentation',
+    'foot.workflow': 'Workflow',
+    'foot.license':  'Compare',
+    'foot.copy':     'Open source · Claude Code plugin · MIT License',
+  },
+  ko: {
+    'nav.how':       '작동 방식',
+    'nav.features':  '기능',
+    'nav.quickstart':'빠른 시작',
+    'nav.compare':   '비교',
+    'nav.github':    'GitHub →',
+    'hero.github':   'GitHub 보기',
+    'hero.tag':      'Claude Code 플러그인 · Jira 네이티브',
+    'hero.title':    'AI-Native SDLC를 위한<br /><em>실행 하니스.</em>',
+    'hero.sub':      'Jira 이슈를 여는 순간, discover부터 done까지가<br />하나의 실행 워크플로가 됩니다.<br />각 단계는 Claude Code 에이전트가 처리하고,<br />진행 상황은 실시간으로 Jira에 기록됩니다.',
+    'hero.cta1':     '시작하기 →',
+    'hero.providers':'이미 사용 중인 도구 위에서 동작합니다',
+    'how.label':     '작동 방식',
+    'how.title':     '이슈부터 머지까지, 터미널 하나로',
+    'how.sub':       '백로그를 실행 워크플로로 전환하면 단계 진행은 하니스가 맡습니다. 사람은 핵심 지점에서 확인만 하면 됩니다.',
+    'how.s1.title':  '이슈를 워크플로로',
+    'how.s1.p':      '요구사항 정리, 이슈 생성, 작업별 git worktree 준비까지 한 번에 처리합니다. 모든 과정이 Jira에서 시작됩니다.',
+    'how.s2.title':  '단계 진행은 하니스가',
+    'how.s2.p':      'approach·impl·test·review가 격리된 서브에이전트에서 순서대로 실행됩니다. 리뷰에서 문제가 발견되면 스스로 수정한 뒤 다시 실행합니다.',
+    'how.s3.title':  '확인은 사람이',
+    'how.s3.p':      'Phase 게이트가 단계 순서를 관리하고 독립 리뷰어가 품질을 검증합니다. 진행 상황은 실시간으로 Jira에 반영됩니다.',
+    'stats.l1':      '라이프사이클 단계 (discover→done)',
+    'stats.l2':      '전체 워크플로 실행 명령',
+    'stats.l3':      '작업 규모별 접근 설계',
+    'stats.l4':      'Jira 자동 동기화 · 수동 입력 0',
+    'stats.note':    '셀프호스팅 Claude Code 플러그인 · MCP-atlassian · git worktree · MIT 라이선스.',
+    'feat.label':    '기능',
+    'feat.title':    'AI가 개발 라이프사이클 전체를 진행합니다',
+    'feat.sub':      'SDLC의 모든 단계가 에이전트가 실행하는 스텝입니다. 가드레일 안에서, 작업별로 격리된 채, Jira와 연동되어 동작합니다.',
+    'feat.f1.t':     '전체 라이프사이클 자동화',
+    'feat.f1.p':     'discover·create·init·start·approach·impl·test·review·merge·pr·done. 11개 단계를 명령 한 줄로 연결해 실행합니다.',
+    'feat.f2.t':     '작업별 worktree 격리',
+    'feat.f2.p':     '작업마다 전용 git worktree가 생성됩니다. 브랜치가 서로 충돌하지 않아 여러 작업을 동시에 진행해도 안전합니다.',
+    'feat.f3.t':     'Phase-Gate 가드레일',
+    'feat.f3.p':     '훅이 단계 순서를 강제합니다. approach를 마치기 전에는 impl로 넘어갈 수 없고, 단계를 건너뛰면 그냥 지나치지 않고 알려줍니다.',
+    'feat.f4.t':     '작업 규모에 맞춘 설계',
+    'feat.f4.p':     '명령 한 번으로 작업 규모를 L1·L2·L3로 판단해 설계 문서 분량을 맞춥니다. 한 줄 수정에 열 페이지짜리 설계서를 쓰지 않습니다.',
+    'feat.f5.t':     '독립 코드 리뷰어',
+    'feat.f5.p':     '전담 리뷰어 서브에이전트가 설계와 구현의 차이를 짚고, lint·format을 점검하고, 코드 품질을 객관적으로 평가합니다. 작성자가 자기 코드를 리뷰하는 구조가 아닙니다.',
+    'feat.f6.t':     'Jira 양방향 동기화',
+    'feat.f6.p':     '단계가 끝날 때마다 상태 변경·코멘트·문서 첨부가 Jira에 자동 반영됩니다. 진행 기록이 별도로 저장되어 세션이 끊겨도 이어서 작업할 수 있습니다.',
+    'feat.f7.t':     '스스로 수정하는 Auto 모드',
+    'feat.f7.p':     'start부터 review까지 지켜볼 필요가 없습니다. 리뷰에서 문제가 발견되면 최대 두 번까지 수정해 재시도하고, 이미 완료한 단계는 건너뜁니다.',
+    'feat.f8.t':     'Cache-First Fetch',
+    'feat.f8.p':     '한 번 불러온 이슈는 그대로 보관합니다. 같은 세션 안에서는 동일한 정보를 다시 요청하지 않아 불필요한 API 호출이 없습니다.',
+    'feat.f9.t':     '관계 그래프 대시보드',
+    'feat.f9.p':     'blocks·parent·epic 관계를 그래프로 보여주고 상태와 담당자로 필터링합니다. 고립된 이슈나 순환 의존이 한눈에 드러납니다.',
+    'code.label':    '빠른 시작',
+    'code.title':    '열 번 손대던 일을 한 번에',
+    'code.sub':      '지금 수작업으로 진행하는 과정 그대로,<br />끝까지 자동으로 실행되고 진행 상황은 Jira에 기록됩니다.',
+    'code.before':   '변경 전',
+    'code.after':    '변경 후',
+    'code.compat':   '전체 파이프라인을 한 번에 실행할 수도, discover·start·approach·impl·test·review·merge·pr·done 중 한 단계만 선택해 실행할 수도 있습니다.',
+    'd2.label':      '병렬이 기본',
+    'd2.title':      '여러 작업을 한꺼번에, 충돌 없이',
+    'd2.p':          '작업마다 git worktree와 feature 브랜치가 독립적으로 생성됩니다. 작업 흐름이 서로 간섭하지 않아 스프린트 전체를 명령 한 줄로 준비할 수 있습니다.',
+    'd2.l1':         '작업마다 격리된 worktree와 브랜치',
+    'd2.l2':         '개수, 이슈 키, 자연어 중 무엇으로든 한 번에 준비',
+    'd2.l3':         '진행 기록이 저장되어 세션이 바뀌어도 이어서 작업',
+    'd2.l4':         '작업이 끝나면 worktree와 브랜치 정리',
+    'd2.v.label':    '활성 워크트리',
+    'd2.v1.s':       'review · 설계 완료, 구현 완료',
+    'd2.v1.b':       '리뷰 중',
+    'd2.v2.s':       'impl · 테스트 작성 중',
+    'd2.v2.b':       '진행 중',
+    'd2.v3.s':       'approach · 설계 검토 대기',
+    'd2.v3.b':       '접근 설계',
+    'd3.label':      '가드레일과 감독',
+    'd3.title':      '실행은 에이전트가, 검증은 게이트가',
+    'd3.p':          'Phase 게이트가 순서를 관리하고, 독립 리뷰어가 변경된 코드를 설계와 대조합니다. Auto 모드는 문제가 사용자에게 도달하기 전에 처리합니다. 사람은 정말 중요한 결정에만 개입하면 됩니다.',
+    'd3.l1':         'Phase-gate 훅이 단계 순서를 강제',
+    'd3.l2':         '독립 리뷰어가 설계와 구현 차이를 점검',
+    'd3.l3':         '리뷰 실패 시 자동으로 수정해 재시도 (최대 2회)',
+    'd3.l4':         '발견 사항과 리포트는 바로 Jira에 게시',
+    'd3.v.label':    '파이프라인 이벤트',
+    'd3.v1.t':       'Phase 게이트',
+    'd3.v1.s':       'approach 미완료 → impl 차단',
+    'd3.v1.b':       '차단',
+    'd3.v2.t':       '독립 리뷰',
+    'd3.v2.s':       '설계와 불일치 2건',
+    'd3.v2.b':       '갭 발견',
+    'd3.v3.t':       '자동 수정 후 재시도',
+    'd3.v3.s':       '수정 후 재리뷰 통과 → Done',
+    'd3.v3.b':       '통과',
+    'cmp.label':     '왜 하니스인가',
+    'cmp.title':     'Jira를 읽고 쓰는 데서 멈추지 않습니다',
+    'cmp.sub':       '대부분의 Jira + AI 도구는 티켓을 읽고 쓰는 데서 끝납니다. 하니스는 개발 과정 전체를 직접 실행합니다.',
+    'cmp.col1':      '기능',
+    'cmp.col2':      'SDLC 하니스',
+    'cmp.col3':      'Jira AI 어시스턴트',
+    'cmp.col4':      '직접 스크립트 / 수동',
+    'cmp.r1':        '전체 라이프사이클 실행 (discover→done)',
+    'cmp.r2':        'Jira 양방향 동기화 (상태·코멘트·첨부)',
+    'cmp.r3':        '작업별 git worktree 격리',
+    'cmp.r4':        '작업 규모에 맞춘 설계 문서 (L1/L2/L3)',
+    'cmp.r5':        '독립 리뷰어 · 갭 분석',
+    'cmp.r6':        'Phase-gate 단계 가드레일',
+    'cmp.r7':        '자동 수정·재시도를 지원하는 Auto 모드',
+    'cmp.r8':        '세션이 바뀌어도 진행 추적',
+    'cmp.r9':        '셀프호스팅 · 오픈소스 (MIT)',
+    'cmp.r10':       'Claude Code 네이티브 플러그인',
+    'cmp.foot':      '각 범주의 일반적인 포지셔닝 기준입니다. ✓ 기본 제공 · ~ 제품별 상이/부분 지원 · ✕ 미지원.',
+    'cta.label':     '지금 설치',
+    'cta.title':     '이슈 하나, 명령 하나.<br />나머지는 하니스가 처리합니다.',
+    'cta.sub':       '셀프호스팅 기반 오픈소스 Claude Code 플러그인입니다.<br />마켓플레이스에서 몇 초 만에 설치할 수 있습니다.',
+    'cta.btn1':      'GitHub에서 시작하기 →',
+    'cta.btn2':      '기능 둘러보기',
+    'foot.docs':     '문서',
+    'foot.workflow': '작동 방식',
+    'foot.license':  '비교',
+    'foot.copy':     '오픈소스 · Claude Code 플러그인 · MIT 라이선스',
+  }
+};
+
+// ─── i18n engine ───
+let lang = 'ko';
+
+function applyLang() {
+  const dict = T[lang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const v = dict[el.dataset.i18n];
+    if (v !== undefined) el.textContent = v;
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const v = dict[el.dataset.i18nHtml];
+    if (v !== undefined) el.innerHTML = v;
+  });
+  const flagEl = document.getElementById('lang-btn-flag');
+  flagEl.src = lang === 'en' ? 'https://flagcdn.com/w20/kr.png' : 'https://flagcdn.com/w20/us.png';
+  flagEl.alt = lang === 'en' ? '한국어' : 'English';
+  document.documentElement.lang = lang === 'en' ? 'en' : 'ko';
+  document.title = lang === 'en'
+    ? 'AI-Native SDLC Harness — Your backlog, executed by agents.'
+    : 'AI-Native SDLC Harness — 당신의 백로그를, 에이전트가 실행합니다.';
+}
+
+function toggleLang() {
+  lang = lang === 'en' ? 'ko' : 'en';
+  applyLang();
+}
+
+// ─── Scroll fade-in ───
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }
+  });
+}, { threshold: 0.12 });
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+// ─── Nav scroll ───
+const navEl = document.querySelector('nav');
+window.addEventListener('scroll', () => {
+  navEl.style.borderBottomColor = window.scrollY > 20 ? 'rgba(238,229,233,0.12)' : 'rgba(238,229,233,0.08)';
+}, { passive: true });
+
+// ─── Copy button ───
+function copyCmd(btn) {
+  navigator.clipboard.writeText('claude plugin marketplace add mzd-hseokkim/jira-claude-code-integration');
+  const svg = btn.innerHTML;
+  btn.innerHTML = '✓'; btn.style.color = '#4ecb80';
+  setTimeout(() => { btn.innerHTML = svg; btn.style.color = ''; }, 1500);
+}
+
+// ─── Default to Korean on load ───
+applyLang();
+</script>
+</body>
+</html>
