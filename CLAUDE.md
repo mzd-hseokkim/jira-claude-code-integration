@@ -53,7 +53,7 @@ atlassian MCP 서버는 **선택**(`/jira setup --mcp`, 대화 중 ad-hoc 질의
 
 - **Epic 스코프 파일**: `.jira-epic.json`(gitignored, 메인 레포 루트 1곳만 정본 — worktree에 복제하지 않음). `/jira-task epic`이 쓰고 `create`만 읽는다. 규약 단일 출처는 `skills/_shared/epic-scope.md`. `init`/`report`의 JQL에는 영향을 주지 않는다.
 
-- **Progress 추적**: 각 스킬은 완료 시 `.jira-context.json`의 `completedSteps`에 자기 단계를 추가(중복 방지). 유효 단계: `discover`, `create`, `init`, `start`, `approach`, `impl`, `test`, `review`, `merge`, `pr`, `done`. `done`은 추가로 `status`를 `"Done"`으로 변경. Completion Summary의 Progress `✓`는 `completedSteps`에서 생성. (`plan`/`design`은 MAE-350에서 `approach`로 통합되어 제거됨; 기존 task의 stale 흔적은 마이그레이션 로직이 처리.)
+- **Progress 추적**: 각 스킬은 완료 시 `.jira-context.json`의 `completedSteps`에 자기 단계를 추가(중복 방지). 유효 단계: `discover`, `create`, `init`, `start`, `approach`, `impl`, `test`, `review`, `merge`, `pr`, `done`. `done`은 worktree-local에 기록하고 **aggregate에서는 항목을 제거**한다 (완료 태스크를 큐 파일에 누적하지 않음 — 이력은 run-log/review-log). 기존 누적분은 `jira-context-update.py --prune-done <aggregate>`로 일괄 정리. Completion Summary의 Progress `✓`는 `completedSteps`에서 생성. (`plan`/`design`은 MAE-350에서 `approach`로 통합되어 제거됨; 기존 task의 stale 흔적은 마이그레이션 로직이 처리.)
 
 - **Approach 문서에 코드 스니펫 금지** (토큰 낭비).
 

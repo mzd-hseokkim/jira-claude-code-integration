@@ -122,7 +122,7 @@ python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> done "<final-jira-status>" \
 - `status`를 `<final-jira-status>`로 set
 - `doneAt`에 현재 UTC ISO 8601 (Z suffix) 기록
 - `cachedIssue.status` / `cachedIssue.fetchedAt`도 함께 갱신 (cachedIssue가 있을 때만)
-- aggregate vs worktree 형식 자동 감지
+- aggregate vs worktree 형식 자동 감지 — **aggregate에서는 해당 태스크 항목을 제거**한다 (done = 생명주기 종료; 이력은 `docs/run-log`·`docs/review-log`가 보유. worktree-local 파일은 `clean`이 worktree와 함께 정리)
 
 아래 형식으로 완료 요약 출력:
 

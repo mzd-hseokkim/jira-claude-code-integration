@@ -122,6 +122,28 @@ class StripAggregatePollutionTest(unittest.TestCase):
         self.assertNotIn("-At", json.dumps(w))
         self.assertEqual(a["tasks"][0]["completedSteps"], ["init"])
 
+    def test_done_step_prunes_aggregate_entry_but_updates_worktree(self):
+        wt = self._write({"taskId": "T-1", "completedSteps": ["merge"]})
+        agg = self._write({"initialized": "x", "tasks": [{"taskId": "T-1", "completedSteps": ["merge"]}, {"taskId": "T-2"}]})
+        out_w = module.update_context(str(wt), "T-1", "done", "완료", "2026-01-02T00:00:00Z")
+        out_a = module.update_context(str(agg), "T-1", "done", "완료", "2026-01-02T00:00:00Z")
+        self.assertIn('completedSteps=["merge", "done"]', out_w)
+        self.assertIn("pruned", out_a)
+        with open(agg, encoding="utf-8") as f:
+            a = json.load(f)
+        self.assertEqual([t["taskId"] for t in a["tasks"]], ["T-2"])
+
+    def test_prune_done_removes_completed_entries(self):
+        agg = self._write({"initialized": "x", "tasks": [
+            {"taskId": "A", "status": "완료", "completedSteps": ["done"]},
+            {"taskId": "B", "status": "Done"},
+            {"taskId": "C", "status": "진행 중", "completedSteps": ["start"]}]})
+        out = module.prune_done(str(agg))
+        self.assertIn("pruned 2", out)
+        with open(agg, encoding="utf-8") as f:
+            a = json.load(f)
+        self.assertEqual([t["taskId"] for t in a["tasks"]], ["C"])
+
     def test_polluted_aggregate_is_self_healed_on_update(self):
         path = self._write(
             {

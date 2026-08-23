@@ -4,6 +4,10 @@
 Usage:
     python3 scripts/jira-context-update.py <TASK-ID> <step> <status> <ctx-file> [<ctx-file>...] [--patch '<json>']
     python3 scripts/jira-context-update.py --migrate-approach <ctx-file> [<ctx-file>...]
+    python3 scripts/jira-context-update.py --prune-done <aggregate-ctx-file>
+
+done 단계는 aggregate에서 해당 태스크 항목을 **제거**한다 (생명주기 종료 — 이력은 docs/run-log·review-log가 보유).
+--prune-done은 이미 완료된 항목(completedSteps에 done 또는 status가 Done/완료류)을 일괄 제거하는 일회성 정리.
 
 --patch '<json>' (v0.58.0): worktree-local 파일에만 top-level 키를 병합한다 (aggregate에는 적용 안 함 —
     pollution 규칙). implSelfCheck / fixSelfCheck 객체에 ranAt이 없으면 현재 UTC로 채운다.
@@ -118,14 +122,23 @@ def update_context(ctx_file: str, task_id: str, step: str, status: str, ts: str,
                 file=sys.stderr,
             )
         updated = False
-        for t in ctx["tasks"]:
-            if t.get("taskId") == task_id and step != "-":
-                _apply_step(t, step, status, ts)
-                updated = True
-                break
+        if step == "done":
+            # done = 생명주기 종료 → aggregate에서 항목 제거 (이력은 run-log/review-log가 보유).
+            # worktree-local 파일은 clean이 worktree와 함께 정리한다.
+            before = len(ctx["tasks"])
+            ctx["tasks"] = [t for t in ctx["tasks"] if t.get("taskId") != task_id]
+            updated = len(ctx["tasks"]) < before
+        else:
+            for t in ctx["tasks"]:
+                if t.get("taskId") == task_id and step != "-":
+                    _apply_step(t, step, status, ts)
+                    updated = True
+                    break
         if updated or removed:
             with open(ctx_file, "w", encoding="utf-8") as f:
                 json.dump(ctx, f, indent=2, ensure_ascii=False)
+        if updated and step == "done":
+            return f"aggregate pruned ({task_id} done): {ctx_file}"
         if updated:
             return f"aggregate updated ({task_id}): {ctx_file}"
         return f"no {task_id} in aggregate, skipped: {ctx_file}"
@@ -173,7 +186,35 @@ def migrate_approach(ctx_file: str) -> str:
     return f"migrated {migrated} task(s): {ctx_file}"
 
 
+_DONE_STATUSES = frozenset({"Done", "Closed", "완료", "종료"})
+
+
+def prune_done(ctx_file: str) -> str:
+    """aggregate에서 완료된 태스크 항목(completedSteps에 done 또는 status가 완료류)을 제거한다 (일회성 정리)."""
+    if not os.path.isfile(ctx_file):
+        return f"missing: {ctx_file}"
+    with open(ctx_file, "r", encoding="utf-8") as f:
+        ctx = json.load(f)
+    if not isinstance(ctx.get("tasks"), list):
+        return f"not an aggregate, skipped: {ctx_file}"
+    keep, pruned = [], []
+    for t in ctx["tasks"]:
+        if "done" in (t.get("completedSteps") or []) or t.get("status") in _DONE_STATUSES:
+            pruned.append(t.get("taskId"))
+        else:
+            keep.append(t)
+    if pruned:
+        ctx["tasks"] = keep
+        with open(ctx_file, "w", encoding="utf-8") as f:
+            json.dump(ctx, f, indent=2, ensure_ascii=False)
+    return f"pruned {len(pruned)} done task(s) [{', '.join(str(p) for p in pruned)}]: {ctx_file}"
+
+
 def main(argv: list[str]) -> int:
+    if len(argv) >= 3 and argv[1] == "--prune-done":
+        for ctx_file in argv[2:]:
+            print(prune_done(ctx_file))
+        return 0
     if len(argv) >= 3 and argv[1] == "--migrate-approach":
         for ctx_file in argv[2:]:
             print(migrate_approach(ctx_file))
