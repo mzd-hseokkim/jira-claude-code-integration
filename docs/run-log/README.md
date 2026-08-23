@@ -37,8 +37,8 @@ docs/run-log/
 | `metrics` | object \| null | 예: `{ matchRate, criticalCount, warningCount, infoCount }` (review 결과) |
 | `stageDurationsSec` | object | 단계별 소요 초. 키는 `queueWaitSec`(init→start 간격 = 큐 대기, 단계 소요 아님)\|`approach`\|`impl`\|`test`\|`review`, 값은 정수 또는 `null`(측정 불가). v0.57.0 이전 줄은 `queueWaitSec` 대신 `start` 키를 썼다 |
 | `harnessVersion` | string | 기록 시점 `.claude-plugin/plugin.json`의 `version` |
-| `quarantined` | boolean \| null | `loop-run` 전용 — 태스크 격리 여부. `auto`에서는 항상 `null` |
-| `passed` | boolean \| null | `loop-run` 전용 — 로컬 병합 성공 여부. `auto`에서는 항상 `null` |
+| `quarantined` | array \| null | `loop-run` 전용 — 격리된 태스크 목록, 요소는 `{taskId, deferredKind}`. `auto`에서는 항상 `null` |
+| `passed` | array \| null | `loop-run` 전용 — 로컬 병합 성공한 `taskId` 문자열 목록. `auto`에서는 항상 `null` |
 
 ### `stageDurationsSec` 계산 규칙
 
