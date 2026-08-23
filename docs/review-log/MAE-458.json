@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "taskId": "MAE-458",
+  "entries": [
+    {
+      "taskId": "MAE-458",
+      "timestamp": "2026-08-23T00:14:26Z",
+      "reviewerVersion": "934d4e799b6e",
+      "outcome": "pass",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "info",
+          "file": "docs/run-log/README.md",
+          "line": 40,
+          "category": "docs-consistency",
+          "message": "스키마 표(boolean|null)와 예시 라인(배열) 불일치 — approach에서 스코프 아웃한 관찰 사항"
+        }
+      ],
+      "severityCounts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 1
+      },
+      "falsePositive": null,
+      "userOverride": null,
+      "timings": {
+        "gapSec": null,
+        "lintSec": null,
+        "qualitySec": null,
+        "totalSec": 114
+      }
+    }
+  ]
+}
