@@ -9,10 +9,6 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-  - mcp__atlassian__jira_get_issue
-  - mcp__atlassian__jira_transition_issue
-  - mcp__atlassian__jira_get_transitions
-  - mcp__atlassian__jira_add_comment
 ---
 
 # jira-task-done: Complete a Jira Task
@@ -21,9 +17,11 @@ allowed-tools:
 
 ## Prerequisites
 - A feature branch `feature/<TASK-ID>` must exist with commits
-- Jira MCP server must be connected
+- Jira 자격증명 설정됨 (`skills/_shared/jira-cli.md`)
 
 ## Workflow
+
+Jira 호출은 `python3 "<scripts>/jira-cli.py" …` (규약: `skills/_shared/jira-cli.md`). 호출 prompt가 `<scripts>/` 절대 경로를 줬으면 그대로 쓰고, 없으면 `skills/_shared/script-lookup.md`로 `SCRIPT_NAME="jira-cli.py"` 1회 해석.
 
 ### Step 1: Verify Context
 
@@ -34,7 +32,7 @@ If TASK-ID is provided as argument, use that instead.
 
 ### Step 2: Fetch Current Issue Status
 
-**Cache-first**: `.jira-context.json`의 `cachedIssue`를 먼저 확인 (CLAUDE.md "Issue Cache" 참고). hit이면 호출 생략하고 캐시된 `status`만 사용. miss이면 `mcp__atlassian__jira_get_issue` 호출 (`fields="summary,status,issuetype,assignee"`, `comment_limit=0`) 후 cache 갱신. **단 done 단계는 상태 전이 직전이므로 사용자가 신선도가 의심되면 cache 무시하고 재조회할 수 있음**.
+**Cache-first**: `.jira-context.json`의 `cachedIssue`를 먼저 확인 (CLAUDE.md "Issue Cache" 참고). hit이면 호출 생략하고 캐시된 `status`만 사용. miss이면 `python3 "<scripts>/jira-cli.py" get <TASK-ID>` 호출 (압축 JSON의 `summary`/`status`/`issuetype`/`assignee`) 후 cache 갱신. **단 done 단계는 상태 전이 직전이므로 사용자가 신선도가 의심되면 cache 무시하고 재조회할 수 있음**.
 
 ### Step 3: Summarize Changes
 
@@ -58,7 +56,7 @@ merge 단계에서 이미 Jira 코멘트(`## Task Merged Locally`)에 변경 파
 
 ### Step 5: Post Completion Report to Jira
 
-Step 5의 요약을 기반으로 `mcp__atlassian__jira_add_comment`에 게시:
+Step 5의 요약을 scratchpad md 파일로 쓰고 `python3 "<scripts>/jira-cli.py" comment <TASK-ID> @<파일>`로 게시:
 
 ```
 ## Task Completed: <TASK-ID>
@@ -78,16 +76,15 @@ Step 5의 요약을 기반으로 `mcp__atlassian__jira_add_comment`에 게시:
 
 ### Step 6: Transition Issue
 
-Use `mcp__atlassian__jira_get_transitions` to fetch available transitions, then use `mcp__atlassian__jira_transition_issue` to move the issue:
+Use `python3 "<scripts>/jira-cli.py" transitions <TASK-ID>` to fetch available transitions, then use `python3 "<scripts>/jira-cli.py" transition <TASK-ID> "<id|상태명>"` to move the issue:
 - Try "In Review" first (common for PR-based workflows)
 - If "In Review" is not available, try "Done"
 - If both fail, inform the user of available transitions
+- 코멘트는 `comment` 서브커맨드로 별도 (전이에 섞지 않음)
 
-**ADF comment 경고 및 호출 패턴**: `Read skills/_shared/transition-verify.md` 의 "ADF Comment 경고" 섹션 준수.
+### Step 6.5: Verify Transition (SSOT)
 
-### Step 6.5: Verify Transition via Fresh Fetch (SSOT)
-
-`Read skills/_shared/transition-verify.md` — fresh fetch 절차, `<final-jira-status>` 결정 규칙, fetch 실패 정책을 그대로 따른다. 결과 status를 Step 8의 `<final-jira-status>` 인자로 전달.
+`Read skills/_shared/transition-verify.md` — `transition` 출력의 `status`가 SSOT이며 별도 재조회는 하지 않는다. `<final-jira-status>` 결정 규칙, 실패 정책을 그대로 따르고 결과 status를 Step 8의 `<final-jira-status>` 인자로 전달.
 
 ### Step 7: Cleanup MCP Config from Worktree Entry
 
@@ -117,7 +114,7 @@ python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> done "<final-jira-status>" \
     "<repoRoot>/.jira-context.json"
 ```
 
-- `<final-jira-status>`: **Step 6.5에서 fresh fetch로 확보한 Jira 실제 status명** (예: `"완료"`, `"Done"`). transition 시도값을 그대로 쓰지 말 것 — Jira workflow에 따라 다른 이름으로 떨어질 수 있음.
+- `<final-jira-status>`: **Step 6.5에서 `transition` 출력의 `status`로 확보한 Jira 실제 status명** (예: `"완료"`, `"Done"`). transition 시도값을 그대로 쓰지 말 것 — Jira workflow에 따라 다른 이름으로 떨어질 수 있음.
 - worktree 경로는 aggregate의 `tasks[].worktreePath`에서 조회. worktree 컨텍스트가 부재하면(이미 cleaned 등) 해당 인자만 빼고 호출 — 스크립트가 missing 파일을 자동 skip
 
 스크립트는 다음을 일괄 처리한다:

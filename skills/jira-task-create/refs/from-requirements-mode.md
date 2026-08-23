@@ -140,7 +140,7 @@ subtasks[] 원소: { index, summary, description?, scope? }
 
 ## Tree → Issue Mapping
 
-| 레벨 | 트리 노드 | Jira issue_type | parent 필드 | 폴백 |
+| 레벨 | 트리 노드 | `create` JSON `issuetype` | `parent` 키 | 폴백 |
 |---|-----------|----------------|------------|------|
 | L1 | 작업 | `Task` | (없음) | 실패 시 그대로 보고 |
 | L2 | Story | `Story` | (없음) | 실패 시 `Task` |
@@ -160,6 +160,6 @@ subtasks[] 원소: { index, summary, description?, scope? }
 Epic 중첩 생성은 하지 않는다.
 
 **의존성 표현:**
-- `(blocks: ...)` 표기 → `link_type = "Blocks"` (실제 이름은 `jira_get_link_types`로 조회).
-- "A가 B를 블록한다" → `outward_issue_key = A, inward_issue_key = B`.
+- `(blocks: ...)` 표기 → `python3 "<scripts>/jira-cli.py" link Blocks <blocker> <blocked>` (실제 타입명은 `link-types`로 조회).
+- "A가 B를 블록한다" → `link Blocks A B` (OUTWARD=A, INWARD=B).
 - 트리 인덱스 → 실제 키 매핑 테이블은 Step 6에서 노드 생성 직후 누적(`draft_index → created_key`).

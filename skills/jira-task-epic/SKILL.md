@@ -8,9 +8,6 @@ allowed-tools:
   - Write
   - Bash
   - AskUserQuestion
-  - mcp__atlassian__jira_get_user_profile
-  - mcp__atlassian__jira_search
-  - mcp__atlassian__jira_get_issue
 ---
 
 # jira-task-epic: Project Epic Scope
@@ -25,7 +22,7 @@ allowed-tools:
 
 ## Prerequisites
 
-- Jira MCP 서버 (`atlassian`) 연결됨 — `set`에서만 필요. `show`/`clear`는 파일만 다루므로 연결 없이 동작한다.
+- Jira 호출은 `scripts/jira-cli.py` (규약: `Read skills/_shared/jira-cli.md`). 호출 prompt가 `<scripts>/` 절대 경로를 줬으면 그대로, 없으면 `skills/_shared/script-lookup.md`로 `SCRIPT_NAME="jira-cli.py"` 1회 해석 — `set`(과 `show`의 상태 확인)에서만 필요. `clear`는 파일만 다루므로 연결 없이 동작한다.
 - git 레포 안에서 실행. 아니면 "git 레포 안에서 실행해 주세요" 안내 후 종료.
 
 ## Workflow
@@ -55,7 +52,7 @@ allowed-tools:
    `/jira-task epic set <에픽 키 또는 이름>`으로 지정하면 이후 create가 그 Epic 아래에 이슈를 만듭니다.
 ```
 
-있으면 키/요약/설정 시각을 출력한다. 이때 `jira_get_issue`로 현재 상태를 1회 확인해 `status`가 `Done`이면 아래 줄을 덧붙인다:
+있으면 키/요약/설정 시각을 출력한다. 이때 `python3 "<scripts>/jira-cli.py" get <epicKey>`로 현재 상태를 1회 확인해 출력의 `status`가 `Done`이면 아래 줄을 덧붙인다:
 
 ```
 ⚠️ 이 Epic은 이미 Done 상태입니다. 새 작업은 다른 Epic이 맞는지 확인하세요.
@@ -73,15 +70,15 @@ rm -f "$EPIC_FILE"
 
 입력값이 **이슈 키 형태**(`[A-Z][A-Z0-9]+-\d+`)인지 먼저 본다.
 
-**4-A. 키인 경우**: `jira_get_issue`로 조회 (`fields="summary,issuetype,status,project"`, `comment_limit=0`).
+**4-A. 키인 경우**: `python3 "<scripts>/jira-cli.py" get <KEY> --fields project`로 조회 (`summary`/`issuetype`/`status`는 기본 출력, 프로젝트 키는 `--fields project`).
 
 **4-B. 이름인 경우**: JQL로 검색한다.
 
-```
-project = <PROJECT_KEY> AND issuetype = Epic AND summary ~ "<입력값>" ORDER BY created DESC
+```bash
+python3 "<scripts>/jira-cli.py" search "project = <PROJECT_KEY> AND issuetype = Epic AND summary ~ \"<입력값>\" ORDER BY created DESC" --limit 20
 ```
 
-`<PROJECT_KEY>`는 `JIRA_DEFAULT_PROJECT` 환경변수. **`JIRA_DEFAULT_PROJECT`가 있으면 이 JQL에 `project` 조건을 반드시 포함한다** (CLAUDE.md의 스코핑 규칙). 없으면 사용자에게 프로젝트 키를 묻는다.
+`<PROJECT_KEY>`는 `JIRA_DEFAULT_PROJECT` 환경변수. **`JIRA_DEFAULT_PROJECT`가 있으면 `project` 조건은 CLI가 자동 삽입한다** (CLAUDE.md의 스코핑 규칙). 없으면 사용자에게 프로젝트 키를 묻고 JQL에 직접 넣는다.
 
 - 0건 → Step 5의 **N0** 처리
 - 1건 → 확정
@@ -92,7 +89,7 @@ project = <PROJECT_KEY> AND issuetype = Epic AND summary ~ "<입력값>" ORDER B
 | # | 조건 | 처리 |
 |---|---|---|
 | N0 | 이름 검색 0건 | 후보 없음 알림 + `AskUserQuestion`(`다른 이름으로 재검색` / `취소`). **Epic을 자동 생성하지 않는다** |
-| N1 | `issuetype != Epic` | 거부 + 종료. `jira_link_to_epic`이 Epic이 아닌 대상에 `ValueError`를 낸다 |
+| N1 | `issuetype != Epic` | 거부 + 종료. `jira-cli.py epic-link`가 Epic이 아닌 대상에 실패한다 |
 | N2 | `status == Done` | 경고 후 `AskUserQuestion`으로 계속 여부 확인 |
 | N3 | `JIRA_DEFAULT_PROJECT`와 프로젝트가 다름 | 경고 후 계속 여부 확인 |
 

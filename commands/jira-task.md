@@ -11,7 +11,6 @@ allowed-tools:
   - Glob
   - Grep
   - Skill
-  - mcp__atlassian
 ---
 
 # /jira-task - Jira Development Workflow
@@ -61,7 +60,7 @@ Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-epic", args: "
 
 ### `create [자연어 힌트]`
 
-**강제 규칙**: `create` 키워드가 감지되면 **반드시** 아래 Skill 도구를 호출한다. Claude가 직접 `jira_create_issue`를 호출하여 이슈를 만드는 것을 금지한다 — 과거 반복 실패 이력이 있어 스킴/필드 규칙을 박아둔 스킬을 통해서만 생성한다.
+**강제 규칙**: `create` 키워드가 감지되면 **반드시** 아래 Skill 도구를 호출한다. Claude가 직접 `jira-cli.py create`를 호출하여 이슈를 만드는 것을 금지한다 — 과거 반복 실패 이력이 있어 스킴/필드 규칙을 박아둔 스킬을 통해서만 생성한다.
 
 Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-create", args: "<사용자가 입력한 create 이후의 전체 인자를 그대로 전달>" })`
 
@@ -155,13 +154,13 @@ Worktree와 branch를 정리한다. `--list`로 현황 조회, `--all`로 병합
 Use the `Skill` tool: `Skill({ skill: "jira-integration:jira-task-report", args: "" })`
 
 ### `status`
-Quick status check — `.jira-context.json`에서 활성 태스크 정보를 읽고, Jira에서 최신 상태를 조회하여 표시.
+Quick status check — `.jira-context.json`에서 활성 태스크 정보를 읽고, `python3 "<scripts>/jira-cli.py" get <TASK-ID>`로 Jira 최신 상태(`status`)를 조회하여 표시. 경로는 `skills/_shared/script-lookup.md`로 `SCRIPT_NAME="jira-cli.py"` 1회 해석 (규약: `skills/_shared/jira-cli.md`).
 
 ## Error Handling
 
 - If TASK-ID is not provided and auto-detection fails, ask the user to provide it
-- If Jira MCP server is not connected, guide user to check `/jira` for setup
-- If transition fails (e.g., invalid transition name), use `mcp__atlassian__jira_get_transitions` to list available transitions for the issue
+- If `jira-cli.py` fails with 401/403 (credentials), guide user to check `/jira` for setup
+- If transition fails (e.g., invalid transition name), use `python3 "<scripts>/jira-cli.py" transitions <TASK-ID>` to list available transitions for the issue
 
 ## Response Summary
 
@@ -172,14 +171,14 @@ Quick status check — `.jira-context.json`에서 활성 태스크 정보를 읽
 📋 Jira Workflow Summary
 ─────────────────────────────────────────
 ✅ Done: [이번 응답에서 수행한 작업]
-🔧 Used: [사용한 스킬, 에이전트, Jira MCP 도구]
+🔧 Used: [사용한 스킬, 에이전트, jira-cli 서브커맨드]
 💡 Next: [다음 추천 작업]
 ─────────────────────────────────────────
 ```
 
 규칙:
 - **Done**: 실제로 수행한 작업을 간결하게 기술 (예: "PROJ-123 기획 문서 생성")
-- **Used**: 사용한 스킬(`jira-task-approach` 등), 에이전트(`jira-reviewer` 등), Jira MCP 도구(`get-issue`, `add-comment` 등)를 나열. 사용하지 않았으면 생략
+- **Used**: 사용한 스킬(`jira-task-approach` 등), 에이전트(`jira-reviewer` 등), jira-cli 서브커맨드(`get`, `comment` 등)를 나열. 사용하지 않았으면 생략
 - **Next**: `.jira-context.json`의 `completedSteps` 기반으로 다음 워크플로 단계를 추천. 워크플로 외 작업이면 맥락에 맞는 다음 작업 추천
   - 워크플로 단계 순서: `discover → create → init → start → approach → impl → test → review → merge → pr → done`
   - `review` 완료 후 next는 반드시 `merge` (`/jira-task merge <TASK-ID>`)

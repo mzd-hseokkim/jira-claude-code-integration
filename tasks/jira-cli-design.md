@@ -1,7 +1,7 @@
 # atlassian MCP → `jira-cli.py` 대체 — 설계
 
 > 개선안 6번. `tasks/loop-engineering-roadmap.md` 참조. 의존: 없음 (독립). 단, stage 프롬프트 변경은 1번(Workflow) 위에서.
-> 상태: Phase A 구현됨 (v0.59.0) — auto 경유 5개 스킬 전환. Phase B(나머지 스킬 + MCP 선택화) 대기
+> 상태: 구현 완료 (Phase A v0.59.0, 자격증명 워크스페이스화 v0.60.x, Phase B v0.61.0 — 전 스킬 전환·/jira setup 재작성·MCP 선택화·docs/jira-cli.md). 레거시 MCP 설정 폴백은 자동 이관용으로 유지.
 
 ---
 

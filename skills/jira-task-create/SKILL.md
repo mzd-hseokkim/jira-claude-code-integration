@@ -7,22 +7,15 @@ allowed-tools:
   - Read
   - Bash
   - AskUserQuestion
-  - mcp__atlassian__jira_get_user_profile
-  - mcp__atlassian__jira_get_all_projects
-  - mcp__atlassian__jira_search
-  - mcp__atlassian__jira_get_issue
-  - mcp__atlassian__jira_create_issue
-  - mcp__atlassian__jira_add_comment
-  - mcp__atlassian__jira_create_issue_link
-  - mcp__atlassian__jira_get_link_types
-  - mcp__atlassian__jira_link_to_epic
 ---
 
 # jira-task-create: Create New Jira Issue (with Sub-tasks & Dependencies)
 
 **Language Rule**: 프로젝트 CLAUDE.md의 Conventions 섹션 참고 (한국어 출력). 추가: `AskUserQuestion` 질문/선택지, 생성 이슈 본문(summary/description)도 한국어. 이슈 키, 필드명(priority/labels), JSON 키는 영어 유지.
 
-**중요**: `Read skills/jira-task-create/refs/mcp-schema.md` — Jira API 파라미터 규칙, 폴백 전략, 방향성 주의사항을 반드시 숙지 후 Step 6을 진행한다.
+**Jira 호출**: `Read skills/_shared/jira-cli.md` — 모든 Jira 호출은 `python3 "<scripts>/jira-cli.py" …` Bash 호출. 호출 prompt가 `<scripts>/` 절대 경로를 줬으면 그대로, 없으면 `skills/_shared/script-lookup.md`로 `SCRIPT_NAME="jira-cli.py"` 1회 해석.
+
+**중요**: `Read skills/jira-task-create/refs/mcp-schema.md` — `create` JSON 규칙, 폴백 전략, 링크 방향성 주의사항을 반드시 숙지 후 Step 6을 진행한다.
 
 ## Overview
 
@@ -36,8 +29,8 @@ allowed-tools:
 
 ## Prerequisites
 
-- Jira MCP 서버 (`atlassian`) 연결됨 — 미연결 시 `/jira setup` 안내 후 종료
-- `JIRA_DEFAULT_PROJECT` 환경변수가 있으면 프로젝트 키로 사용, 없으면 Step 2에서 사용자에게 묻는다
+- `jira-cli.py whoami` 성공 (자격증명 유효) — 실패 시 `/jira setup` 안내 후 종료
+- `JIRA_DEFAULT_PROJECT` 환경변수가 있으면 프로젝트 키로 사용(CLI `create`도 `"project"` 생략 시 자동 사용), 없으면 Step 2에서 사용자에게 묻는다
 - `.jira-epic.json`(Epic 스코프)이 있으면 생성 이슈의 Epic 링크 **기본값**으로 사용. 없으면 지금까지처럼 Epic 없이 생성
 
 ## Workflow
@@ -52,7 +45,7 @@ allowed-tools:
 2. **인자 충돌 처리**: `importMode = true`이면서 자연어 힌트가 동시에 존재하는 경우, **import를 우선**한다.
    - 자연어 힌트는 Epic description의 추가 컨텍스트로만 사용한다.
    - 자동 서브태스크 분해(Step 3/4)는 import 모드에서 절대 동작하지 않는다 (회귀 금지).
-3. Jira MCP 연결 확인: `mcp__atlassian__jira_get_user_profile` 호출. 실패하면 "/jira setup을 먼저 실행하세요" 안내 후 종료.
+3. Jira 연결 확인: `python3 "<scripts>/jira-cli.py" whoami` 호출. 실패하면 "/jira setup을 먼저 실행하세요" 안내 후 종료.
 4. **Epic 스코프 로드**: `Read skills/_shared/epic-scope.md` 후 경로 결정 + 읽기 블록을 실행해 `epicScope`를 세팅한다 (파일 없거나 파싱 실패 → `null`, 진행에는 영향 없음). 로드되면 사용자에게 1줄 알린다:
 
 ```
@@ -103,7 +96,7 @@ allowed-tools:
 1. **요약(Summary)**: 이슈 한 줄 제목
 2. **이슈 타입**: `Task` / `Story` / `Bug` / `Epic` (기본 추천: 기능→Story, 단일→Task, 버그→Bug)
 3. **Priority**: `Highest` / `High` / `Medium` / `Low` / `Lowest` (기본: `Medium`)
-4. **프로젝트 키** (`JIRA_DEFAULT_PROJECT` 없을 때만): `jira_get_all_projects` 목록에서 선택
+4. **프로젝트 키** (`JIRA_DEFAULT_PROJECT` 없을 때만): `python3 "<scripts>/jira-cli.py" projects` 목록에서 선택
 
 **Phase B — 설명 보강** (A 답변 후 설명이 여전히 부족하면)
 
@@ -116,7 +109,7 @@ Epic 연결 여부, Labels, Components, Assignee를 배치 질문.
 **`epicScope`가 있으면 Epic 연결 질문과 아래 선택 서브 플로우를 통째로 skip한다** — 이미 정해진 값이므로 다시 묻지 않는다. 다른 Epic으로 바꾸려면 `/jira-task epic set <키>`.
 
 **Epic 선택 서브 플로우** (사용자가 "기존 에픽 선택"한 경우):
-1. JQL: `project = <PROJECT_KEY> AND issuetype = Epic AND status != Done ORDER BY created DESC` (limit=10)
+1. `python3 "<scripts>/jira-cli.py" search "issuetype = Epic AND status != Done ORDER BY created DESC" --limit 10` (`project =` 조건은 `JIRA_DEFAULT_PROJECT`가 있으면 CLI가 자동 삽입, 없으면 `project = <PROJECT_KEY> AND`를 앞에 붙인다)
 2. 상위 10개 테이블 표시 후 `AskUserQuestion`으로 에픽 키 선택
 
 ### Step 3: Decide Sub-task Split (스킬 자동 판단)
@@ -217,7 +210,7 @@ import 모드는 Step 3/4의 분해 판단을 건너뛰고, default 모드는 �
 
 **Import 모드 (`--from-requirements`):**
 
-Preview 출력 **직전**에 모든 노드 summary를 일괄 JQL로 중복 검사. 일치 시 `## Duplicate Warning` 블록 포함.
+Preview 출력 **직전**에 모든 노드 summary를 일괄 JQL(`jira-cli.py search "summary ~ …"`)로 중복 검사. 일치 시 `## Duplicate Warning` 블록 포함.
 
 `breakdownLevel`(`L1` | `L2` | `L3`)을 Preview 상단에 1줄로 명시한다.
 
@@ -262,11 +255,11 @@ Epic을 중첩 생성하지 않는다 — Jira가 Epic 아래 Epic을 제대로 
 
 **6-1. 상위 이슈 생성 (default 또는 import L1/L3에서 호출)**
 
-`additional_fields`는 **JSON 문자열**로 직렬화. priority/labels/epic_key를 dict에 조립 후 `json.dumps()`. priority 기본값은 `Medium` (`from-requirements-mode.md` Step 1.5-5의 추출 규칙과 동일).
+이슈 1건당 JSON 1개를 scratchpad 파일로 쓰고 `python3 "<scripts>/jira-cli.py" create @<파일>` 호출. 키: `project`/`summary`/`issuetype`/`description`(markdown)/`parent`/`labels`/`priority`/`assignee`. Epic 연결은 `"parent": "<EPIC-KEY>"`. priority 기본값은 `Medium` (`from-requirements-mode.md` Step 1.5-5의 추출 규칙과 동일). 출력 `{"key","id"}`의 `key`를 누적한다.
 
 폴백 규칙은 호출 모드별로 발동 케이스가 다르다 — `from-requirements-mode.md`의 Tree→Issue Mapping 표가 단일 진실. 본 절은 요약만 둔다:
 
-- **default / import L1**: Task 또는 Story 타입 시도. Story 실패 → `Task` (default 모드는 + `parent=Epic-KEY` if epic-link, L1은 `epicScope` 있으면 그 키를 parent로).
+- **default / import L1**: Task 또는 Story 타입 시도. Story 실패 → `Task` (default 모드는 + `parent=Epic-KEY` if Epic 연결, L1은 `epicScope` 있으면 그 키를 parent로).
 - **import L3 Epic 생성**: Epic 타입 실패 → `Task` + label `epic-substitute`.
 - **Subtask 타입 실패**: `Task` + `parent=Story-KEY` (6-3 영역 — 본 절 비대상).
 - **import L2 Story 생성**: 본 절이 아니라 6-1b가 담당 (Epic 부재로 parent 생략).
@@ -282,27 +275,27 @@ Epic을 중첩 생성하지 않는다 — Jira가 Epic 아래 Epic을 제대로 
 
 **6-2. 에픽 연결 검증 (default 모드 + `epicScope`가 적용된 import L1)**
 
-`jira_get_issue`로 재조회 → epic link 미설정 시 `jira_link_to_epic` 폴백 → 이것도 실패 시 경고 후 계속.
+`python3 "<scripts>/jira-cli.py" get <KEY>`로 재조회 → 출력 `parent`가 Epic 키가 아니면 `python3 "<scripts>/jira-cli.py" epic-link <KEY> <EPIC-KEY>` 폴백 → 이것도 실패 시 경고 후 계속.
 
 **6-3. 서브태스크 생성 (순차 루프)**
 
-각 서브태스크에 `jira_create_issue` 개별 호출. import 모드에서 PARENT_KEY = 해당 Story의 `created_key`.
+각 서브태스크에 `create @<파일>` 개별 호출 (`"issuetype": "Subtask"`, `"parent": "<PARENT_KEY>"`). import 모드에서 PARENT_KEY = 해당 Story의 `created_key`.
 
 **6-4. 의존성 링크 생성**
 
-`jira_get_link_types(name_filter="block")`로 "Blocks" 타입명 확인 후 `jira_create_issue_link` 호출.
+`python3 "<scripts>/jira-cli.py" link-types`로 "Blocks" 타입명 확인 후 `python3 "<scripts>/jira-cli.py" link Blocks <blocker> <blocked>` 호출.
 
-방향성: "A가 B를 블록" → `outward_issue_key=A`, `inward_issue_key=B`.
+방향성: "A가 B를 블록" → `link Blocks A B` (OUTWARD=A, INWARD=B).
 
 **Import 모드의 `(blocks: <ref>)` 변환**: `<N>` → Story 키, `<N>.<M>` → Subtask 키. E7 위반 시 해당 링크 skip + 경고.
 
 **6-5. 결과 검증**
 
-모든 이슈를 `jira_get_issue`로 재조회 (`fields="summary,issuetype,priority,parent,labels,issuelinks,status"`, `comment_limit=0`). 불일치 시 경고.
+모든 이슈를 `python3 "<scripts>/jira-cli.py" get <KEY> --fields issuelinks`로 재조회 (압축 출력의 `summary`/`issuetype`/`priority`/`parent`/`labels`/`status` + `issuelinks`). 불일치 시 경고.
 
 ### Step 7: Post Creation Comment (선택)
 
-상위 이슈에 요약 코멘트 게시 (서브태스크 개수, 링크 개수, 병렬 가능 개수, Next 안내). 서브태스크에는 코멘트 생략.
+상위 이슈에 요약 코멘트 게시 (서브태스크 개수, 링크 개수, 병렬 가능 개수, Next 안내) — 본문을 scratchpad md 파일로 쓰고 `python3 "<scripts>/jira-cli.py" comment <KEY> @<파일>`. 서브태스크에는 코멘트 생략.
 
 ### Step 8: Completion Summary
 
@@ -324,7 +317,7 @@ Epic을 중첩 생성하지 않는다 — Jira가 Epic 아래 Epic을 제대로 
 
 ## Error Handling
 
-**공통**: MCP 연결 실패 → Step 0 종료 + `/jira setup` 안내. `jira_create_issue` 실패 → 타입 미존재 시 Task 폴백, 인증 오류 시 토큰 만료 안내, 필드 오류 시 원본 메시지 표시. 서브태스크 일부 실패 → 성공 것 유지, 실패 목록 표시, 재시도 confirm (자동 롤백 없음).
+**공통**: `whoami` 실패 → Step 0 종료 + `/jira setup` 안내. `create` 실패(exit 1, stderr `jira-cli: <code> <reason>`) → 타입 미존재 시 Task 폴백, 401/403 시 토큰 만료 안내, 필드 오류 시 원본 메시지 표시. 서브태스크 일부 실패 → 성공 것 유지, 실패 목록 표시, 재시도 confirm (자동 롤백 없음).
 
 | # | 시나리오 | 처리 |
 |---|---------|------|

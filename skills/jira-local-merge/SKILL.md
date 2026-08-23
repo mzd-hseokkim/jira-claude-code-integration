@@ -8,10 +8,6 @@ allowed-tools:
   - Write
   - Bash
   - Glob
-  - mcp__atlassian__jira_get_issue
-  - mcp__atlassian__jira_transition_issue
-  - mcp__atlassian__jira_get_transitions
-  - mcp__atlassian__jira_add_comment
 ---
 
 # jira-local-merge: Local Branch Merge
@@ -23,15 +19,13 @@ Jira 상태 전환 및 worktree 정리까지 일괄 처리한다.
 
 ## Prerequisites
 - feature 브랜치에 커밋이 존재
-- Jira MCP 서버 연결됨
+- Jira 자격증명 설정됨 (`skills/_shared/jira-cli.md`)
 
 ## Workflow
 
-### Context Optimization
+### Jira 호출
 
-이 스킬에서 `mcp__atlassian__jira_get_issue`를 호출하는 경우 다음 파라미터를 사용한다 (병합/전환에 필요한 메타만):
-- `fields="summary,status,issuetype"`
-- `comment_limit=0`
+Jira 호출은 `python3 "<scripts>/jira-cli.py" …` (규약: `skills/_shared/jira-cli.md`). 호출 prompt가 `<scripts>/` 절대 경로를 줬으면 그대로 쓰고, 없으면 `skills/_shared/script-lookup.md`로 `SCRIPT_NAME="jira-cli.py"` 1회 해석. 이슈 조회가 필요하면 `get <TASK-ID>` (압축 JSON의 `summary`/`status`/`issuetype` 사용).
 
 ### Step 1: Load Context
 
@@ -101,7 +95,7 @@ merge 충돌 발생 시 사용자에게 알리고 중단. 충돌 해결 후 재�
 
 ### Step 5: Post Completion Report to Jira
 
-`mcp__atlassian__jira_add_comment`로 병합 결과 게시:
+병합 결과를 scratchpad md 파일로 쓰고 `python3 "<scripts>/jira-cli.py" comment <TASK-ID> @<파일>`로 게시:
 
 ```
 ## Task Merged Locally: <TASK-ID>
@@ -117,16 +111,15 @@ merge 충돌 발생 시 사용자에게 알리고 중단. 충돌 해결 후 재�
 
 ### Step 6: Transition Issue
 
-`mcp__atlassian__jira_get_transitions`로 전환 목록 조회 후 `mcp__atlassian__jira_transition_issue`로 상태 전환:
+`python3 "<scripts>/jira-cli.py" transitions <TASK-ID>`로 전환 목록 조회 후 `python3 "<scripts>/jira-cli.py" transition <TASK-ID> "<id|상태명>"`으로 상태 전환:
 - "In Review" 우선 시도 (PR 생성 단계가 남아있으므로 Done이 아님)
 - "In Review"가 없으면 가능한 전환 목록을 사용자에게 안내하고 선택 요청
 - Done으로 전환하지 않는다 (PR 생성 후 `jira-task done`에서 처리)
+- 코멘트는 `comment` 서브커맨드로 별도 (전이에 섞지 않음)
 
-**ADF comment 경고 및 호출 패턴**: `Read skills/_shared/transition-verify.md` 의 "ADF Comment 경고" 섹션 준수.
+### Step 6.5: Verify Transition (SSOT)
 
-### Step 6.5: Verify Transition via Fresh Fetch (SSOT)
-
-`Read skills/_shared/transition-verify.md` — fresh fetch 절차, `<final-jira-status>` 결정 규칙, fetch 실패 정책을 그대로 따른다. 결과 status를 Step 8의 `<final-jira-status>` 인자로 전달.
+`Read skills/_shared/transition-verify.md` — `transition` 출력의 `status`가 SSOT이며 별도 재조회는 하지 않는다. `<final-jira-status>` 결정 규칙, 실패 정책을 그대로 따르고 결과 status를 Step 8의 `<final-jira-status>` 인자로 전달.
 
 ### Step 7: Cleanup Instructions
 
@@ -157,7 +150,7 @@ python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> merge "<final-jira-status>" \
     "<repoRoot>/.jira-context.json"
 ```
 
-- `<final-jira-status>`: **Step 6.5에서 fresh fetch로 확보한 Jira 실제 status명** (예: `"In Review"`, `"검토중"`). transition 시도값을 그대로 쓰지 말 것.
+- `<final-jira-status>`: **Step 6.5에서 `transition` 출력의 `status`로 확보한 Jira 실제 status명** (예: `"In Review"`, `"검토중"`). transition 시도값을 그대로 쓰지 말 것.
 
 스크립트는 다음을 일괄 처리한다:
 - `completedSteps`에 `"merge"` 추가 (중복 방지)

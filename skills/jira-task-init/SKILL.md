@@ -9,11 +9,6 @@ allowed-tools:
   - Edit
   - Bash
   - Glob
-  - mcp__atlassian__jira_search
-  - mcp__atlassian__jira_get_issue
-  - mcp__atlassian__jira_add_comment
-  - mcp__atlassian__jira_get_agile_boards
-  - mcp__atlassian__jira_get_sprints_from_board
 ---
 
 # jira-task-init: Bulk Sprint/Task Initialization
@@ -24,9 +19,9 @@ allowed-tools:
 작업 컨텍스트를 세팅하는 일괄 처리 워크플로우.
 
 ## Prerequisites
-- Jira MCP 서버 연결됨
+- Jira 호출은 `scripts/jira-cli.py` (규약: `Read skills/_shared/jira-cli.md`). 호출 prompt가 `<scripts>/` 절대 경로를 줬으면 그대로, 없으면 `skills/_shared/script-lookup.md`로 `SCRIPT_NAME="jira-cli.py"` 1회 해석.
 - 현재 디렉토리가 git repository 내부
-- 환경변수: JIRA_URL, JIRA_USERNAME, JIRA_API_TOKEN
+- 자격증명: 메인 레포 `.jira-context.json`의 `jira` 블록 (없으면 환경변수 JIRA_URL, JIRA_USERNAME, JIRA_API_TOKEN)
 
 ## Workflow
 
@@ -46,19 +41,16 @@ allowed-tools:
 사용자에게 몇 개의 태스크를 가져올지 확인 (기본값: 5).
 
 JQL 쿼리로 나에게 할당된 고우선순위 태스크 조회.
-**JIRA_DEFAULT_PROJECT가 설정되어 있으면 반드시 `project = <JIRA_DEFAULT_PROJECT>` 조건을 포함해야 한다.**
+**`JIRA_DEFAULT_PROJECT`가 설정되어 있으면 `project = <JIRA_DEFAULT_PROJECT>` 조건은 CLI가 자동 삽입한다.**
 
-```
-Use mcp__atlassian__jira_search with JQL:
-  project = <JIRA_DEFAULT_PROJECT> AND assignee = currentUser() AND status NOT IN (Done, Closed) ORDER BY priority DESC, created ASC
-  fields="summary,status,priority,issuetype,assignee"
-  limit=20
+```bash
+python3 "<scripts>/jira-cli.py" search "assignee = currentUser() AND status NOT IN (Done, Closed) ORDER BY priority DESC, created ASC" --limit 20
 ```
 
 또는 활성 스프린트가 있으면 스프린트 기반으로 조회:
-1. `mcp__atlassian__jira_get_agile_boards`로 보드 목록 확인
-2. `mcp__atlassian__jira_get_sprints_from_board`로 활성 스프린트 확인 (boardId 필요)
-3. JQL: `project = <JIRA_DEFAULT_PROJECT> AND sprint = <active-sprint-id> AND assignee = currentUser() AND status NOT IN (Done, Closed) ORDER BY priority DESC`
+1. `python3 "<scripts>/jira-cli.py" boards [PROJECT]`로 보드 목록 확인
+2. `python3 "<scripts>/jira-cli.py" sprints <BOARD-ID> active`로 활성 스프린트 확인
+3. `python3 "<scripts>/jira-cli.py" search "sprint = <active-sprint-id> AND assignee = currentUser() AND status NOT IN (Done, Closed) ORDER BY priority DESC" --limit 20`
 
 결과에서 상위 N개(기본 5개)만 선택. → Step 2로 진행.
 
@@ -69,9 +61,9 @@ Step 0에서 추출한 이슈 키로 해당 이슈와 하위작업을 조회하�
 상세 절차: `Read skills/jira-task-init/refs/issue-key-mode.md`
 
 요약:
-1. 부모 이슈 조회 (`fields="summary,status,issuetype,priority"`, `comment_limit=0`)
-2. JQL로 미완료 하위작업 조회 (`parent = <ISSUE-KEY> AND status NOT IN (Done, Closed)`)
-3. 각 하위작업의 issuelinks 분석 → `is blocked by` 미완료 블로커 있으면 blocked 처리
+1. 부모 이슈 조회 (`jira-cli.py get <ISSUE-KEY>`)
+2. JQL로 미완료 하위작업 조회 (`jira-cli.py search "parent = <ISSUE-KEY> AND status NOT IN (Done, Closed)"`)
+3. 각 하위작업의 issuelinks 분석 (`get <KEY> --fields issuelinks`) → `is blocked by` 미완료 블로커 있으면 blocked 처리
 4. 착수 가능 작업만 선별하여 의존성 표 출력 → Step 2로 전달
 
 ### Step 2: Display Task List
@@ -137,7 +129,9 @@ fi
 - 생성 후 worktree `.gitignore`에 `.jira-context.json` / `TASK-README.md` 항목 추가 (없으면)
 - **중요**: worktree는 반드시 원본 레포 **상위 디렉토리** 안에 생성 (`<parent>/<project>_worktree/<TASK-ID>`)
 
-### Step 5.5: Propagate MCP Config to Worktree
+### Step 5.5: Propagate MCP Config to Worktree (선택 — MCP 서버를 쓰는 경우에만)
+
+**atlassian MCP 서버를 계속 쓰는 경우에만 수행한다.** `jira-cli.py`는 메인 레포 `.jira-context.json`의 `jira` 블록을 worktree에서도 찾아 읽으므로 CLI만 쓰면 이 전파는 필요 없다 — 그 경우 Step 6으로 넘어간다.
 
 워크트리는 별도의 프로젝트 루트로 인식되어 MCP 설정이 자동 상속되지 않는다.
 `scripts/propagate-mcp-config.sh`를 호출하여 메인 레포의 atlassian 서버 설정을 워크트리로 전파한다.
@@ -173,9 +167,8 @@ fi
 ### Step 7: Post Comments to Jira
 
 각 태스크에 코멘트 게시:
-```
-Use mcp__atlassian__jira_add_comment:
-  "브랜치 `feature/<TASK-ID>`의 worktree가 `<worktree-path>`에 초기화되었습니다."
+```bash
+python3 "<scripts>/jira-cli.py" comment <TASK-ID> "브랜치 \`feature/<TASK-ID>\`의 worktree가 \`<worktree-path>\`에 초기화되었습니다."
 ```
 
 ### Step 8: Save Context

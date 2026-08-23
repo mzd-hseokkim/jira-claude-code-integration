@@ -7,7 +7,6 @@ allowed-tools:
   - Read
   - Bash
   - Skill
-  - mcp__atlassian
 ---
 
 # /jira - Jira Integration Help & Status
@@ -24,21 +23,18 @@ Otherwise, show the following information:
 
 ## 1. Connection Status
 
-Check if Atlassian MCP server is available by calling `mcp__atlassian__jira_search`
-with JQL `project is not EMPTY ORDER BY updated DESC` and limit 1.
+Check the Jira connection by running `python3 "<scripts>/jira-cli.py" whoami` (경로는 `skills/_shared/script-lookup.md`로 `SCRIPT_NAME="jira-cli.py"` 1회 해석; 규약: `skills/_shared/jira-cli.md`).
 
-- If the call succeeds (no exception): report "Connected"
-- If the call throws an error: report "Not connected" and guide setup
+- If exit 0 (`{accountId, displayName, email}` 출력): report "Connected" (displayName 표시)
+- If exit 1/2 (stderr `jira-cli: ...`): report "Not connected" and guide setup
 
-Do NOT use `echo $JIRA_URL` to check credentials — these are scoped to the MCP server
-process and not visible as shell environment variables.
+Do NOT use `echo $JIRA_URL` to check credentials — 자격증명은 메인 레포 `.jira-context.json`의 `jira` 블록이 정본이며 셸 환경변수로 보이지 않을 수 있다. `jira` 블록 값(특히 `apiToken`)은 절대 출력하지 않는다.
 
-If connection fails, guide the user to set up environment variables:
+If connection fails, guide the user to set credentials:
 ```
-JIRA_URL=https://your-domain.atlassian.net
-JIRA_USERNAME=your-email@company.com
-JIRA_API_TOKEN=your-api-token
+python3 "<scripts>/jira-cli.py" config set https://your-domain.atlassian.net your-email@company.com your-api-token [PROJECT]
 ```
+(또는 환경변수 `JIRA_URL` / `JIRA_USERNAME` / `JIRA_API_TOKEN`)
 
 ## 2. Available Commands
 
@@ -62,13 +58,13 @@ Display the available workflow commands:
 | `/jira-task done <TASK-ID>` | Complete task (PR, transition status, post summary) |
 | `/jira-task report` | 내 할당 이슈 현황 리포트 |
 
-## 3. Available MCP Tools
+## 3. Available jira-cli Subcommands
 
-Briefly list the Atlassian MCP tool categories:
-- **Issues**: get, search (JQL), create, update, delete, transition, batch-create
-- **Comments**: add
-- **Attachments**: download
-- **Sprints & Boards**: get-agile-boards, get-sprints-from-board, get-sprint-issues, create-sprint, update-sprint
-- **Development Info**: get-issue-development-info (linked PRs, branches, commits)
-- **Projects & Users**: get-all-projects, get-project-issues, get-user-profile
-- **Issue Links**: create-issue-link, link-to-epic
+Briefly list the `jira-cli.py` subcommand categories (`skills/_shared/jira-cli.md`):
+- **Issues**: get, search (JQL), create, update, transitions, transition, assign
+- **Comments**: comment
+- **Attachments**: attach
+- **Sprints & Boards**: boards, sprints
+- **Projects & Users**: projects, whoami
+- **Issue Links**: link, link-types, epic-link
+- **Config**: config set / config show

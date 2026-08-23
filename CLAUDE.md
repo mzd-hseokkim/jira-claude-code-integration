@@ -21,11 +21,11 @@
 
 빌드/테스트 스크립트는 `package.json`의 scripts 참고.
 
-## Jira 호출: `scripts/jira-cli.py` (v0.59.0+) / atlassian MCP (Phase B까지 폴백)
+## Jira 호출: `scripts/jira-cli.py` (v0.61.0+ 전 스킬)
 
-auto 경유 단계(start/approach/impl/test/review)는 **`scripts/jira-cli.py`**를 Bash로 호출한다 — 표준 라이브러리 REST(v2 + search는 v3 `search/jql`), 압축 JSON 출력, 코멘트는 markdown→wiki 변환. 규약·MCP 대응표: `skills/_shared/jira-cli.md`, 설계: `tasks/jira-cli-design.md`. 자격증명(v0.60.0): **메인 레포 `.jira-context.json`의 `jira` 블록** `{url, username, apiToken, project}`이 정본 — `jira-cli.py config set`으로 기록, worktree에서는 `--git-common-dir`로 메인 레포 파일을 찾아 읽으므로 복제 금지. 조회 순서: `jira` 블록 → 환경변수 → (레거시 폴백) MCP 설정 파일. 블록이 없을 때 뒤의 둘에서 찾으면 자동으로 블록에 기입하고 .gitignore 미등록이면 등록까지 한다(정보 알림). 스킬은 `jira` 블록을 출력·인용하지 않는다 (토큰 노출 경로 차단).
+모든 스킬은 **`scripts/jira-cli.py`**를 Bash로 호출한다 (MCP 도구 사용 금지) — 표준 라이브러리 REST(v2 + search는 v3 `search/jql`), 압축 JSON 출력, 코멘트는 markdown→wiki 변환. 규약·MCP 대응표: `skills/_shared/jira-cli.md`, 설계: `tasks/jira-cli-design.md`. 자격증명(v0.60.0): **메인 레포 `.jira-context.json`의 `jira` 블록** `{url, username, apiToken, project}`이 정본 — `jira-cli.py config set`으로 기록, worktree에서는 `--git-common-dir`로 메인 레포 파일을 찾아 읽으므로 복제 금지. 조회 순서: `jira` 블록 → 환경변수 → (레거시 폴백) MCP 설정 파일. 블록이 없을 때 뒤의 둘에서 찾으면 자동으로 블록에 기입하고 .gitignore 미등록이면 등록까지 한다(정보 알림). 스킬은 `jira` 블록을 출력·인용하지 않는다 (토큰 노출 경로 차단).
 
-나머지 스킬(init/create/discover/epic/report/merge/done/pr/clean/status)은 아직 `atlassian` MCP 서버(tool prefix `mcp__atlassian__`, 레퍼런스 `docs/mcp-atlassian-tools.md`)를 쓴다 — Phase B에서 전환 예정. 첨부 업로드는 MCP 미지원이라 `jira-cli.py attach` 또는 `jira-attach.sh`(REST 직접 호출).
+atlassian MCP 서버는 **선택**(`/jira setup --mcp`, 대화 중 ad-hoc 질의용)이며 플러그인 워크플로에는 쓰지 않는다. 레퍼런스: `docs/jira-cli.md` (구 `docs/mcp-atlassian-tools.md`는 선택 MCP용으로만 유지). 첨부 업로드는 `jira-cli.py attach`(`jira-attach.sh`는 호환 유지).
 
 ## Skill Authoring Conventions
 

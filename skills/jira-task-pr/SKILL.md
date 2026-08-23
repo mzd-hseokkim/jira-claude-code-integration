@@ -8,10 +8,6 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-  - mcp__atlassian__jira_get_issue
-  - mcp__atlassian__jira_add_comment
-  - mcp__atlassian__jira_transition_issue
-  - mcp__atlassian__jira_get_transitions
 ---
 
 # jira-task-pr: Create Pull Request for Jira Task
@@ -27,11 +23,13 @@ allowed-tools:
 
 ## Workflow
 
+Jira 호출은 `python3 "<scripts>/jira-cli.py" …` (규약: `skills/_shared/jira-cli.md`). 호출 prompt가 `<scripts>/` 절대 경로를 줬으면 그대로 쓰고, 없으면 `skills/_shared/script-lookup.md`로 `SCRIPT_NAME="jira-cli.py"` 1회 해석.
+
 ### Step 1: Gather Context
 
 1. `.jira-context.json`에서 활성 태스크 정보 읽기
-2. **Cache-first**: `.jira-context.json`의 `cachedIssue` 확인 (CLAUDE.md "Issue Cache" 참고). hit이면 호출 생략 후 캐시된 description/issuetype을 PR 본문 생성에 사용. miss이면 `mcp__atlassian__jira_get_issue` 호출 (`fields="summary,status,description,issuetype,labels"`, `comment_limit=0` — PR 본문 생성에 필요한 항목만) 후 cache 갱신.
-3. **Jira 호스트 URL 추출**: `get-issue` 응답의 `self` 필드(예: `https://company.atlassian.net/rest/api/...`)에서 호스트 부분을 추출하여 Jira 이슈 링크 생성에 사용. 예: `https://company.atlassian.net/browse/<TASK-ID>`. cache hit이라 신선한 응답이 없으면 `JIRA_URL` 환경변수에서 추출하거나 `.mcp.json`의 `JIRA_URL`을 fallback으로 사용.
+2. **Cache-first**: `.jira-context.json`의 `cachedIssue` 확인 (CLAUDE.md "Issue Cache" 참고). hit이면 호출 생략 후 캐시된 description/issuetype을 PR 본문 생성에 사용. miss이면 `python3 "<scripts>/jira-cli.py" get <TASK-ID>` 호출 (압축 JSON의 `summary`/`status`/`description`/`issuetype`/`labels` — PR 본문 생성에 필요한 항목만) 후 cache 갱신.
+3. **Jira 호스트 URL 추출**: `python3 "<scripts>/jira-cli.py" config show`의 `url`(예: `https://company.atlassian.net`)을 Jira 이슈 링크 생성에 사용. 예: `https://company.atlassian.net/browse/<TASK-ID>`. 없으면 `JIRA_URL` 환경변수를 fallback으로 사용.
 4. Base branch 확인:
    ```bash
    git rev-parse --abbrev-ref HEAD  # 현재 브랜치 확인
@@ -83,7 +81,7 @@ PR URL을 캡처.
 
 ### Step 5: Post PR Link to Jira
 
-`mcp__atlassian__jira_add_comment`로 Jira에 PR 링크 게시:
+PR 링크 코멘트를 scratchpad md 파일로 쓰고 `python3 "<scripts>/jira-cli.py" comment <TASK-ID> @<파일>`로 Jira에 게시:
 
 ```
 ## Pull Request Created
@@ -98,12 +96,12 @@ PR URL을 캡처.
 ### Step 6: Transition Issue (Optional)
 
 사용자에게 확인 후 이슈 상태를 "In Review"로 전환:
-```
-먼저 mcp__atlassian__jira_get_transitions으로 전환 목록 조회 후
-mcp__atlassian__jira_transition_issue with transitionId: <In Review transition ID>
+```bash
+python3 "<scripts>/jira-cli.py" transitions <TASK-ID>            # 전환 목록 조회
+python3 "<scripts>/jira-cli.py" transition <TASK-ID> "In Review"  # {"key","status"} — status가 실제 결과
 ```
 
-**주의**: `jira_transition_issue`에 `comment` 파라미터를 절대 사용하지 말 것. `comment` 필드는 ADF JSON을 요구하므로 일반 텍스트를 넣으면 오류가 발생한다. 코멘트는 별도로 `jira_add_comment`를 호출하여 추가한다.
+코멘트는 `comment` 서브커맨드로 별도 (전이에 섞지 않음).
 
 ### Step 7: Completion Summary
 

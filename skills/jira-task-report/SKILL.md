@@ -5,9 +5,7 @@ user-invocable: false
 allowed-tools:
   - Read
   - Write
-  - mcp__atlassian__jira_get_agile_boards
-  - mcp__atlassian__jira_get_sprints_from_board
-  - mcp__atlassian__jira_search
+  - Bash
 ---
 
 # jira-task-report: Status Report
@@ -18,23 +16,23 @@ allowed-tools:
 
 ### Step 1: Fetch My Assigned Issues
 
+Jira 호출은 `scripts/jira-cli.py` (규약: `Read skills/_shared/jira-cli.md`). 호출 prompt가 `<scripts>/` 절대 경로를 줬으면 그대로, 없으면 `skills/_shared/script-lookup.md`로 `SCRIPT_NAME="jira-cli.py"` 1회 해석.
+
 먼저 스프린트 유무를 확인하고, 적절한 JQL로 이슈를 검색:
 
-**Context optimization (모든 jira_search 호출 공통):**
-- `fields="summary,status,priority,issuetype,assignee"` (description 제외 — 리포트는 카드 단위 요약만 필요)
-- `limit=50`
+**Context optimization (모든 search 호출 공통):**
+- 압축 출력(key/summary/status/issuetype/priority/assignee)만 쓴다 — description 불필요, 리포트는 카드 단위 요약만 필요
+- `--limit 50`
+- `JIRA_DEFAULT_PROJECT`가 있으면 `project =` 조건은 CLI가 자동 삽입
 
 **스프린트가 있는 경우 (Scrum)**:
-1. Use `mcp__atlassian__jira_get_agile_boards` to list available boards
-2. Use `mcp__atlassian__jira_get_sprints_from_board` with the boardId to find the active sprint
-3. JQL: `project = <JIRA_DEFAULT_PROJECT> AND sprint = <sprint-id> AND assignee = currentUser() ORDER BY status ASC, priority DESC` (위 fields/limit 사용)
+1. `python3 "<scripts>/jira-cli.py" boards [PROJECT]`로 보드 목록 확인
+2. `python3 "<scripts>/jira-cli.py" sprints <BOARD-ID> active`로 활성 스프린트 확인
+3. `python3 "<scripts>/jira-cli.py" search "sprint = <sprint-id> AND assignee = currentUser() ORDER BY status ASC, priority DESC" --limit 50`
 
 **스프린트가 없는 경우 (Kanban / 기타)**:
-```
-Use mcp__atlassian__jira_search with JQL:
-  project = <JIRA_DEFAULT_PROJECT> AND assignee = currentUser() AND status != Done ORDER BY priority DESC
-  fields="summary,status,priority,issuetype,assignee"
-  limit=50
+```bash
+python3 "<scripts>/jira-cli.py" search "assignee = currentUser() AND status != Done ORDER BY priority DESC" --limit 50
 ```
 
 ### Step 2: Categorize Issues

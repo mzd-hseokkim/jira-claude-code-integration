@@ -1,184 +1,105 @@
 ---
 name: jira-setup
-description: "Interactive setup wizard for Jira MCP server registration and connection validation. Triggers: jira setup, setup jira; Jira 설정, MCP 등록."
+description: "Interactive setup wizard — Jira credentials for this workspace (jira-cli) and optional MCP registration. Triggers: jira setup, setup jira; Jira 설정, 자격증명 설정."
 user-invocable: false
-argument-hint: ""
+argument-hint: "[--mcp]"
 allowed-tools:
   - Read
   - Bash
-  - mcp__atlassian__jira_get_user_profile
-  - mcp__atlassian__jira_search
+  - AskUserQuestion
 ---
 
-# jira-setup: Interactive Jira Setup Wizard
+# jira-setup: Workspace Jira Setup Wizard
 
 **Language Rule**: 프로젝트 CLAUDE.md의 Conventions 섹션 참고 (한국어 출력).
 
 ## Overview
 
-Jira MCP 서버(`atlassian`)를 Claude Code에 등록하는 대화형 설정 위자드.
+이 워크스페이스의 Jira 자격증명을 **메인 레포 `.jira-context.json`의 `jira` 블록**에 기록하고 연결을 검증하는 위자드. v0.61.0부터 플러그인의 모든 Jira 호출은 `scripts/jira-cli.py`가 하므로 MCP 서버 등록은 **선택**(`--mcp` 인자 또는 Step 5에서 요청 시 — 대화 중 ad-hoc Jira 질의를 MCP 도구로 하고 싶을 때만).
 
-## Step 1: Prerequisites Check
+- 자격증명은 워크스페이스 단위다 — 다른 워크스페이스가 알 필요 없는 값을 전역 설정에 두지 않는다.
+- 토큰은 `.jira-context.json`에만 저장되며 이 파일은 `.gitignore` 대상이다 (`config set`이 미등록이면 등록까지 한다).
+- **위자드 출력·요약에 토큰 값을 절대 표시하지 않는다** (`config show`가 마스킹한 값만).
 
-### 1-1. uv 설치 확인
-
-```bash
-uv --version
-```
-
-실패 시:
-```
-❌ uv가 설치되어 있지 않습니다.
-
-설치 방법:
-  Windows (PowerShell): irm https://astral.sh/uv/install.ps1 | iex
-  macOS/Linux:          curl -LsSf https://astral.sh/uv/install.sh | sh
-
-설치 후 터미널을 재시작하고 /jira setup을 다시 실행하세요.
-```
-→ 중단
-
-### 1-2. Python 3.10+ 확인
+## Step 1: Prerequisites
 
 ```bash
-python --version 2>/dev/null || python3 --version 2>/dev/null
+python3 --version        # 3.10+ (jira-cli는 표준 라이브러리만 사용 — uv/pip 불필요)
+git rev-parse --git-common-dir 2>/dev/null && echo IN_GIT_REPO
 ```
 
-**Windows Store stub 회피**: `python --version`이 "Python 3.x.x"를 반환하지 않고 아무것도 출력하지 않거나 Microsoft Store를 열려고 하면 stub으로 간주. `uv python list`로 대체 확인.
+python3가 없으면 설치 안내 후 중단. git 레포가 아니면 "플러그인은 git 레포 안에서 동작합니다" 안내 후 중단.
 
-Python 3.10 미만이거나 없으면:
-```
-❌ Python 3.10 이상이 필요합니다.
+## Step 2: 기존 설정 확인
 
-현재 버전: <버전 또는 "없음">
-
-uv로 Python 설치:
-  uv python install 3.11
-
-또는 python.org에서 직접 설치하세요.
-```
-→ 중단
-
-사전 요건 통과 시: `✅ 사전 요건 확인 완료 (uv <버전>, Python <버전>)`
-
-## Step 2: Check Existing Registration
-
-`.claude/settings.local.json`과 `~/.claude/settings.json` 검사:
+`skills/_shared/script-lookup.md`로 `SCRIPT_NAME="jira-cli.py"` 1회 해석 후:
 
 ```bash
-cat .claude/settings.local.json 2>/dev/null
-cat ~/.claude/settings.json 2>/dev/null
+python3 "<scripts>/jira-cli.py" config show
 ```
 
-`mcpServers` 키 아래 `atlassian` 항목이 존재하면 이미 등록된 것으로 판단.
+- `url`·`username`·`apiToken`(마스킹)이 모두 있으면 → 사용자에게 선택: **연결 테스트만** / **재설정** / 취소.
+- 없으면 → `python3 "<scripts>/jira-cli.py" whoami`를 한 번 실행해 본다. jira-cli는 환경변수·레거시 MCP 설정(`.mcp.json`, `~/.claude.json`, settings)에서 자격증명을 찾으면 **자동으로 `jira` 블록에 기입**하므로(stderr에 "기입함" 안내), 성공하면 Step 4로 바로 간다. 실패하면 Step 3.
 
-**이미 등록된 경우**, 선택지를 안내:
+## Step 3: 자격증명 수집
 
+`AskUserQuestion`으로 수집 (토큰 입력은 사용자가 직접 — 위자드가 값을 되풀이해 출력하지 않는다):
+
+| 항목 | 필수 | 비고 |
+|---|---|---|
+| Jira URL | ✓ | `https://your-domain.atlassian.net` (끝 `/` 없이) |
+| 계정 이메일 | ✓ | Atlassian 계정 |
+| API 토큰 | ✓ | https://id.atlassian.com/manage-profile/security/api-tokens |
+| 기본 프로젝트 키 | | 설정하면 모든 JQL에 `project =`가 자동 삽입되고 `create`가 프로젝트를 묻지 않는다 |
+
+기록:
+
+```bash
+python3 "<scripts>/jira-cli.py" config set "<url>" "<email>" "<token>" [<PROJECT>]
 ```
-ℹ️ Jira MCP 서버(atlassian)가 이미 등록되어 있습니다.
 
-어떻게 하시겠습니까?
-1. 연결 테스트만 실행
-2. 자격증명 재설정 (기존 설정 덮어쓰기)
-3. 취소
+출력의 `gitignoreUpdated: true`면 ".gitignore에 `.jira-context.json`을 추가했습니다"를 알린다 (정보 — 경고 아님).
+
+## Step 4: 연결 검증
+
+```bash
+python3 "<scripts>/jira-cli.py" whoami
 ```
 
-`AskUserQuestion` 도구로 사용자에게 선택 요청:
-- "연결 테스트" 선택 → Step 5로 바로 이동
-- "재설정" 선택 → Step 3부터 진행
-- "취소" 선택 → 종료
+| 결과 | 진단 |
+|---|---|
+| `{"accountId", "displayName", ...}` | 성공 → Step 5 |
+| `jira-cli: 401 Unauthorized` | 토큰/이메일 오류 — Step 3 재수집 |
+| `jira-cli: 404` | URL 오류 (도메인·끝 슬래시) |
+| `jira-cli: 네트워크 오류` | URL 도달 불가 — VPN/프록시 확인 |
 
-## Step 3: Collect Credentials
+기본 프로젝트를 설정했으면 `python3 "<scripts>/jira-cli.py" search "assignee = currentUser()" --limit 1`로 프로젝트 접근도 확인한다.
 
-`AskUserQuestion` 도구로 아래 정보를 수집한다.
+## Step 5: (선택) MCP 서버 등록
 
-**필수 항목:**
-
-1. **JIRA_URL** — Jira Cloud URL
-   - 예시: `https://your-domain.atlassian.net`
-   - 확인: `https://`로 시작하고 `atlassian.net`을 포함해야 함
-
-2. **JIRA_USERNAME** — Atlassian 계정 이메일
-   - 예시: `your-email@company.com`
-
-3. **JIRA_API_TOKEN** — API 토큰
-   - 발급 링크: https://id.atlassian.com/manage-profile/security/api-tokens
-   - 입력값을 화면에 표시하지 않도록 안내
-
-**선택 항목** (별도 질문):
-
-4. **JIRA_PROJECTS_FILTER** — 접근 허용 프로젝트 키 (쉼표 구분)
-   - 예시: `PROJ` 또는 `PROJ,DEV`
-   - 비워두면 모든 프로젝트 접근 가능
-
-5. **JIRA_DEFAULT_PROJECT** — 기본 프로젝트 키 (JQL 쿼리에 자동 포함)
-   - 예시: `PROJ`
-   - 비워두면 프로젝트 필터링 없음
-
-## Step 4: Register MCP Server
-
-수집한 자격증명으로 MCP 서버를 등록:
+`--mcp` 인자가 있거나 사용자가 요청할 때만. 대화 중 `mcp__atlassian__*` 도구로 ad-hoc 질의를 하고 싶은 경우용이며, 플러그인 워크플로에는 필요 없다.
 
 ```bash
 claude mcp add atlassian \
-  -e JIRA_URL="<JIRA_URL>" \
-  -e JIRA_USERNAME="<JIRA_USERNAME>" \
-  -e JIRA_API_TOKEN="<JIRA_API_TOKEN>" \
+  -e JIRA_URL="<url>" -e JIRA_USERNAME="<email>" -e JIRA_API_TOKEN="<token>" \
+  [-e JIRA_PROJECTS_FILTER="<PROJECT>"] \
   -- uvx mcp-atlassian
 ```
 
-`JIRA_PROJECTS_FILTER`가 입력되었으면 `-e JIRA_PROJECTS_FILTER="<값>"` 추가.
+전제: Python 3.10+ 와 `uv`(`uv --version`). 등록 후 세션 재시작이 필요하고, 세션 시작 직후 서버가 늦게 붙으면 `/mcp`에서 재연결해야 할 수 있음을 안내한다.
 
-**참고**: `JIRA_DEFAULT_PROJECT`는 MCP 서버가 아닌 플러그인 자체에서 사용하는 변수이므로, `.claude/settings.local.json` 또는 `CLAUDE.md`에 별도로 기록 안내.
-
-등록 후: `✅ MCP 서버 등록 완료`
-
-## Step 5: Validate Connection
-
-`mcp__atlassian__jira_get_user_profile` 호출로 연결 검증.
-
-**성공 시:**
-```
-✅ 연결 성공!
-
-사용자: <displayName> (<emailAddress>)
-계정 ID: <accountId>
-
-Jira MCP 서버가 정상적으로 연결되었습니다.
-이제 /jira-task 워크플로를 사용할 수 있습니다.
-```
-
-**실패 시 오류 진단:**
-
-| 오류 패턴 | 원인 | 해결책 |
-|-----------|------|--------|
-| `401 Unauthorized` | API 토큰 또는 이메일 오류 | JIRA_USERNAME과 JIRA_API_TOKEN 재확인 |
-| `404 Not Found` | JIRA_URL 오류 | URL 형식 확인 (`https://domain.atlassian.net`) |
-| `connection refused` | 네트워크 문제 | 인터넷 연결 및 방화벽 확인 |
-| `uvx not found` | uv 미설치 또는 PATH 오류 | `uv --version` 재확인 |
+## Step 6: 완료 요약
 
 ```
-❌ 연결 실패
+---
+✅ **Jira Setup Complete**
 
-오류: <오류 메시지>
-원인: <진단 결과>
-해결책: <구체적인 조치>
+- 워크스페이스: <메인 레포 경로>
+- Jira: <url> (<displayName>)
+- 기본 프로젝트: <PROJECT | 없음>
+- 자격증명 저장: .jira-context.json `jira` 블록 (gitignore ✓)
+- MCP 서버: <등록됨 | 미등록 (플러그인 동작에 불필요)>
 
-자격증명을 수정하려면 /jira setup을 다시 실행하세요.
-```
-
-## Step 6: Post-Setup Summary
-
-```
-─────────────────────────────────────────
-🎉 Jira 설정 완료
-─────────────────────────────────────────
-MCP 서버: atlassian (uvx mcp-atlassian)
-연결 계정: <이메일>
-Jira URL: <JIRA_URL>
-
-다음 단계:
-  /jira              — 연결 상태 및 사용 가능한 명령 확인
-  /jira-task init    — 할당된 작업 목록 가져오기
-─────────────────────────────────────────
+**Next**: `/jira-task init <이슈키|N>` 으로 작업 큐를 잡거나, `/jira-task create`로 이슈를 만드세요.
+---
 ```

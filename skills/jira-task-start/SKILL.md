@@ -104,7 +104,7 @@ git rev-parse --verify master 2>/dev/null   # 3rd
 git worktree add -b "feature/<TASK-ID>" "$WORKTREE_BASE/<TASK-ID>" <base-branch>
 ```
 
-worktree 생성 직후, 메인 레포의 atlassian MCP 설정을 worktree로 전파한다 (worktree는 별도 프로젝트 루트로 인식되어 MCP 설정이 자동 상속되지 않음 — init Step 5.5와 동일). 스크립트 경로 결정은 `Read skills/_shared/script-lookup.md` 후 lookup 블록 실행:
+**(선택 — MCP 서버를 쓰는 경우에만)** jira-cli는 메인 레포 `.jira-context.json`의 `jira` 블록을 worktree에서도 찾아 읽으므로 CLI만 쓰면 전파가 필요 없다 — 이 경우 이 단계를 건너뛴다. MCP 서버를 등록해 쓰는 환경에서만 메인 레포의 atlassian MCP 설정을 worktree로 전파한다 (worktree는 별도 프로젝트 루트로 인식되어 MCP 설정이 자동 상속되지 않음 — init Step 5.5와 동일). 스크립트 경로 결정은 `Read skills/_shared/script-lookup.md` 후 lookup 블록 실행:
 
 ```bash
 REPO_ROOT_ABS="<REPO_ROOT 절대경로>"

@@ -1,9 +1,9 @@
 # jira-integration · Claude Code Plugin
 
-[![Version](https://img.shields.io/badge/version-0.57.0-blue)](.claude-plugin/plugin.json)
+[![Version](https://img.shields.io/badge/version-0.61.0-blue)](.claude-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-8A2BE2)](#)
-[![MCP](https://img.shields.io/badge/MCP-mcp--atlassian-orange)](https://github.com/sooperset/mcp-atlassian)
+[![Jira](https://img.shields.io/badge/Jira-REST_CLI-orange)](scripts/jira-cli.py)
 
 Jira 이슈 하나를 **브랜치 생성 → 설계 → 구현 → 테스트 → 리뷰 → 병합**까지 Claude Code가 끝까지 처리하고, 그 과정을 전부 Jira에 기록하는 플러그인입니다. 이슈 여러 건을 큐에 넣고 돌리면, 사람은 마지막에 **예외 리포트만** 보고 결정합니다.
 
@@ -33,7 +33,7 @@ Jira 이슈 하나를 **브랜치 생성 → 설계 → 구현 → 테스트 →
 | 항목 | 용도 |
 |---|---|
 | Claude Code | 플러그인 실행 환경 |
-| Python 3.10+ 와 `uv` | Jira MCP 서버(`uvx mcp-atlassian`) 실행 |
+| Python 3.10+ | `jira-cli.py`(Jira REST, 표준 라이브러리만)와 공용 스크립트 실행 |
 | Git | 브랜치·worktree |
 | Jira Cloud 계정 + [API 토큰](https://id.atlassian.com/manage-profile/security/api-tokens) | Jira 연동 |
 | `gh` CLI | `/jira-task pr`에서만 필요 |
@@ -53,7 +53,7 @@ claude plugin install jira-integration@jira-claude-code-integration
 /jira setup
 ```
 
-마법사가 Jira URL·이메일·API 토큰을 묻고 MCP 서버(`atlassian`)를 등록한 뒤 연결을 검증합니다. 자격증명은 `.claude/settings.local.json`에 저장됩니다 (커밋 금지 — `.gitignore`에 있는지 확인).
+마법사가 Jira URL·이메일·API 토큰을 묻고 연결을 검증합니다. 자격증명은 **이 워크스페이스의 `.jira-context.json`**(`jira` 블록)에 저장되며 `.gitignore`에 자동 등록됩니다 — 다른 워크스페이스와 공유되지 않습니다. 이전에 MCP 서버(`mcp-atlassian`)로 쓰던 환경이면 기존 설정에서 자동으로 옮겨옵니다.
 
 ### 첫 실행 — 이슈 큐를 끝까지 돌리기
 
@@ -289,30 +289,27 @@ L1이라도 데이터 모델·트랜잭션 경계·외부 API 계약·동시성�
 
 ## 6. 설정 레퍼런스
 
-### 환경변수
+### Jira 자격증명 — 워크스페이스 단위
 
-`/jira setup`이 MCP 서버 등록 시 함께 저장합니다. 직접 등록하려면:
+플러그인의 모든 Jira 호출은 `scripts/jira-cli.py`(REST, 표준 라이브러리만)가 합니다. 자격증명은 **메인 레포 `.jira-context.json`의 `jira` 블록** 한 곳이 정본이고, worktree에서도 이 파일을 찾아 읽으므로 복제본이 생기지 않습니다.
 
 ```bash
-claude mcp add atlassian \
-  -e JIRA_URL=https://your-domain.atlassian.net \
-  -e JIRA_USERNAME=you@company.com \
-  -e JIRA_API_TOKEN=your-api-token \
-  -e JIRA_PROJECTS_FILTER=PROJ \
-  -- uvx mcp-atlassian
+python3 <plugin>/scripts/jira-cli.py config set https://your-domain.atlassian.net you@company.com <api-token> PROJ
+python3 <plugin>/scripts/jira-cli.py config show      # 토큰은 마스킹되어 표시
 ```
 
-| 변수 | 필수 | 설명 |
+| 필드 | 필수 | 설명 |
 |---|---|---|
-| `JIRA_URL` | ✓ | Jira Cloud URL (끝에 `/` 없이) |
-| `JIRA_USERNAME` | ✓ | Atlassian 계정 이메일 |
-| `JIRA_API_TOKEN` | ✓ | API 토큰 |
-| `JIRA_PROJECTS_FILTER` | | MCP 서버가 노출할 프로젝트 키 (쉼표 구분) |
-| `JIRA_DEFAULT_PROJECT` | | **플러그인 자체 변수** — 설정하면 모든 JQL에 `project = …`가 붙고 `create`가 프로젝트를 묻지 않음. MCP 서버 변수가 아니므로 `.claude/settings.local.json`의 `env`나 셸 환경에 설정 |
+| `url` | ✓ | Jira Cloud URL (끝에 `/` 없이) |
+| `username` | ✓ | Atlassian 계정 이메일 |
+| `apiToken` | ✓ | API 토큰 — `.jira-context.json`은 gitignore 대상이며 `config set`이 미등록이면 등록합니다 |
+| `project` | | 기본 프로젝트 키. 설정하면 모든 JQL에 `project = …`가 자동 삽입되고 `create`가 프로젝트를 묻지 않음 |
 
-### worktree로의 MCP 전파
+조회 순서는 `jira` 블록 → 환경변수(`JIRA_URL`/`JIRA_USERNAME`/`JIRA_API_TOKEN`) → 레거시 MCP 설정 파일입니다. 블록이 없을 때 뒤의 둘에서 찾으면 자동으로 블록에 옮겨 적습니다 — 기존 MCP 사용자는 별도 작업 없이 이어집니다.
 
-worktree는 별도 프로젝트 루트로 인식되어 MCP 설정이 자동 상속되지 않습니다. `init`/`start`가 `scripts/propagate-mcp-config.sh`로 `atlassian` 설정을 worktree에 복사합니다. worktree에서 `.mcp.json`을 처음 로드할 때 신뢰 승인 프롬프트가 한 번 뜰 수 있습니다.
+### MCP 서버 (선택)
+
+대화 중 `mcp__atlassian__*` 도구로 ad-hoc 질의를 하고 싶을 때만 `/jira setup --mcp`로 등록합니다. 플러그인 워크플로에는 필요 없습니다. 세션 시작 직후 서버가 늦게 붙어 도구가 안 보이면 `/mcp`에서 재연결하세요.
 
 ### Phase Gate (선택, 기본 비활성)
 
@@ -360,11 +357,12 @@ worktree는 별도 프로젝트 루트로 인식되어 MCP 설정이 자동 상�
 
 | 증상 | 원인 / 조치 |
 |---|---|
-| Jira 도구(`mcp__atlassian__*`)가 안 보임 | 세션 시작 시 MCP 서버가 늦게 붙은 경우. `/mcp`에서 atlassian 재연결 또는 세션 재시작 |
+| `jira-cli: 자격증명을 찾지 못함` | `/jira setup` 또는 `jira-cli.py config set …`. 환경변수·레거시 MCP 설정이 있으면 자동으로 옮겨옵니다 |
+| (선택 MCP) `mcp__atlassian__*` 도구가 안 보임 | 세션 시작 시 MCP 서버가 늦게 붙은 경우. `/mcp`에서 재연결 — 플러그인 워크플로는 MCP 없이 동작합니다 |
 | `401 Unauthorized` | 토큰 만료·오타. `/jira setup`으로 재등록 |
-| `uvx: command not found` | `uv` 미설치 (`pip install uv` 또는 공식 설치 스크립트). Windows는 Store 스텁 python 주의 |
+| (선택 MCP) `uvx: command not found` | `uv` 미설치 (`pip install uv`). 플러그인 자체는 uv가 필요 없습니다 |
 | auto가 "cwd 불일치"로 중단 | worktree가 아닌 곳에서 실행. 해당 worktree로 이동해 재실행 (`loop`는 자동 처리) |
-| worktree에서 Jira 도구 없음 | MCP 전파 누락. 메인 레포에서 `bash scripts/propagate-mcp-config.sh <repoRoot> <worktree>` 또는 `/jira setup` |
+| worktree에서 자격증명을 못 찾음 | 메인 레포 `.jira-context.json`에 `jira` 블록이 있는지 `config show`로 확인 (worktree는 메인 파일을 참조) |
 | 이슈 생성 시 "유효한 이슈 유형" 오류 | 프로젝트가 로컬라이즈된 타입명을 씀 (예: 한국어 프로젝트는 `작업`, 하위작업은 `Subtask`). `create`는 프로젝트 메타를 조회해 맞추지만 직접 호출 시 주의 |
 | 플러그인 업데이트가 반영 안 됨 | `claude plugin marketplace update jira-claude-code-integration` → `claude plugin update jira-integration@jira-claude-code-integration` → 세션 재시작 |
 | `loop`가 시작부터 전체 중단 | 시스템 실패 판정(인증/MCP/base). 리포트의 "판정 근거"를 보고 원인 해결 후 재실행 — 완료 태스크는 건너뜀 |
