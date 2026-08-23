@@ -30,10 +30,11 @@ Exit:   0 성공 / 1 HTTP 4xx·5xx (stderr: "jira-cli: <code> <reason> — <hint
     config show                        jira 블록 조회 (토큰은 마스킹)
 
 자격증명 조회 순서 (v0.60.0 — 워크스페이스 단위, 정본은 메인 레포 .jira-context.json 한 곳):
-    1. env JIRA_URL / JIRA_USERNAME / JIRA_API_TOKEN
-    2. .jira-context.json의 `jira` 블록 {url, username, apiToken, project} — cwd → git 메인 레포 루트(`--git-common-dir` 기준;
+    1. .jira-context.json의 `jira` 블록 {url, username, apiToken, project} — cwd → git 메인 레포 루트(`--git-common-dir` 기준;
        worktree에서도 메인 레포 파일을 읽으므로 토큰 복제본이 생기지 않는다)
+    2. env JIRA_URL / JIRA_USERNAME / JIRA_API_TOKEN
     3. (레거시 폴백, Phase B 종료 시 제거) .mcp.json / ~/.claude.json / .claude/settings.local.json / ~/.claude/settings.json의 mcpServers.atlassian.env
+    2·3에서 찾으면 메인 레포 .jira-context.json에 jira 블록을 자동 기입한다 (1회, .gitignore 등록 시에만) — 다음부터 1이 정본.
 
 `jira` 블록의 apiToken은 어떤 출력에도 echo하지 않는다 (config show는 마스킹). 스킬은 이 블록을 인용·출력하지 않는다.
 """
@@ -115,12 +116,47 @@ def _creds_from_context() -> dict | None:
     return None
 
 
+def _persist_to_context(creds: dict, source: str) -> None:
+    """jira 블록이 없을 때 env/레거시에서 찾은 자격증명을 메인 레포 .jira-context.json에 1회 기입 (자동 마이그레이션)."""
+    root = _git_main_root() or _git_toplevel()
+    if not root:
+        return
+    gi = os.path.join(root, ".gitignore")
+    try:
+        with open(gi, encoding="utf-8") as f:
+            ignored = ".jira-context.json" in f.read()
+    except OSError:
+        ignored = False
+    if not ignored:
+        print("jira-cli: .jira-context.json이 .gitignore에 없어 자격증명을 기입하지 않음 — 등록 후 `config set` 실행", file=sys.stderr)
+        return
+    path = os.path.join(root, ".jira-context.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            ctx = json.load(f)
+    except (OSError, ValueError):
+        ctx = {}
+    if (ctx.get("jira") or {}).get("apiToken"):
+        return
+    ctx["jira"] = {"url": creds["JIRA_URL"].rstrip("/"), "username": creds["JIRA_USERNAME"],
+                   "apiToken": creds["JIRA_API_TOKEN"], "project": creds.get("JIRA_DEFAULT_PROJECT")}
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(ctx, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+        print(f"jira-cli: 자격증명을 {source}에서 찾아 {path}의 jira 블록에 기입함 (다음부터 이 파일이 정본)", file=sys.stderr)
+    except OSError as e:
+        print(f"jira-cli: jira 블록 기입 실패 — {e}", file=sys.stderr)
+
+
 def load_credentials() -> dict:
-    if all(os.environ.get(k) for k in _CRED_KEYS):
-        return {k: os.environ[k] for k in _CRED_KEYS} | {"JIRA_DEFAULT_PROJECT": os.environ.get("JIRA_DEFAULT_PROJECT")}
     found = _creds_from_context()
     if found:
         return found
+    if all(os.environ.get(k) for k in _CRED_KEYS):
+        creds = {k: os.environ[k] for k in _CRED_KEYS} | {"JIRA_DEFAULT_PROJECT": os.environ.get("JIRA_DEFAULT_PROJECT")}
+        _persist_to_context(creds, "환경변수")
+        return creds
     home = os.path.expanduser("~")
     roots = [os.getcwd()]
     top = _git_toplevel()
@@ -137,12 +173,14 @@ def load_credentials() -> dict:
         except (OSError, ValueError):
             continue
         found = _env_from_mcp_block(obj)
+        if not found:
+            for proj in (obj.get("projects") or {}).values():
+                found = _env_from_mcp_block(proj)
+                if found:
+                    break
         if found:
+            _persist_to_context(found, os.path.basename(path))
             return found
-        for proj in (obj.get("projects") or {}).values():
-            found = _env_from_mcp_block(proj)
-            if found:
-                return found
     raise SystemExit("jira-cli: 자격증명을 찾지 못함 — `jira-cli.py config set <url> <username> <token> [project]` 또는 /jira setup 실행")
 
 

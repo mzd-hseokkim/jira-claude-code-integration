@@ -4,7 +4,7 @@
 
 ## 자격증명 (v0.60.0)
 
-정본은 **메인 레포 `.jira-context.json`의 `jira` 블록** `{url, username, apiToken, project}` 한 곳. CLI가 worktree에서도 `git rev-parse --git-common-dir`로 메인 레포 파일을 찾아 읽으므로 worktree 컨텍스트에 복제하지 않는다 (init/start가 이 블록을 worktree-local 파일에 쓰지 말 것). 환경변수 `JIRA_URL/JIRA_USERNAME/JIRA_API_TOKEN`이 있으면 그것이 우선. 레거시 MCP 설정 파일 조회는 폴백으로만 남아 있다.
+정본은 **메인 레포 `.jira-context.json`의 `jira` 블록** `{url, username, apiToken, project}` 한 곳. CLI가 worktree에서도 `git rev-parse --git-common-dir`로 메인 레포 파일을 찾아 읽으므로 worktree 컨텍스트에 복제하지 않는다 (init/start가 이 블록을 worktree-local 파일에 쓰지 말 것). `jira` 블록이 없으면 환경변수 → 레거시 MCP 설정 파일 순으로 찾고, **찾은 값을 메인 레포 context의 `jira` 블록에 자동 기입**한다 (1회, `.jira-context.json`이 `.gitignore`에 있을 때만 — 아니면 경고만). 다음 호출부터는 context가 정본.
 
 - 설정: `python3 <scripts>/jira-cli.py config set <url> <username> <token> [project]` / 조회: `config show` (토큰 마스킹).
 - **스킬은 `jira` 블록을 절대 출력·인용하지 않는다** — `.jira-context.json`을 Read했을 때 `apiToken` 값을 응답·코멘트·로그에 옮기지 마라. `jira-context-update.py --patch`로 이 블록을 건드리지 않는다.

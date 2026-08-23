@@ -52,8 +52,8 @@ class CompactTest(unittest.TestCase):
 
 
 class CredentialsTest(unittest.TestCase):
-    def test_env_first(self):
-        with mock.patch.dict(os.environ, {"JIRA_URL": "u", "JIRA_USERNAME": "n", "JIRA_API_TOKEN": "t"}):
+    def test_env_when_no_context_block(self):
+        with mock.patch.dict(os.environ, {"JIRA_URL": "u", "JIRA_USERNAME": "n", "JIRA_API_TOKEN": "t"}),                 mock.patch.object(m, "_creds_from_context", return_value=None),                 mock.patch.object(m, "_persist_to_context"):
             c = m.load_credentials()
         self.assertEqual((c["JIRA_URL"], c["JIRA_API_TOKEN"]), ("u", "t"))
 
@@ -91,6 +91,39 @@ class ContextCredentialsTest(unittest.TestCase):
         self.assertEqual(c["JIRA_URL"], "https://c.atlassian.net")
         self.assertEqual(c["JIRA_API_TOKEN"], "tok-1234567890")
         self.assertEqual(c["JIRA_DEFAULT_PROJECT"], "MAE")
+
+
+class AutoMigrateTest(unittest.TestCase):
+    def test_legacy_mcp_creds_are_persisted_into_context_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / ".gitignore").write_text(".jira-context.json\n", encoding="utf-8")
+            (Path(tmp) / ".mcp.json").write_text(json.dumps({"mcpServers": {"atlassian": {"env": {
+                "JIRA_URL": "https://m.atlassian.net", "JIRA_USERNAME": "n", "JIRA_API_TOKEN": "t", "JIRA_DEFAULT_PROJECT": "MAE"}}}}), encoding="utf-8")
+            env = {k: v for k, v in os.environ.items() if not k.startswith("JIRA_")}
+            err = io.StringIO()
+            with mock.patch.dict(os.environ, env, clear=True), mock.patch.object(os, "getcwd", return_value=tmp), \
+                    mock.patch.object(m, "_git_toplevel", return_value=tmp), mock.patch.object(m, "_git_main_root", return_value=tmp), \
+                    mock.patch.object(os.path, "expanduser", return_value=tmp), mock.patch.object(sys, "stderr", err):
+                c1 = m.load_credentials()
+                ctx = json.loads((Path(tmp) / ".jira-context.json").read_text(encoding="utf-8"))
+                (Path(tmp) / ".mcp.json").unlink()   # 레거시 제거 후에도 context만으로 동작
+                c2 = m.load_credentials()
+        self.assertEqual(ctx["jira"], {"url": "https://m.atlassian.net", "username": "n", "apiToken": "t", "project": "MAE"})
+        self.assertEqual(c1["JIRA_API_TOKEN"], c2["JIRA_API_TOKEN"])
+        self.assertIn("기입", err.getvalue())
+
+    def test_not_persisted_when_not_gitignored(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            env = {k: v for k, v in os.environ.items() if not k.startswith("JIRA_")}
+            env.update({"JIRA_URL": "u", "JIRA_USERNAME": "n", "JIRA_API_TOKEN": "t"})
+            err = io.StringIO()
+            with mock.patch.dict(os.environ, env, clear=True), mock.patch.object(os, "getcwd", return_value=tmp), \
+                    mock.patch.object(m, "_git_toplevel", return_value=tmp), mock.patch.object(m, "_git_main_root", return_value=tmp), \
+                    mock.patch.object(sys, "stderr", err):
+                c = m.load_credentials()
+        self.assertEqual(c["JIRA_URL"], "u")
+        self.assertFalse((Path(tmp) / ".jira-context.json").exists())
+        self.assertIn(".gitignore", err.getvalue())
 
 
 class CommandTest(unittest.TestCase):
