@@ -53,6 +53,7 @@ docs/run-log/
 
 ```json
 {"taskId": "MAE-453", "timestamp": "2026-08-22T16:32:35Z", "kind": "auto", "status": "completed", "failedStage": null, "reason": null, "stagesRun": ["start", "approach", "impl", "review"], "skipped": {"user": [], "pdca": ["test"]}, "fixAttempts": 0, "innerLoopIterations": null, "breakdownLevel": null, "metrics": {"matchRate": 100, "criticalCount": 0, "warningCount": 0, "infoCount": 2}, "stageDurationsSec": {"start": null, "approach": 563, "impl": 269, "test": 66, "review": 331}, "harnessVersion": "0.52.0", "quarantined": null, "passed": null}
+{"taskId": "-", "timestamp": "2026-08-22T20:05:49Z", "kind": "loop-run", "status": "loop-run", "failedStage": null, "reason": null, "stagesRun": [], "skipped": {"user": [], "pdca": []}, "fixAttempts": 0, "innerLoopIterations": null, "breakdownLevel": null, "metrics": null, "stageDurationsSec": {}, "harnessVersion": "0.56.0", "quarantined": [{"taskId": "MAE-456", "deferredKind": "stage-failed"}], "passed": ["MAE-455", "MAE-457"]}
 ```
 
 ---
