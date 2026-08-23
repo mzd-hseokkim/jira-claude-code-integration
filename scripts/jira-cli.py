@@ -339,7 +339,10 @@ def cmd_get(c: Client, a: list[str], opt: dict):
 def cmd_search(c: Client, a: list[str], opt: dict):
     jql = _arg(a, 0, "JQL")
     if c.default_project and not re.search(r"\bproject\s*(=|in)\b", jql, re.I):
-        jql = f"project = {c.default_project} AND ({jql})"
+        # ORDER BY는 괄호 밖에 있어야 한다 — 조건부만 감싼다
+        m = re.search(r"\s+ORDER\s+BY\s+", jql, re.I)
+        where, order = (jql[:m.start()], jql[m.start():]) if m else (jql, "")
+        jql = f"project = {c.default_project} AND ({where.strip()}){order}" if where.strip() else f"project = {c.default_project}{order}"
     limit = int(opt.get("limit") or 20)
     fields = _SEARCH_FIELDS + ("," + opt["fields"] if opt.get("fields") else "")
     issues, token = [], None

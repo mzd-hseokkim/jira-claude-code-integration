@@ -149,6 +149,12 @@ class CommandTest(unittest.TestCase):
         self.assertEqual(calls[0][3]["jql"], "project = MAE AND (assignee = currentUser())")
         self.assertEqual(out[0]["key"], "MAE-1")
 
+    def test_search_keeps_order_by_outside_parentheses(self):
+        c, calls = self._client([{"issues": [], "isLast": True}])
+        c.default_project = "MAE"
+        m.cmd_search(c, ["parent = MAE-1 AND status != Done ORDER BY created ASC"], {})
+        self.assertEqual(calls[0][3]["jql"], "project = MAE AND (parent = MAE-1 AND status != Done) ORDER BY created ASC")
+
     def test_transition_by_name_resolves_id(self):
         c, calls = self._client([{"transitions": [{"id": "31", "name": "검토 중", "to": {"name": "검토 중"}}]}, {},
                                  {"fields": {"status": {"name": "검토 중"}}}])
