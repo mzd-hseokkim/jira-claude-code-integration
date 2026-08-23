@@ -2,6 +2,13 @@
 
 > v0.59.0부터 auto 경유 단계(start/approach/impl/test/review)는 atlassian MCP 도구 대신 `scripts/jira-cli.py`를 Bash로 호출한다. 이유: 세션 시작 시 MCP 기동 경쟁으로 도구가 안 붙는 문제 제거, 단계당 `ToolSearch` 1회 절감, 응답 압축(avatar·reporter 등 미출력). 설계: `tasks/jira-cli-design.md`.
 
+## 자격증명 (v0.60.0)
+
+정본은 **메인 레포 `.jira-context.json`의 `jira` 블록** `{url, username, apiToken, project}` 한 곳. CLI가 worktree에서도 `git rev-parse --git-common-dir`로 메인 레포 파일을 찾아 읽으므로 worktree 컨텍스트에 복제하지 않는다 (init/start가 이 블록을 worktree-local 파일에 쓰지 말 것). 환경변수 `JIRA_URL/JIRA_USERNAME/JIRA_API_TOKEN`이 있으면 그것이 우선. 레거시 MCP 설정 파일 조회는 폴백으로만 남아 있다.
+
+- 설정: `python3 <scripts>/jira-cli.py config set <url> <username> <token> [project]` / 조회: `config show` (토큰 마스킹).
+- **스킬은 `jira` 블록을 절대 출력·인용하지 않는다** — `.jira-context.json`을 Read했을 때 `apiToken` 값을 응답·코멘트·로그에 옮기지 마라. `jira-context-update.py --patch`로 이 블록을 건드리지 않는다.
+
 ## 경로
 
 호출 prompt가 `<scripts>/` 절대 경로를 줬으면 그대로 쓴다. 없으면 `skills/_shared/script-lookup.md`로 `SCRIPT_NAME="jira-cli.py"` 1회 해석.

@@ -47,7 +47,7 @@ python3 jira-cli.py <subcommand> [args] [--fields a,b,c] [--json|--compact]
 ```
 
 - **의존성 0**: `urllib.request` + `json` + `base64`. uv/uvx/pip 불필요 — 플러그인의 기존 전제(python3)만 쓴다.
-- **자격증명**: `jira-attach.sh`와 동일한 5단 조회(env → `.mcp.json` → `~/.claude.json` top-level/projects → `.claude/settings.local.json` → `~/.claude/settings.json`). 공용 모듈로 빼서 `jira-attach.sh`의 node 인라인 추출을 대체.
+- **자격증명** (v0.60.0에서 변경): **워크스페이스 단위** — 메인 레포 `.jira-context.json`의 `jira` 블록 `{url, username, apiToken, project}`이 정본. 다른 워크스페이스가 알 필요가 없는 정보를 전역 설정에 두지 않는다. 노출 경로 차단: 복제본 없음(worktree는 `--git-common-dir`로 메인 파일 참조), 스크립트는 토큰을 echo하지 않음, `config show`는 마스킹, 대시보드·review-log redact가 `apiToken`/`token` 키를 가림, 스킬 규약으로 인용 금지. 조회 순서: env → `jira` 블록 → 레거시 MCP 설정(Phase B 종료 시 제거). `config set`이 `.gitignore` 등록 여부를 경고한다.
 - **API 버전** (구현 시 확정): 조회·코멘트·전이·생성·링크는 **REST v2** — description·코멘트가 wiki markup 문자열이라 ADF 변환이 필요 없다 (mcp-atlassian도 v2 사용). **검색만 v3 `/search/jql`** — 구 `/search`는 Jira Cloud에서 제거됨 (nextPageToken 페이지네이션).
 - **출력 계약**: 기본은 **압축 JSON** — `get`은 `{key, summary, status, issuetype, priority, assignee, description, parent, labels}`만, `search`는 `[{key, summary, status, issuetype, priority}]`. avatar·self URL·reporter 블록·워크로그는 절대 내보내지 않는다. `--fields`로 추가 선택. 사람이 볼 때는 `--table`.
 - **에러 계약**: HTTP 4xx/5xx → stderr 한 줄(`jira-cli: 401 Unauthorized — 토큰 확인`) + exit 1. 3xx/네트워크 오류 → exit 2. loop의 인프라 시그니처 판정이 이 메시지를 그대로 매칭한다.
@@ -85,7 +85,7 @@ Bash 허용 목록에 `python3 */scripts/jira-cli.py *` 패턴 하나면 모든 
 | 항목 | 현재 | 전환 후 |
 |---|---|---|
 | 세션 시작 시 Jira 가용성 | 경쟁 조건, `/mcp` 수동 재연결 | 항상 (프로세스 없음) |
-| 단계당 호출 | ToolSearch 1회 포함 | −1회 |
+| 단계당 호출 | ToolSearch 1회 포함 | **상쇄** (실측 v0.59.0: ToolSearch −1이 CLI Bash +1로 대체 — 호출 수 이득 없음, 이득은 안정성·컨텍스트 크기) |
 | 이슈 조회 응답 | 수 KB (avatar·reporter·코멘트) | 수백 B |
 | 외부 의존 | python3 + uv + mcp-atlassian | python3 |
 | worktree 준비 | MCP 전파 + 신뢰 프롬프트 | env 상속, 없음 |

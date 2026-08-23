@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""jira-cli.py — atlassian MCP를 대체하는 Jira Cloud REST CLI (표준 라이브러리만, v0.59.0).
+"""jira-cli.py — atlassian MCP를 대체하는 Jira Cloud REST CLI (표준 라이브러리만, v0.59.0+).
 
 Usage:
     python3 jira-cli.py <subcommand> [args] [--fields f1,f2] [--raw]
@@ -26,12 +26,16 @@ Output: 기본 압축 JSON (LLM 소비용 — avatar/self URL/reporter/worklog�
         --fields로 raw 필드 추가, --raw로 API 응답 전체.
 Exit:   0 성공 / 1 HTTP 4xx·5xx (stderr: "jira-cli: <code> <reason> — <hint>") / 2 네트워크·인자·자격증명 오류.
 
-자격증명 조회 순서 (jira-attach.sh와 동일):
+    config set <url> <username> <token> [project]   워크스페이스 자격증명을 메인 레포 .jira-context.json의 jira 블록에 기록
+    config show                        jira 블록 조회 (토큰은 마스킹)
+
+자격증명 조회 순서 (v0.60.0 — 워크스페이스 단위, 정본은 메인 레포 .jira-context.json 한 곳):
     1. env JIRA_URL / JIRA_USERNAME / JIRA_API_TOKEN
-    2. <cwd 또는 git toplevel>/.mcp.json  → mcpServers.atlassian.env
-    3. ~/.claude.json                       → mcpServers.atlassian.env, projects[*].mcpServers.atlassian.env
-    4. <repo>/.claude/settings.local.json   → mcpServers.atlassian.env 또는 env
-    5. ~/.claude/settings.json              → 동일
+    2. .jira-context.json의 `jira` 블록 {url, username, apiToken, project} — cwd → git 메인 레포 루트(`--git-common-dir` 기준;
+       worktree에서도 메인 레포 파일을 읽으므로 토큰 복제본이 생기지 않는다)
+    3. (레거시 폴백, Phase B 종료 시 제거) .mcp.json / ~/.claude.json / .claude/settings.local.json / ~/.claude/settings.json의 mcpServers.atlassian.env
+
+`jira` 블록의 apiToken은 어떤 출력에도 echo하지 않는다 (config show는 마스킹). 스킬은 이 블록을 인용·출력하지 않는다.
 """
 
 from __future__ import annotations
@@ -68,9 +72,55 @@ def _env_from_mcp_block(obj: dict) -> dict | None:
     return None
 
 
+def _git_main_root() -> str | None:
+    """worktree에서도 메인 레포 루트를 돌려준다 (--git-common-dir의 부모)."""
+    try:
+        out = subprocess.run(["git", "rev-parse", "--git-common-dir"], capture_output=True, text=True, timeout=5)
+        if out.returncode != 0 or not out.stdout.strip():
+            return None
+        common = out.stdout.strip()
+        if not os.path.isabs(common):
+            common = os.path.join(os.getcwd(), common)
+        return os.path.dirname(os.path.abspath(common))
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def _context_candidates() -> list[str]:
+    roots = [os.getcwd()]
+    for r in (_git_toplevel(), _git_main_root()):
+        if r and r not in roots:
+            roots.append(r)
+    # worktree-local context가 repoRoot를 가리키면 그것도 후보
+    try:
+        with open(os.path.join(os.getcwd(), ".jira-context.json"), encoding="utf-8") as f:
+            rr = json.load(f).get("repoRoot")
+        if rr and rr not in roots:
+            roots.append(rr)
+    except (OSError, ValueError):
+        pass
+    return [os.path.join(r, ".jira-context.json") for r in roots]
+
+
+def _creds_from_context() -> dict | None:
+    for path in _context_candidates():
+        try:
+            with open(path, encoding="utf-8") as f:
+                j = (json.load(f).get("jira") or {})
+        except (OSError, ValueError):
+            continue
+        if j.get("url") and j.get("username") and j.get("apiToken"):
+            return {"JIRA_URL": j["url"], "JIRA_USERNAME": j["username"], "JIRA_API_TOKEN": j["apiToken"],
+                    "JIRA_DEFAULT_PROJECT": j.get("project") or os.environ.get("JIRA_DEFAULT_PROJECT")}
+    return None
+
+
 def load_credentials() -> dict:
     if all(os.environ.get(k) for k in _CRED_KEYS):
         return {k: os.environ[k] for k in _CRED_KEYS} | {"JIRA_DEFAULT_PROJECT": os.environ.get("JIRA_DEFAULT_PROJECT")}
+    found = _creds_from_context()
+    if found:
+        return found
     home = os.path.expanduser("~")
     roots = [os.getcwd()]
     top = _git_toplevel()
@@ -93,7 +143,7 @@ def load_credentials() -> dict:
             found = _env_from_mcp_block(proj)
             if found:
                 return found
-    raise SystemExit("jira-cli: 자격증명을 찾지 못함 (JIRA_URL/JIRA_USERNAME/JIRA_API_TOKEN) — /jira setup 실행")
+    raise SystemExit("jira-cli: 자격증명을 찾지 못함 — `jira-cli.py config set <url> <username> <token> [project]` 또는 /jira setup 실행")
 
 
 # ---------------------------------------------------------------- http
@@ -394,11 +444,45 @@ def cmd_attach(c: Client, a: list[str], opt: dict):
     return results
 
 
+def cmd_config(c, a: list[str], opt: dict):
+    sub = _arg(a, 0, "set|show")
+    root = _git_main_root() or _git_toplevel() or os.getcwd()
+    path = os.path.join(root, ".jira-context.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            ctx = json.load(f)
+    except (OSError, ValueError):
+        ctx = {}
+    if sub == "show":
+        j = ctx.get("jira") or {}
+        tok = j.get("apiToken") or ""
+        return {"path": path, "url": j.get("url"), "username": j.get("username"),
+                "apiToken": (tok[:4] + "…" + tok[-4:]) if len(tok) > 8 else ("set" if tok else None),
+                "project": j.get("project")}
+    if sub == "set":
+        url, user, token = _arg(a, 1, "url"), _arg(a, 2, "username"), _arg(a, 3, "token")
+        project = a[4] if len(a) > 4 else (ctx.get("jira") or {}).get("project")
+        ctx["jira"] = {"url": url.rstrip("/"), "username": user, "apiToken": token, "project": project}
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(ctx, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+        gi = os.path.join(root, ".gitignore")
+        try:
+            with open(gi, encoding="utf-8") as f:
+                ignored = ".jira-context.json" in f.read()
+        except OSError:
+            ignored = False
+        return {"path": path, "url": ctx["jira"]["url"], "username": user, "project": project,
+                "gitignored": ignored, "warning": None if ignored else ".jira-context.json이 .gitignore에 없음 — 토큰이 커밋될 수 있다"}
+    raise SystemExit("jira-cli: config <set|show>")
+
+
 COMMANDS = {
     "get": cmd_get, "search": cmd_search, "comment": cmd_comment, "transitions": cmd_transitions,
     "transition": cmd_transition, "whoami": cmd_whoami, "assign": cmd_assign, "update": cmd_update,
     "create": cmd_create, "link": cmd_link, "epic-link": cmd_epic_link, "boards": cmd_boards,
     "sprints": cmd_sprints, "projects": cmd_projects, "link-types": cmd_link_types, "attach": cmd_attach,
+    "config": cmd_config,
 }
 
 
@@ -441,7 +525,7 @@ def main(argv: list[str]) -> int:
         cmd, a, opt = parse_argv(argv)
         if cmd not in COMMANDS:
             raise SystemExit(f"jira-cli: 알 수 없는 서브커맨드 '{cmd}'\n{__doc__}")
-        client = Client(load_credentials())
+        client = None if cmd == "config" else Client(load_credentials())
         result = COMMANDS[cmd](client, a, opt)
         print(json.dumps(result, ensure_ascii=False))
         return 0

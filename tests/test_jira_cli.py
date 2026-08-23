@@ -71,6 +71,28 @@ class CredentialsTest(unittest.TestCase):
         self.assertEqual(c["JIRA_DEFAULT_PROJECT"], "MAE")
 
 
+class ContextCredentialsTest(unittest.TestCase):
+    def test_context_jira_block_wins_over_mcp_files_and_config_roundtrip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            env = {k: v for k, v in os.environ.items() if not k.startswith("JIRA_")}
+            with mock.patch.dict(os.environ, env, clear=True), mock.patch.object(os, "getcwd", return_value=tmp), \
+                    mock.patch.object(m, "_git_toplevel", return_value=tmp), mock.patch.object(m, "_git_main_root", return_value=tmp), \
+                    mock.patch.object(os.path, "expanduser", return_value=tmp):
+                (Path(tmp) / ".gitignore").write_text(".jira-context.json\n", encoding="utf-8")
+                out = m.cmd_config(None, ["set", "https://c.atlassian.net/", "u@c", "tok-1234567890", "MAE"], {})
+                self.assertTrue(out["gitignored"])
+                shown = m.cmd_config(None, ["show"], {})
+                self.assertNotIn("tok-1234567890", json.dumps(shown))
+                self.assertEqual(shown["url"], "https://c.atlassian.net")
+                # 레거시 .mcp.json이 있어도 context 블록이 우선
+                (Path(tmp) / ".mcp.json").write_text(json.dumps({"mcpServers": {"atlassian": {"env": {
+                    "JIRA_URL": "legacy", "JIRA_USERNAME": "l", "JIRA_API_TOKEN": "l"}}}}), encoding="utf-8")
+                c = m.load_credentials()
+        self.assertEqual(c["JIRA_URL"], "https://c.atlassian.net")
+        self.assertEqual(c["JIRA_API_TOKEN"], "tok-1234567890")
+        self.assertEqual(c["JIRA_DEFAULT_PROJECT"], "MAE")
+
+
 class CommandTest(unittest.TestCase):
     def _client(self, responses):
         c = m.Client(CREDS)
