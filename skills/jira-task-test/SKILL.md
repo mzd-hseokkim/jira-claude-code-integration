@@ -10,8 +10,6 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-  - mcp__atlassian__jira_get_issue
-  - mcp__atlassian__jira_add_comment
 ---
 
 # jira-task-test: Run Tests & Report to Jira
@@ -26,9 +24,7 @@ allowed-tools:
 
 ### Context Optimization
 
-이 스킬에서 `mcp__atlassian__jira_get_issue`를 호출해야 하면 먼저 `.jira-context.json`의 `cachedIssue`를 확인한다 (CLAUDE.md "Issue Cache" 참고). hit이면 호출 생략. miss이면 다음 파라미터로 호출 후 cache 갱신:
-- `fields="summary,status,issuetype"`
-- `comment_limit=0`
+이슈 정보가 필요하면 먼저 `.jira-context.json`의 `cachedIssue`를 확인한다 (CLAUDE.md "Issue Cache" 참고). hit이면 호출 생략. miss이면 `python3 "<scripts>/jira-cli.py" get <TASK-ID>` 후 cache 갱신 (`skills/_shared/jira-cli.md`).
 
 ### Step 1: Detect Test Environment & Level
 
@@ -157,7 +153,7 @@ Create a test report at `docs/test/<TASK-ID>.test-report.md`.
 
 ### Step 5: Post Results to Jira
 
-Use `mcp__atlassian__jira_add_comment` to post the test summary:
+`python3 "<scripts>/jira-cli.py" comment <TASK-ID> @<scratchpad md 파일>`로 요약을 게시한다 (`skills/_shared/jira-cli.md`) — 본문:
 
 ```
 ## Test Results: <TASK-ID>

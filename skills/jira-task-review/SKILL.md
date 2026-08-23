@@ -8,8 +8,6 @@ allowed-tools:
   - Write
   - Bash
   - Agent
-  - mcp__atlassian__jira_get_issue
-  - mcp__atlassian__jira_add_comment
 ---
 
 # jira-task-review: Code Review + Gap Analysis with Jira Reporting
@@ -26,9 +24,7 @@ Mode A/B 분기 규칙과 Mode A subagent prompt 전문은 `Read skills/jira-tas
 
 ### Context Optimization
 
-이 스킬에서 `mcp__atlassian__jira_get_issue`를 호출해야 하면 먼저 `.jira-context.json`의 `cachedIssue`를 확인한다 (CLAUDE.md "Issue Cache" 참고). hit이면 호출 생략. miss이면 다음 파라미터로 호출 후 cache 갱신:
-- `fields="summary,status,description,issuetype"`
-- `comment_limit=0`
+이슈 정보가 필요하면 먼저 `.jira-context.json`의 `cachedIssue`를 확인한다 (CLAUDE.md "Issue Cache" 참고). hit이면 호출 생략. miss이면 `python3 "<scripts>/jira-cli.py" get <TASK-ID>` 후 cache 갱신 (`skills/_shared/jira-cli.md`).
 
 ### Step 1: Prepare Context (main 세션)
 
@@ -153,7 +149,7 @@ bash "<JIRA_ATTACH_SH 경로>" <TASK-ID> docs/review/<TASK-ID>.review.md
 
 ### Step 5: Post Review to Jira
 
-`mcp__atlassian__jira_add_comment`로 핵심만 두 줄 요약하여 게시한다. 상세 findings/Gap Analysis는 첨부 문서를 참조하도록 안내. 본문 끝의 reviewer 서명은 review-log 분석(Phase 1.4)에서 reviewer 식별에 사용되므로 반드시 유지:
+`python3 "<scripts>/jira-cli.py" comment <TASK-ID> @<scratchpad md 파일>`로 핵심만 두 줄 요약하여 게시한다 (`skills/_shared/jira-cli.md`). 상세 findings/Gap Analysis는 첨부 문서를 참조하도록 안내. 본문 끝의 reviewer 서명은 review-log 분석(Phase 1.4)에서 reviewer 식별에 사용되므로 반드시 유지:
 
 ```
 ## Code Review Complete

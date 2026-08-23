@@ -97,6 +97,7 @@ const guardHeader = [
     ? `- 플러그인 스크립트는 전부 "${scriptsDir}/" 아래에 있다 (jira-context-update.py, jira-attach.sh, append-review-log-wrapper.sh, detect-lint.sh). Skill 본문의 script-lookup.md Read·lookup 블록·ls 확인을 전부 생략하고 이 절대 경로를 바로 쓴다.`
     : `- 플러그인 스크립트는 Skill 본문의 script-lookup 규약으로 1회만 해석한다.`,
   `- 이 worktree의 .jira-context.json은 "${worktreeCtx}"다 — 경로를 찾기 위한 ls/find 금지.`,
+  `- Jira 호출(조회·코멘트·전이·담당자·첨부)은 전부 \`python3 "${scriptPath('jira-cli.py')}" <get|search|comment|transitions|transition|whoami|assign|attach> ...\`로 한다 (규약: skills/_shared/jira-cli.md). mcp__atlassian__* 도구와 그것을 위한 ToolSearch는 사용하지 마라. 긴 코멘트는 scratchpad 파일로 쓰고 \`comment <KEY> @파일\`.`,
 ].join('\n')
 
 const returnFooter = [

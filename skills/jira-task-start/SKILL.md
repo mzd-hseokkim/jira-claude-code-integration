@@ -8,13 +8,6 @@ allowed-tools:
   - Write
   - Bash
   - Glob
-  - mcp__atlassian__jira_get_issue
-  - mcp__atlassian__jira_transition_issue
-  - mcp__atlassian__jira_get_transitions
-  - mcp__atlassian__jira_add_comment
-  - mcp__atlassian__jira_search
-  - mcp__atlassian__jira_get_user_profile
-  - mcp__atlassian__jira_update_issue
 ---
 
 # jira-task-start: Start Working on a Jira Task
@@ -44,11 +37,11 @@ cwd에서 `.jira-context.json`을 `Read`로 읽어보고 아래로 분기 — **
 
 먼저 `.jira-context.json`의 `cachedIssue`를 확인한다. **모든 필수 필드(`summary`, `description`, `priority`, `assignee`, `issuetype`)가 채워져 있고 `fetchedAt`이 있으면 fetch를 건너뛴다** — init이 만들어둔 캐시가 이미 충분한 경우.
 
-cache miss면 `mcp__atlassian__jira_get_issue` 호출:
+cache miss면 `jira-cli.py`로 조회 (`skills/_shared/jira-cli.md` — MCP 도구 대신 Bash 1회):
 
-**Context optimization**: 호출 시 다음 파라미터로 응답을 슬림화한다.
-- `fields="summary,status,priority,assignee,issuetype,description,subtasks,issuelinks"`
-- `comment_limit=0` (start 단계에서는 코멘트 이력 불필요)
+```bash
+python3 "<scripts>/jira-cli.py" get <TASK-ID> --fields subtasks,issuelinks
+```
 
 호출 후 결과를 **worktree-local** `.jira-context.json`의 `cachedIssue`에 저장한다 (CLAUDE.md "Issue Cache" 참고 — 후속 단계가 재조회를 생략할 수 있게). `fetchedAt`은 반드시 `new Date().toISOString()` (UTC `Z`) 형식.
 
@@ -69,11 +62,9 @@ Display to the user:
 
 작업을 시작하는 계정으로 이슈 담당자를 지정한다.
 
-1. `mcp__atlassian__jira_get_user_profile`을 **`account_id` 없이** 호출 → 현재 JIRA API Token이 인증한 사용자(=start를 실행한 계정)의 `accountId`와 표시명을 얻는다.
+1. `python3 "<scripts>/jira-cli.py" whoami` → 현재 토큰 사용자의 `accountId`·`displayName`.
 2. `cachedIssue.assignee`(또는 Step 1의 현재 담당자)가 이미 이 사용자면 **호출 생략** (중복 write 방지).
-3. 다르면 `mcp__atlassian__jira_update_issue` 호출:
-   - `issue_key`: `<TASK-ID>`
-   - `fields`: `{"assignee": "<accountId>"}`
+3. 다르면 `python3 "<scripts>/jira-cli.py" assign <TASK-ID>` (기본 me).
 4. 성공 시 `cachedIssue.assignee`를 이 사용자 표시명으로 갱신한다 (Step 1 캐시 patch에 반영 → 이후 Display·README가 본인으로 보이도록).
 
 **비차단**: 권한 부족 등으로 실패하면 한 줄 경고만 출력하고 워크플로를 계속한다 (transition 단계와 동일 정책).
@@ -83,11 +74,12 @@ Display to the user:
 
 ### Step 2: Transition to "In Progress"
 
-Use `mcp__atlassian__jira_get_transitions` to fetch available transitions, then use `mcp__atlassian__jira_transition_issue` with:
-- `issueKey`: The TASK-ID
-- `transitionId`: ID for "In Progress" (or similar like "Start Progress", "Begin Work")
+```bash
+python3 "<scripts>/jira-cli.py" transitions <TASK-ID>          # [{id,name,to}] — "In Progress"/"진행 중" 류를 고른다
+python3 "<scripts>/jira-cli.py" transition <TASK-ID> "<id>"    # 출력 {"key","status"} = 전이 후 실제 상태 (재조회 불필요)
+```
 
-**Important**: Do NOT pass a `comment` parameter to `jira_transition_issue`. The `comment` field requires Atlassian Document Format (ADF) JSON — passing plain text will cause an error. Add comments separately using `jira_add_comment`.
+`transition` 출력의 `status`가 곧 `<fresh-jira-status>`다 (Step 6에 그대로 전달). 코멘트는 전이에 섞지 않고 Step 5에서 별도로 올린다.
 
 If the transition fails, the issue may already be in progress or the transition name differs.
 In that case, inform the user of the current status and continue with the remaining steps.
@@ -156,9 +148,10 @@ fi
 
 ### Step 5: Post Comment to Jira
 
-Use `mcp__atlassian__jira_add_comment` with:
-- `issueKey`: The TASK-ID
-- `comment`: "브랜치 `feature/<TASK-ID>`에서 개발을 시작했습니다. 작업 디렉토리: `<worktree-path or branch>`"
+```bash
+python3 "<scripts>/jira-cli.py" comment <TASK-ID> "## Start Work
+브랜치 \`feature/<TASK-ID>\`에서 개발을 시작했습니다. 작업 디렉토리: \`<worktree-path or branch>\`"
+```
 
 ### Step 6: Patch Local Context
 
@@ -174,7 +167,7 @@ python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> start "<fresh-jira-status>" \
     "<repoRoot>/.jira-context.json"
 ```
 
-- `<fresh-jira-status>`: Step 4 transition 직후 `jira_get_issue`로 재조회한 실제 status명 (예: `"In Progress"`, `"진행 중"`). transition 시도값을 그대로 쓰지 말 것.
+- `<fresh-jira-status>`: Step 2 `transition` 출력의 `status` (전이 후 실제 status명 (예: `"In Progress"`, `"진행 중"`). transition 시도값을 그대로 쓰지 말 것.
 - `<repoRoot>`: worktree-local 파일의 `repoRoot` 필드. 없으면 `git worktree list | head -1`로 폴백.
 
 스크립트는 `completedSteps`에 `"start"` 추가, `status` 갱신, `startAt` 기록, `cachedIssue.status`/`fetchedAt` 갱신을 일괄 처리한다.

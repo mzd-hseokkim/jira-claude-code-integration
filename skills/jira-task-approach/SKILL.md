@@ -9,8 +9,6 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-  - mcp__atlassian__jira_get_issue
-  - mcp__atlassian__jira_add_comment
 ---
 
 # jira-task-approach: Generate Approach Document (level-aware)
@@ -57,10 +55,7 @@ allowed-tools:
 `.jira-context.json`의 `cachedIssue`를 먼저 확인 (CLAUDE.md "Cache-First Fetch" 참고).
 
 - **hit 조건**: `key === <TASK-ID>` AND `summary`/`description`/`issuetype` 모두 존재 AND `fetchedAt` 존재. → fetch 생략.
-- **miss**: `mcp__atlassian__jira_get_issue` 호출:
-  - `fields="summary,status,description,issuetype,parent,subtasks,issuelinks,priority"`
-  - `comment_limit=0`
-  - L3는 child Story 시퀀싱이 필요하므로 `subtasks`/`issuelinks` 포함이 중요.
+- **miss**: `python3 "<scripts>/jira-cli.py" get <TASK-ID> --fields subtasks,issuelinks` (`skills/_shared/jira-cli.md`). L3는 child Story 시퀀싱이 필요하므로 `subtasks`/`issuelinks` 포함이 중요.
 - 호출 후 `cachedIssue` 갱신. `fetchedAt`은 `new Date().toISOString()` (UTC `Z`).
 
 ### Step 2: Load Requirements Inputs
@@ -127,7 +122,7 @@ perl -0777 -pe 's/<!--.*?-->//gs' templates/approach.template.md \
 
 ### Step 4: Post Summary to Jira
 
-`mcp__atlassian__jira_add_comment`:
+`python3 "<scripts>/jira-cli.py" comment <TASK-ID> @<scratchpad md 파일>` (본문은 아래 markdown — `skills/_shared/jira-cli.md`):
 
 ```
 ## Approach Document Created

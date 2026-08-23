@@ -21,13 +21,11 @@
 
 빌드/테스트 스크립트는 `package.json`의 scripts 참고.
 
-## MCP Server: atlassian (mcp-atlassian)
+## Jira 호출: `scripts/jira-cli.py` (v0.59.0+) / atlassian MCP (Phase B까지 폴백)
 
-`atlassian` MCP 서버가 Jira Cloud 도구를 제공한다 (tool prefix `mcp__atlassian__`). **전체 도구 레퍼런스: `docs/mcp-atlassian-tools.md`** — 새 도구를 쓰기 전에 거기를 먼저 본다.
+auto 경유 단계(start/approach/impl/test/review)는 **`scripts/jira-cli.py`**를 Bash로 호출한다 — 표준 라이브러리 REST(v2 + search는 v3 `search/jql`), 압축 JSON 출력, 코멘트는 markdown→wiki 변환. 규약·MCP 대응표: `skills/_shared/jira-cli.md`, 설계: `tasks/jira-cli-design.md`. 자격증명 조회 순서(`jira-attach.sh`와 동일): 환경변수 → `.mcp.json` → `~/.claude.json` → `.claude/settings.local.json` → `~/.claude/settings.json`.
 
-**첨부 업로드는 mcp-atlassian이 미지원** → REST 직접 호출:
-`POST $JIRA_URL/rest/api/3/issue/<KEY>/attachments` (Basic Auth + `X-Atlassian-Token: no-check`).
-자격증명 조회 순서: 환경변수 → `.mcp.json` → `~/.claude.json` → `.claude/settings.local.json` → `~/.claude/settings.json`.
+나머지 스킬(init/create/discover/epic/report/merge/done/pr/clean/status)은 아직 `atlassian` MCP 서버(tool prefix `mcp__atlassian__`, 레퍼런스 `docs/mcp-atlassian-tools.md`)를 쓴다 — Phase B에서 전환 예정. 첨부 업로드는 MCP 미지원이라 `jira-cli.py attach` 또는 `jira-attach.sh`(REST 직접 호출).
 
 ## Skill Authoring Conventions
 

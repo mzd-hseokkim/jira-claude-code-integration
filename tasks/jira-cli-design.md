@@ -1,7 +1,7 @@
 # atlassian MCP → `jira-cli.py` 대체 — 설계
 
 > 개선안 6번. `tasks/loop-engineering-roadmap.md` 참조. 의존: 없음 (독립). 단, stage 프롬프트 변경은 1번(Workflow) 위에서.
-> 상태: 설계 (미구현)
+> 상태: Phase A 구현됨 (v0.59.0) — auto 경유 5개 스킬 전환. Phase B(나머지 스킬 + MCP 선택화) 대기
 
 ---
 
@@ -48,7 +48,7 @@ python3 jira-cli.py <subcommand> [args] [--fields a,b,c] [--json|--compact]
 
 - **의존성 0**: `urllib.request` + `json` + `base64`. uv/uvx/pip 불필요 — 플러그인의 기존 전제(python3)만 쓴다.
 - **자격증명**: `jira-attach.sh`와 동일한 5단 조회(env → `.mcp.json` → `~/.claude.json` top-level/projects → `.claude/settings.local.json` → `~/.claude/settings.json`). 공용 모듈로 빼서 `jira-attach.sh`의 node 인라인 추출을 대체.
-- **API 버전**: 조회·전이·생성·링크는 REST v3. **코멘트만 v2** (`/rest/api/2/issue/{key}/comment`) — v2는 wiki markup 텍스트를 받아 ADF 변환이 필요 없다.
+- **API 버전** (구현 시 확정): 조회·코멘트·전이·생성·링크는 **REST v2** — description·코멘트가 wiki markup 문자열이라 ADF 변환이 필요 없다 (mcp-atlassian도 v2 사용). **검색만 v3 `/search/jql`** — 구 `/search`는 Jira Cloud에서 제거됨 (nextPageToken 페이지네이션).
 - **출력 계약**: 기본은 **압축 JSON** — `get`은 `{key, summary, status, issuetype, priority, assignee, description, parent, labels}`만, `search`는 `[{key, summary, status, issuetype, priority}]`. avatar·self URL·reporter 블록·워크로그는 절대 내보내지 않는다. `--fields`로 추가 선택. 사람이 볼 때는 `--table`.
 - **에러 계약**: HTTP 4xx/5xx → stderr 한 줄(`jira-cli: 401 Unauthorized — 토큰 확인`) + exit 1. 3xx/네트워크 오류 → exit 2. loop의 인프라 시그니처 판정이 이 메시지를 그대로 매칭한다.
 - **`JIRA_DEFAULT_PROJECT`**: `search`/`create`가 읽어 JQL에 `project =` 자동 삽입, `create`의 project 기본값. 플러그인 규칙(CLAUDE.md)과 동일.
@@ -100,7 +100,7 @@ Bash 허용 목록에 `python3 */scripts/jira-cli.py *` 패턴 하나면 모든 
 
 | 파일 | 변경 |
 |---|---|
-| `scripts/jira-cli.py` | 신규 (~300줄) + `scripts/jira_cli/` 모듈(creds, md2wiki) |
+| `scripts/jira-cli.py` | 신규 (단일 파일 ~440줄 — creds·md2wiki 내장, 모듈 분리 안 함) |
 | `tests/test_jira_cli.py` | md2wiki·출력 압축·자격증명 조회 단위 테스트 (HTTP는 mock) |
 | `scripts/jira-attach.sh` | `jira-cli.py attach`로 위임하는 얇은 래퍼로 축소 (기존 호출 호환) |
 | `scripts/auto.workflow.js` | guardHeader에 CLI 사용 지시 |

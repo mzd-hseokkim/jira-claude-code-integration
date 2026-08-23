@@ -149,7 +149,7 @@ Reviewed by jira-reviewer subagent (model: opus)
 ```
 
 ## What you do NOT do
-- Do NOT call `mcp__atlassian__jira_add_comment` (caller's job)
+- Do NOT post Jira comments (`jira-cli.py comment` / MCP) — caller's job
 - Do NOT modify any files (read-only review)
 - Do NOT run a tool the project has not declared, and never let `npx` auto-install one
 - Do NOT read changed files in full when the diff suffices

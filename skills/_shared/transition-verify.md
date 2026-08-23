@@ -10,6 +10,10 @@
 
 `mcp__atlassian__jira_transition_issue`에 **`comment` 파라미터를 절대 사용하지 말 것.** `comment` 필드는 Atlassian Document Format(ADF) JSON을 요구하므로 일반 텍스트를 넣으면 오류가 발생한다. 코멘트는 반드시 별도로 `jira_add_comment`를 호출하여 추가한다.
 
+## jira-cli 경로 (v0.59.0+)
+
+`python3 "<scripts>/jira-cli.py" transition <KEY> "<id|상태명>"`은 전이 직후 재조회한 실제 status를 `{"key","status"}`로 반환한다 — 이 값이 아래 fresh fetch와 동일한 SSOT이므로 별도 `get` 호출이 필요 없다. 코멘트는 `comment` 서브커맨드로 분리 (전이에 섞지 않음). 아래는 MCP 도구를 쓰는 경우의 절차다.
+
 ## Fresh Fetch Procedure
 
 Transition 후 즉시 `mcp__atlassian__jira_get_issue`를 호출해 Jira 측 실제 status 이름을 확보한다.

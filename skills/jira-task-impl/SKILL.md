@@ -10,8 +10,6 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-  - mcp__atlassian__jira_get_issue
-  - mcp__atlassian__jira_add_comment
 ---
 
 # jira-task-impl: Implement a Jira Task
@@ -27,7 +25,7 @@ allowed-tools:
 ### Step 1: Load Context
 
 1. Read `.jira-context.json` for active task info
-2. **Cache-first**: `.jira-context.json`의 `cachedIssue`를 먼저 확인 (CLAUDE.md "Issue Cache" 참고). hit이면 호출 생략. miss이면 `mcp__atlassian__jira_get_issue` 호출 (`fields="summary,status,description,issuetype"`, `comment_limit=0` — 구현은 approach 문서가 1차 소스이므로 이슈 본문은 최소만) 후 cache 갱신.
+2. **Cache-first**: `.jira-context.json`의 `cachedIssue`를 먼저 확인 (CLAUDE.md "Issue Cache" 참고; miss면 `python3 "<scripts>/jira-cli.py" get <TASK-ID>`). hit이면 호출 생략, miss면 조회 후 cache 갱신 (구현은 approach 문서가 1차 소스이므로 이슈 본문은 최소만).
 3. Read `docs/approach/<TASK-ID>.approach.md` if it exists
 4. **Level 판정**: `.jira-context.json.breakdownLevel` → 없으면 `cachedIssue.issuetype` 폴백 (approach Step 0 동일 규칙: Subtask/Task/Bug→L1, Story→L2, Epic→L3, 그 외→L1). 판정 결과를 이후 단계에서 사용.
 
@@ -84,7 +82,7 @@ Approach 문서가 없으면, Jira 이슈 설명과 Acceptance Criteria 기반�
 
 ### Step 3: Post Progress to Jira
 
-구현 완료 후 `mcp__atlassian__jira_add_comment`:
+구현 완료 후 `python3 "<scripts>/jira-cli.py" comment <TASK-ID> @<scratchpad md 파일>` (`skills/_shared/jira-cli.md`) — 본문:
 
 ```
 ## Implementation Complete
