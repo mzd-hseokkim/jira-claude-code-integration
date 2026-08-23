@@ -15,6 +15,14 @@ python3 <plugin>/scripts/jira-cli.py <subcommand> [args] [--fields a,b] [--limit
 | `config set <url> <username> <token> [project]` | 블록 기록 (gitignore 자동 등록) |
 | `config show` | 블록 조회 — 토큰은 `ATAT…5AA9`처럼 마스킹 |
 
+### 예시
+
+```
+$ python3 scripts/jira-cli.py config set https://example.atlassian.net myid@example.com <token>
+$ python3 scripts/jira-cli.py config show
+{"url":"https://example.atlassian.net","username":"myid@example.com","apiToken":"ATAT…5AA9","project":null}
+```
+
 토큰은 어떤 서브커맨드 출력에도 나오지 않는다. 스킬은 `jira` 블록을 인용·출력하지 않는다.
 
 ## 서브커맨드
