@@ -80,7 +80,7 @@ class ContextCredentialsTest(unittest.TestCase):
                     mock.patch.object(os.path, "expanduser", return_value=tmp):
                 (Path(tmp) / ".gitignore").write_text(".jira-context.json\n", encoding="utf-8")
                 out = m.cmd_config(None, ["set", "https://c.atlassian.net/", "u@c", "tok-1234567890", "MAE"], {})
-                self.assertTrue(out["gitignored"])
+                self.assertTrue(out["gitignored"]); self.assertFalse(out["gitignoreUpdated"])
                 shown = m.cmd_config(None, ["show"], {})
                 self.assertNotIn("tok-1234567890", json.dumps(shown))
                 self.assertEqual(shown["url"], "https://c.atlassian.net")
@@ -112,7 +112,7 @@ class AutoMigrateTest(unittest.TestCase):
         self.assertEqual(c1["JIRA_API_TOKEN"], c2["JIRA_API_TOKEN"])
         self.assertIn("기입", err.getvalue())
 
-    def test_not_persisted_when_not_gitignored(self):
+    def test_persist_adds_gitignore_entry_when_missing(self):
         with tempfile.TemporaryDirectory() as tmp:
             env = {k: v for k, v in os.environ.items() if not k.startswith("JIRA_")}
             env.update({"JIRA_URL": "u", "JIRA_USERNAME": "n", "JIRA_API_TOKEN": "t"})
@@ -121,9 +121,12 @@ class AutoMigrateTest(unittest.TestCase):
                     mock.patch.object(m, "_git_toplevel", return_value=tmp), mock.patch.object(m, "_git_main_root", return_value=tmp), \
                     mock.patch.object(sys, "stderr", err):
                 c = m.load_credentials()
+            gi = (Path(tmp) / ".gitignore").read_text(encoding="utf-8")
+            ctx = json.loads((Path(tmp) / ".jira-context.json").read_text(encoding="utf-8"))
         self.assertEqual(c["JIRA_URL"], "u")
-        self.assertFalse((Path(tmp) / ".jira-context.json").exists())
-        self.assertIn(".gitignore", err.getvalue())
+        self.assertIn(".jira-context.json", gi.splitlines())
+        self.assertEqual(ctx["jira"]["apiToken"], "t")
+        self.assertIn(".gitignore에 .jira-context.json 추가함", err.getvalue())
 
 
 class CommandTest(unittest.TestCase):

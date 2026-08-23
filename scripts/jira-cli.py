@@ -34,7 +34,7 @@ Exit:   0 성공 / 1 HTTP 4xx·5xx (stderr: "jira-cli: <code> <reason> — <hint
        worktree에서도 메인 레포 파일을 읽으므로 토큰 복제본이 생기지 않는다)
     2. env JIRA_URL / JIRA_USERNAME / JIRA_API_TOKEN
     3. (레거시 폴백, Phase B 종료 시 제거) .mcp.json / ~/.claude.json / .claude/settings.local.json / ~/.claude/settings.json의 mcpServers.atlassian.env
-    2·3에서 찾으면 메인 레포 .jira-context.json에 jira 블록을 자동 기입한다 (1회, .gitignore 등록 시에만) — 다음부터 1이 정본.
+    2·3에서 찾으면 메인 레포 .jira-context.json에 jira 블록을 자동 기입한다 (1회; .gitignore에 .jira-context.json이 없으면 추가) — 다음부터 1이 정본.
 
 `jira` 블록의 apiToken은 어떤 출력에도 echo하지 않는다 (config show는 마스킹). 스킬은 이 블록을 인용·출력하지 않는다.
 """
@@ -116,20 +116,30 @@ def _creds_from_context() -> dict | None:
     return None
 
 
+def _ensure_gitignored(root: str) -> bool:
+    """.jira-context.json이 .gitignore에 없으면 추가한다 (없으면 생성). 추가했으면 True."""
+    gi = os.path.join(root, ".gitignore")
+    try:
+        with open(gi, encoding="utf-8") as f:
+            content = f.read()
+    except OSError:
+        content = ""
+    if ".jira-context.json" in content.splitlines():
+        return False
+    with open(gi, "a", encoding="utf-8") as f:
+        if content and not content.endswith("\n"):
+            f.write("\n")
+        f.write("\n# Jira integration (local dev context — contains credentials)\n.jira-context.json\n")
+    print(f"jira-cli: .gitignore에 .jira-context.json 추가함 ({gi})", file=sys.stderr)
+    return True
+
+
 def _persist_to_context(creds: dict, source: str) -> None:
     """jira 블록이 없을 때 env/레거시에서 찾은 자격증명을 메인 레포 .jira-context.json에 1회 기입 (자동 마이그레이션)."""
     root = _git_main_root() or _git_toplevel()
     if not root:
         return
-    gi = os.path.join(root, ".gitignore")
-    try:
-        with open(gi, encoding="utf-8") as f:
-            ignored = ".jira-context.json" in f.read()
-    except OSError:
-        ignored = False
-    if not ignored:
-        print("jira-cli: .jira-context.json이 .gitignore에 없어 자격증명을 기입하지 않음 — 등록 후 `config set` 실행", file=sys.stderr)
-        return
+    _ensure_gitignored(root)
     path = os.path.join(root, ".jira-context.json")
     try:
         with open(path, encoding="utf-8") as f:
@@ -504,14 +514,9 @@ def cmd_config(c, a: list[str], opt: dict):
         with open(path, "w", encoding="utf-8") as f:
             json.dump(ctx, f, indent=2, ensure_ascii=False)
             f.write("\n")
-        gi = os.path.join(root, ".gitignore")
-        try:
-            with open(gi, encoding="utf-8") as f:
-                ignored = ".jira-context.json" in f.read()
-        except OSError:
-            ignored = False
+        added = _ensure_gitignored(root)
         return {"path": path, "url": ctx["jira"]["url"], "username": user, "project": project,
-                "gitignored": ignored, "warning": None if ignored else ".jira-context.json이 .gitignore에 없음 — 토큰이 커밋될 수 있다"}
+                "gitignored": True, "gitignoreUpdated": added}
     raise SystemExit("jira-cli: config <set|show>")
 
 
