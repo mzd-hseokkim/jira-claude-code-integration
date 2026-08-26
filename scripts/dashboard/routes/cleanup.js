@@ -5,6 +5,54 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 /**
+ * worktree 안의 junction/symlink를 전부 끊는다 (링크만, 대상 보존).
+ *
+ * `git worktree remove`는 Windows에서 junction·디렉터리 symlink를 **따라 들어가** 대상까지
+ * 지운다 (2026-08-26 실측, git 2.53). worktree의 `node_modules`가 메인 레포를 가리키는
+ * junction이면 메인 `node_modules`와 npm workspace 링크 너머의 `packages/**`까지 날아간다.
+ * fs.rmSync는 링크만 끊으므로 안전하지만, git을 부르기 전에 링크가 0개여야 한다.
+ *
+ * @returns {{unlinked: string[], remaining: string[]}}
+ */
+function unlinkReparsePoints(root) {
+  const unlinked = [];
+  const stack = [root];
+  while (stack.length) {
+    const dir = stack.pop();
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { continue; }
+    for (const e of entries) {
+      const p = path.join(dir, e.name);
+      let st;
+      try { st = fs.lstatSync(p); } catch { continue; }
+      if (st.isSymbolicLink()) {            // libuv reports junctions as symlinks too
+        try {
+          fs.rmSync(p, { recursive: false, force: true }); // link only, never the target
+          unlinked.push(p);
+        } catch { /* reported via `remaining` below */ }
+      } else if (st.isDirectory()) {
+        stack.push(p);
+      }
+    }
+  }
+  const remaining = [];
+  const check = [root];
+  while (check.length) {
+    const dir = check.pop();
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { continue; }
+    for (const e of entries) {
+      const p = path.join(dir, e.name);
+      let st;
+      try { st = fs.lstatSync(p); } catch { continue; }
+      if (st.isSymbolicLink()) remaining.push(p);
+      else if (st.isDirectory()) check.push(p);
+    }
+  }
+  return { unlinked, remaining };
+}
+
+/**
  * Express 라우터: 완료된 worktree의 git worktree + branch 정리.
  *
  * POST /cleanup
@@ -73,6 +121,19 @@ function createCleanupRouter(store, logger, repoRoot) {
     }
 
     const branch = entry.branch ?? null;
+
+    // 0차: 링크 선제 해제. 남은 링크가 있으면 git을 부르지 않는다 (메인 레포 소스 보호).
+    if (fs.existsSync(wtPath)) {
+      const { unlinked, remaining } = unlinkReparsePoints(wtPath);
+      if (unlinked.length) log && log.info('cleanup.links-unlinked', { path: wtPath, count: unlinked.length });
+      if (remaining.length) {
+        log && log.error('cleanup.links-remaining', { path: wtPath, remaining });
+        return res.status(500).json({
+          error: 'worktree still contains links; refusing git worktree remove',
+          remaining,
+        });
+      }
+    }
 
     // 1차: git worktree remove --force (--force는 dirty/missing .git 일부 케이스도 처리).
     const wtRemove = spawnSync('git', ['worktree', 'remove', '--force', wtPath], {

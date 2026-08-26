@@ -8,17 +8,31 @@ Usage:
     python clean-worktree.py --dry-run <TASK-ID>  # show what would be done
 
 The script:
-  1. Removes the git worktree for each TASK-ID
-  2. Deletes the feature/<TASK-ID> branch
-  3. Removes the MCP config entry from ~/.claude.json
-  4. Cleans up .jira-context.json entries
+  1. Unlinks every junction/symlink inside the worktree (link only, target kept)
+  2. Removes the git worktree for each TASK-ID
+  3. Deletes the feature/<TASK-ID> branch
+  4. Removes the MCP config entry from ~/.claude.json
+  5. Cleans up .jira-context.json entries
+
+Why step 1 exists (verified 2026-08-26, git 2.53 / Windows):
+  `git worktree remove` FOLLOWS directory junctions (and dir symlinks) while
+  deleting the worktree. A worktree whose `node_modules` is a junction to the
+  main repo's `node_modules` therefore wipes the main repo's node_modules — and,
+  through npm-workspace links such as `node_modules/@scope/pkg -> packages/pkg`,
+  the main repo's `packages/**` source too. `--force` is not required for this
+  when the linked dir is gitignored. rm -rf / Remove-Item / fs.rmSync /
+  shutil.rmtree all unlink correctly; only git recurses. So links are removed
+  first and git is only invoked once the tree is verified link-free.
 """
 
 import argparse
 import json
 import os
+import stat
 import subprocess
 import sys
+
+FILE_ATTRIBUTE_REPARSE_POINT = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
 
 
 def get_repo_root():
@@ -53,6 +67,90 @@ def get_worktree_base(repo_root):
 
 def norm(p):
     return p.replace("\\", "/").rstrip("/")
+
+
+def is_reparse_point(path):
+    """True for junctions, directory symlinks and file symlinks (never follows)."""
+    try:
+        st = os.lstat(path)
+    except OSError:
+        return False
+    if stat.S_ISLNK(st.st_mode):
+        return True
+    return bool(getattr(st, "st_file_attributes", 0) & FILE_ATTRIBUTE_REPARSE_POINT)
+
+
+def find_reparse_points(root):
+    """List every junction/symlink under root WITHOUT descending into any of them.
+
+    os.walk would descend into junctions (Python does not treat them as symlinks),
+    so this uses an explicit scandir stack and checks the reparse attribute first.
+    """
+    found = []
+    stack = [root]
+    while stack:
+        d = stack.pop()
+        try:
+            entries = list(os.scandir(d))
+        except OSError:
+            continue
+        for e in entries:
+            if is_reparse_point(e.path):
+                try:
+                    target = os.readlink(e.path)
+                except OSError:
+                    target = "?"
+                found.append((e.path.replace("\\", "/"), target))
+            elif e.is_dir(follow_symlinks=False):
+                stack.append(e.path)
+    return found
+
+
+def unlink_reparse_points(worktree_path, dry_run=False):
+    """Remove links inside the worktree (link only). Returns False if any remain."""
+    links = find_reparse_points(worktree_path)
+    if not links:
+        return True
+    print(f"  {len(links)} link(s) inside worktree — unlinking (targets are kept):")
+    for p, target in links:
+        print(f"    {p}  ->  {target}")
+        if dry_run:
+            continue
+        try:
+            if os.path.isdir(p):
+                os.rmdir(p)      # junction / directory symlink: removes the link only
+            else:
+                os.unlink(p)     # file symlink
+        except OSError as exc:
+            print(f"  ERROR: could not unlink {p}: {exc}")
+    if dry_run:
+        return True
+    remaining = find_reparse_points(worktree_path)
+    if remaining:
+        print(f"  ERROR: {len(remaining)} link(s) still present — refusing to run "
+              f"`git worktree remove` (it would follow them into their targets).")
+        for p, target in remaining:
+            print(f"    {p}  ->  {target}")
+        return False
+    return True
+
+
+def assert_safe_worktree_path(repo_root, worktree_base, worktree_path):
+    """Hard guard: never operate on the main repo or anything outside worktree_base."""
+    r, b, w = norm(repo_root).lower(), norm(worktree_base).lower(), norm(worktree_path).lower()
+    if w == r or r.startswith(w + "/"):
+        raise SystemExit(f"REFUSED: worktree path {worktree_path} is (or contains) the main repo {repo_root}")
+    if not w.startswith(b + "/"):
+        raise SystemExit(f"REFUSED: worktree path {worktree_path} is outside worktree base {worktree_base}")
+
+
+def count_missing_tracked(repo_root):
+    """Number of tracked files deleted from the main repo's working tree."""
+    result = subprocess.run(
+        ["git", "-C", repo_root, "ls-files", "--deleted"],
+        capture_output=True, text=True
+    )
+    return len(result.stdout.split()) if result.returncode == 0 else 0
 
 
 def list_worktrees(repo_root):
@@ -145,11 +243,16 @@ def clean_task(repo_root, task_id, dry_run=False):
     branch_name = f"feature/{task_id}"
 
     print(f"\n{'[DRY RUN] ' if dry_run else ''}Cleaning {task_id}:")
+    assert_safe_worktree_path(repo_root, worktree_base, worktree_path)
 
-    # 1. Remove worktree
+    # 1. Remove worktree — links first, git second (see module docstring)
     if os.path.exists(worktree_path):
         print(f"  Removing worktree: {worktree_path}")
+        if not unlink_reparse_points(worktree_path, dry_run=dry_run):
+            print(f"  Skipping {task_id}: worktree left in place, nothing else changed.")
+            return
         if not dry_run:
+            missing_before = count_missing_tracked(repo_root)
             result = subprocess.run(
                 ["git", "-C", repo_root, "worktree", "remove", worktree_path, "--force"],
                 capture_output=True, text=True
@@ -158,6 +261,12 @@ def clean_task(repo_root, task_id, dry_run=False):
                 print(f"  WARNING: worktree remove failed: {result.stderr.strip()}")
             else:
                 print(f"  Worktree removed.")
+            missing_after = count_missing_tracked(repo_root)
+            if missing_after > missing_before:
+                print(f"  !!! MAIN REPO DAMAGED: {missing_after - missing_before} tracked file(s) "
+                      f"disappeared from {repo_root} during worktree removal.")
+                print(f"  !!! Restore with: git -C \"{repo_root}\" checkout -- .   "
+                      f"(then re-run npm ci / equivalent for ignored dirs)")
     else:
         # Worktree dir might not exist but git may still track it
         result = subprocess.run(

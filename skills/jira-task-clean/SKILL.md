@@ -20,6 +20,10 @@ allowed-tools:
 **반드시 메인 레포(main 브랜치)에서 실행해야 한다.** worktree 안에서 실행하면 자기 자신을 삭제할 수 없어 실패한다.
 worktree 세션에서 요청받은 경우, 세션을 종료하고 메인 레포에서 다시 실행하라고 안내한다.
 
+**`git worktree remove`·`rm -rf`·`Remove-Item -Recurse`를 직접 실행하지 않는다 — 항상 스크립트를 쓴다.**
+`git worktree remove`는 Windows에서 worktree 안의 junction/symlink(예: `node_modules` → 메인 레포)를 **따라 들어가 대상까지 지운다**(`--force` 없이도). 그 경로로 메인 레포의 `node_modules`와 `packages/**` 소스가 실제로 소실된 적이 있다. 스크립트는 링크를 먼저 끊고 0개임을 검증한 뒤에만 git을 호출하며, 실행 후 메인 레포의 tracked 파일 소실을 감지하면 `!!! MAIN REPO DAMAGED`를 출력한다 — 그 줄이 보이면 즉시 사용자에게 보고하고 복구 명령(출력에 포함)을 안내한다. 플러그인 PreToolUse 훅이 수동 `git worktree remove`를 차단한다.
+스크립트가 `ERROR: ... link(s) still present`로 멈추면 더 센 수단으로 재시도하지 말고 남은 링크 목록을 사용자에게 보고한다.
+
 ## Script Location
 
 이 스킬은 플러그인 내장 스크립트를 사용한다. 스크립트 경로를 찾는 방법:

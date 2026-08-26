@@ -128,12 +128,14 @@ merge 충돌 발생 시 사용자에게 알리고 중단. 충돌 해결 후 재�
 
 ```
 ⚠️  워크트리 정리가 필요합니다.
-    이 세션을 닫고 메인 레포에서 아래 명령을 실행하세요:
+    이 세션을 닫고 메인 레포 세션에서 아래를 실행하세요:
 
-    git worktree remove "<worktreePath>" --force
+    /jira-task clean <TASK-ID>
 
-    ⚠️  feature 브랜치(feature/<TASK-ID>)는 삭제하지 마세요.
-    PR 생성에 필요합니다. PR 머지 후 삭제하세요.
+    ⚠️  `git worktree remove`를 직접 실행하지 마세요 — worktree 안의 junction/symlink
+       (예: node_modules → 메인 레포)를 따라 들어가 메인 레포 소스를 지웁니다.
+       clean 스킬은 링크를 먼저 끊고 검증한 뒤에만 git을 호출합니다.
+    ⚠️  clean은 feature 브랜치도 삭제합니다. PR 워크플로라면 PR 머지 후에 실행하세요.
 ```
 
 실제 명령 실행은 하지 않는다.
