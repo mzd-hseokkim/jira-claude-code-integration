@@ -307,6 +307,16 @@ python3 <plugin>/scripts/jira-cli.py config show      # 토큰은 마스킹되�
 
 조회 순서는 `jira` 블록 → 환경변수(`JIRA_URL`/`JIRA_USERNAME`/`JIRA_API_TOKEN`) → 레거시 MCP 설정 파일입니다. 블록이 없을 때 뒤의 둘에서 찾으면 자동으로 블록에 옮겨 적습니다 — 기존 MCP 사용자는 별도 작업 없이 이어집니다.
 
+### Workflow 실행 디렉터리 (auto/loop 전제)
+
+`auto`는 플러그인의 `scripts/auto.workflow.js`를 Workflow 도구로 실행합니다. Claude Code는 `scriptPath`로 **cwd 또는 추가된 워킹 디렉터리 안의 파일**만 허용하므로, 플러그인 설치 경로가 등록돼 있어야 합니다. `/jira setup`이 자동으로 등록하며, 수동으로는:
+
+```bash
+python3 <plugin>/scripts/ensure-workflow-dir.py    # ~/.claude/settings.json의 permissions.additionalDirectories에 1회 추가
+```
+
+버전 디렉터리의 부모(`…/cache/<marketplace>/jira-integration`)를 등록하므로 플러그인을 업데이트해도 다시 할 필요가 없습니다. 등록은 **새 세션부터** 적용됩니다 — 지금 세션에서 바로 쓰려면 `/add-dir <출력된 dir>`.
+
 ### MCP 서버 (선택)
 
 대화 중 `mcp__atlassian__*` 도구로 ad-hoc 질의를 하고 싶을 때만 `/jira setup --mcp`로 등록합니다. 플러그인 워크플로에는 필요 없습니다. 세션 시작 직후 서버가 늦게 붙어 도구가 안 보이면 `/mcp`에서 재연결하세요.
@@ -361,6 +371,7 @@ python3 <plugin>/scripts/jira-cli.py config show      # 토큰은 마스킹되�
 | (선택 MCP) `mcp__atlassian__*` 도구가 안 보임 | 세션 시작 시 MCP 서버가 늦게 붙은 경우. `/mcp`에서 재연결 — 플러그인 워크플로는 MCP 없이 동작합니다 |
 | `401 Unauthorized` | 토큰 만료·오타. `/jira setup`으로 재등록 |
 | (선택 MCP) `uvx: command not found` | `uv` 미설치 (`pip install uv`). 플러그인 자체는 uv가 필요 없습니다 |
+| auto 실행 시 `scriptPath must be a script path this tool returned…` | 플러그인 경로가 워킹 디렉터리에 없음. `python3 <plugin>/scripts/ensure-workflow-dir.py` 후 세션 재시작(또는 지금 세션은 `/add-dir <출력된 dir>`) |
 | auto가 "cwd 불일치"로 중단 | worktree가 아닌 곳에서 실행. 해당 worktree로 이동해 재실행 (`loop`는 자동 처리) |
 | worktree에서 자격증명을 못 찾음 | 메인 레포 `.jira-context.json`에 `jira` 블록이 있는지 `config show`로 확인 (worktree는 메인 파일을 참조) |
 | 이슈 생성 시 "유효한 이슈 유형" 오류 | 프로젝트가 로컬라이즈된 타입명을 씀 (예: 한국어 프로젝트는 `작업`, 하위작업은 `Subtask`). `create`는 프로젝트 메타를 조회해 맞추지만 직접 호출 시 주의 |

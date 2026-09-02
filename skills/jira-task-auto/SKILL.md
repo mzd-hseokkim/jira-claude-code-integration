@@ -63,6 +63,18 @@ cwd(worktree)의 `.jira-context.json`을 `Read`로 읽어 다음을 조립한다
 
 `Workflow({ scriptPath: "<AUTO_WF_JS>", args: <Step 2의 객체> })`를 호출하고 완료 notification을 기다린다. 완료 전에 결과를 예단하지 않는다.
 
+호출이 `scriptPath must be a script path this tool returned, or a file you can already read …`로 거부되면 플러그인 설치 경로가 워킹 디렉터리에 등록되지 않은 것이다. 등록 후 중단한다 (재시도하지 않는다 — settings는 세션 시작 시 읽힌다):
+
+```bash
+python3 "<scriptsDir>/ensure-workflow-dir.py"
+```
+
+```
+❌ Auto 실행 불가: 플러그인 경로가 워킹 디렉터리에 없어 Workflow 도구가 거부했습니다.
+settings.json에 등록했습니다 — 새 세션부터 자동 적용됩니다.
+지금 세션에서 이어서 하려면: /add-dir <출력의 dir> 실행 후 `/jira-task auto <TASK-ID>` 재실행.
+```
+
 ## Step 5: 결과 렌더링
 
 Workflow 반환 객체의 `status`별로 렌더링한다. 공통: `<completedSteps>`는 반환값의 목록.

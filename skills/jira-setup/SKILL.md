@@ -75,7 +75,19 @@ python3 "<scripts>/jira-cli.py" whoami
 
 기본 프로젝트를 설정했으면 `python3 "<scripts>/jira-cli.py" search "assignee = currentUser()" --limit 1`로 프로젝트 접근도 확인한다.
 
-## Step 5: (선택) MCP 서버 등록
+## Step 5: Workflow 실행 디렉터리 등록
+
+`/jira-task auto`는 플러그인의 `auto.workflow.js`를 Workflow 도구로 실행하는데, Claude Code는 `scriptPath`로 **cwd 또는 추가된 워킹 디렉터리 안의 파일**만 받는다. 플러그인은 그 밖(`~/.claude/plugins/cache/…`)에 설치되므로 설치 경로를 사용자 settings.json에 1회 등록한다:
+
+```bash
+python3 "<scripts>/ensure-workflow-dir.py"
+```
+
+- `"added":true` → 등록 완료. **새 세션부터 적용**되므로, 지금 세션에서 auto를 쓰려면 출력된 `dir` 값으로 `/add-dir <dir>`를 실행하라고 안내한다.
+- `"added":false,"registered":true` → 이미 등록됨. 별도 안내 없음.
+- 실패해도(exit≠0) setup은 계속 진행한다 — auto 외 명령에는 영향이 없다.
+
+## Step 6: (선택) MCP 서버 등록
 
 `--mcp` 인자가 있거나 사용자가 요청할 때만. 대화 중 `mcp__atlassian__*` 도구로 ad-hoc 질의를 하고 싶은 경우용이며, 플러그인 워크플로에는 필요 없다.
 
@@ -88,7 +100,7 @@ claude mcp add atlassian \
 
 전제: Python 3.10+ 와 `uv`(`uv --version`). 등록 후 세션 재시작이 필요하고, 세션 시작 직후 서버가 늦게 붙으면 `/mcp`에서 재연결해야 할 수 있음을 안내한다.
 
-## Step 6: 완료 요약
+## Step 7: 완료 요약
 
 ```
 ---
@@ -98,6 +110,7 @@ claude mcp add atlassian \
 - Jira: <url> (<displayName>)
 - 기본 프로젝트: <PROJECT | 없음>
 - 자격증명 저장: .jira-context.json `jira` 블록 (gitignore ✓)
+- Workflow 디렉터리: <등록됨 | 이미 등록됨 | 등록 실패 — auto 사용 시 재시도>
 - MCP 서버: <등록됨 | 미등록 (플러그인 동작에 불필요)>
 
 **Next**: `/jira-task init <이슈키|N>` 으로 작업 큐를 잡거나, `/jira-task create`로 이슈를 만드세요.
