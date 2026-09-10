@@ -18,6 +18,9 @@
 
 set +e
 
+# Dashboard 미실행이면 node/curl 없이 즉시 종료. (경로 구분자 / 와 \ 모두 처리)
+. "${BASH_SOURCE[0]%[/\\\\]*}/dashboard-gate.sh"
+
 INGEST_URL="${DASHBOARD_INGEST_URL:-http://127.0.0.1:8765/ingest}"
 PAYLOAD="$(cat)"
 

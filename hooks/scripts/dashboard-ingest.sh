@@ -11,6 +11,9 @@
 
 set +e
 
+# Dashboard 미실행이면 즉시 종료. (경로 구분자 / 와 \ 모두 처리)
+. "${BASH_SOURCE[0]%[/\\\\]*}/dashboard-gate.sh"
+
 HOOK_NAME="${1:-}"
 INGEST_URL="${DASHBOARD_INGEST_URL:-http://127.0.0.1:8765/ingest}"
 

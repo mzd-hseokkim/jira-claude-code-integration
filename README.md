@@ -361,6 +361,8 @@ python3 <plugin>/scripts/ensure-workflow-dir.py    # ~/.claude/settings.json의 
 
 수동 실행: `npm install && npm run dashboard:build && npm run dashboard` (포트 변경 `PORT=9000`, 브라우저 자동 열기 억제 `DASHBOARD_NO_OPEN=1`). 로그는 `logs/dashboard-server.log`. localhost 전용이며 인증이 없습니다.
 
+훅은 `/jira dashboard`로 띄운 서버(PID 파일 `~/.claude/jira-integration/dashboard.pid`)가 살아 있을 때만 이벤트를 보내고, 아니면 바로 종료합니다. 수동 실행 서버로 이벤트를 받으려면 `DASHBOARD_INGEST_URL=http://127.0.0.1:8765/ingest`를 설정하세요.
+
 ---
 
 ## 9. 트러블슈팅
