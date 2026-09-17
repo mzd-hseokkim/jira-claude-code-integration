@@ -134,7 +134,7 @@ class CommandTest(unittest.TestCase):
         c = m.Client(CREDS)
         calls = []
 
-        def fake(method, path, body=None, query=None, raw_body=None, extra_headers=None):
+        def fake(method, path, body=None, query=None, raw_body=None, extra_headers=None, binary=False):
             calls.append((method, path, body, query))
             return responses.pop(0)
 
@@ -166,6 +166,24 @@ class CommandTest(unittest.TestCase):
         c, calls = self._client([{"id": "1", "created": "now"}])
         m.cmd_comment(c, ["MAE-1", "## T\n- x"], {})
         self.assertEqual(calls[0][2], {"body": "h2. T\n* x"})
+
+    def test_get_compacts_attachments(self):
+        c, calls = self._client([{"key": "MAE-1", "fields": {"summary": "s", "attachment": [
+            {"id": "10", "filename": "ui.png", "mimeType": "image/png", "size": 5, "author": {"displayName": "x"},
+             "content": "https://x/c/10"}]}}])
+        out = m.cmd_get(c, ["MAE-1"], {})
+        self.assertIn("attachment", calls[0][3]["fields"])
+        self.assertEqual(out["attachments"], [{"id": "10", "filename": "ui.png", "mimeType": "image/png", "size": 5}])
+
+    def test_download_writes_file_by_filename(self):
+        c, calls = self._client([{"filename": "spec.pdf", "mimeType": "application/pdf", "size": 3,
+                                  "content": "https://x.atlassian.net/rest/api/2/attachment/content/10"}, b"PDF"])
+        with tempfile.TemporaryDirectory() as d:
+            out = m.cmd_download(c, [d, "10"], {})
+            with open(out[0]["path"], "rb") as f:
+                self.assertEqual(f.read(), b"PDF")
+        self.assertEqual(calls[1][1], "https://x.atlassian.net/rest/api/2/attachment/content/10")
+        self.assertEqual(os.path.basename(out[0]["path"]), "spec.pdf")
 
     def test_http_error_exit_code_and_message(self):
         with mock.patch.object(m, "load_credentials", return_value=CREDS), \

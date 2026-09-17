@@ -5,7 +5,7 @@ Usage:
     python3 jira-cli.py <subcommand> [args] [--fields f1,f2] [--raw]
 
 Subcommands (MCP 도구 1:1):
-    get <KEY>                          이슈 조회 (압축: key/summary/status/issuetype/priority/assignee/parent/labels/description)
+    get <KEY>                          이슈 조회 (압축: key/summary/status/issuetype/priority/assignee/parent/labels/description/attachments)
     search "<JQL>" [--limit N]         이슈 검색 (압축 목록). JIRA_DEFAULT_PROJECT가 있고 JQL에 project 조건이 없으면 자동 삽입
     comment <KEY> <markdown|-|@file>   코멘트 추가 (markdown → wiki markup 변환, v2 API)
     transitions <KEY>                  가능한 전이 목록 [{id,name}]
@@ -21,6 +21,7 @@ Subcommands (MCP 도구 1:1):
     projects                           프로젝트 목록
     link-types                         링크 타입 목록
     attach <KEY> <file> [<file>...]    첨부 업로드
+    download <DIR> <ATTACHMENT-ID>...  첨부 다운로드 → DIR/<filename> (id는 get의 attachments[].id)
 
 Output: 기본 압축 JSON (LLM 소비용 — avatar/self URL/reporter/worklog는 절대 포함하지 않음).
         --fields로 raw 필드 추가, --raw로 API 응답 전체.
@@ -213,8 +214,8 @@ class Client:
         self.default_project = creds.get("JIRA_DEFAULT_PROJECT")
 
     def request(self, method: str, path: str, body: dict | None = None, query: dict | None = None,
-                raw_body: bytes | None = None, extra_headers: dict | None = None):
-        url = self.base + path
+                raw_body: bytes | None = None, extra_headers: dict | None = None, binary: bool = False):
+        url = path if path.startswith("http") else self.base + path
         if query:
             url += "?" + urllib.parse.urlencode({k: v for k, v in query.items() if v is not None})
         data = raw_body if raw_body is not None else (json.dumps(body).encode() if body is not None else None)
@@ -226,6 +227,8 @@ class Client:
         req = urllib.request.Request(url, data=data, method=method, headers=headers)
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:
+                if binary:
+                    return resp.read()
                 text = resp.read().decode("utf-8")
                 return json.loads(text) if text.strip() else {}
         except urllib.error.HTTPError as e:
@@ -318,6 +321,9 @@ def compact_issue(issue: dict, extra_fields: list[str] | None = None) -> dict:
     }
     if "description" in f:
         out["description"] = f.get("description") if isinstance(f.get("description"), str) else None
+    if "attachment" in f:
+        out["attachments"] = [{"id": x.get("id"), "filename": x.get("filename"), "mimeType": x.get("mimeType"),
+                               "size": x.get("size")} for x in f.get("attachment") or []]
     for k in extra_fields or []:
         out[k] = f.get(k)
     return out
@@ -325,7 +331,7 @@ def compact_issue(issue: dict, extra_fields: list[str] | None = None) -> dict:
 
 # ---------------------------------------------------------------- commands
 
-_GET_FIELDS = "summary,status,issuetype,priority,assignee,parent,labels,description"
+_GET_FIELDS = "summary,status,issuetype,priority,assignee,parent,labels,description,attachment"
 _SEARCH_FIELDS = "summary,status,issuetype,priority,assignee,parent"
 
 
@@ -495,6 +501,22 @@ def cmd_attach(c: Client, a: list[str], opt: dict):
     return results
 
 
+def cmd_download(c: Client, a: list[str], opt: dict):
+    out_dir = _arg(a, 0, "DIR")
+    ids = a[1:]
+    if not ids:
+        raise SystemExit("jira-cli: 다운로드할 첨부 id 필요")
+    os.makedirs(out_dir, exist_ok=True)
+    results = []
+    for aid in ids:
+        meta = c.request("GET", f"/rest/api/2/attachment/{aid}")
+        path = os.path.join(out_dir, os.path.basename(meta.get("filename") or aid))
+        with open(path, "wb") as f:
+            f.write(c.request("GET", meta["content"], binary=True))
+        results.append({"id": aid, "path": path, "mimeType": meta.get("mimeType"), "size": meta.get("size")})
+    return results
+
+
 def cmd_config(c, a: list[str], opt: dict):
     sub = _arg(a, 0, "set|show")
     root = _git_main_root() or _git_toplevel() or os.getcwd()
@@ -528,7 +550,7 @@ COMMANDS = {
     "transition": cmd_transition, "whoami": cmd_whoami, "assign": cmd_assign, "update": cmd_update,
     "create": cmd_create, "link": cmd_link, "epic-link": cmd_epic_link, "boards": cmd_boards,
     "sprints": cmd_sprints, "projects": cmd_projects, "link-types": cmd_link_types, "attach": cmd_attach,
-    "config": cmd_config,
+    "download": cmd_download, "config": cmd_config,
 }
 
 

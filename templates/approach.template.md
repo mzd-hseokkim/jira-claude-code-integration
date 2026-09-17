@@ -12,6 +12,7 @@ approach = plan + design 통합. 별도 plan/design 문서를 만들지 않는�
 
 - **Level**: {level} ({level_name})
 - **Source**: `docs/requirements/<slug>.requirements.md` *(discover 생략 시 "N/A — <출처>")*
+- **References**: Jira 첨부/링크 중 참고한 것 *(없으면 이 줄 삭제)*
 
 <!--
 이하 본문은 결정된 레벨의 출력 블록을 `refs/level-templates.md`에서 복사하여 채운다.

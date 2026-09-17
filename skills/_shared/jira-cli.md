@@ -17,7 +17,7 @@
 
 | MCP 도구 | CLI | 비고 |
 |---|---|---|
-| `jira_get_issue` | `python3 <scripts>/jira-cli.py get <KEY>` | 압축 JSON: key/summary/status/issuetype/priority/assignee/parent/labels/description. 추가 필드는 `--fields subtasks,issuelinks` |
+| `jira_get_issue` | `python3 <scripts>/jira-cli.py get <KEY>` | 압축 JSON: key/summary/status/issuetype/priority/assignee/parent/labels/description/attachments. 추가 필드는 `--fields subtasks,issuelinks` |
 | `jira_search` | `... search "<JQL>" --limit N` | `JIRA_DEFAULT_PROJECT`가 있으면 `project =` 자동 삽입 |
 | `jira_add_comment` | `... comment <KEY> @<md파일>` 또는 `... comment <KEY> "<markdown>"` | markdown→wiki 자동 변환. 긴 본문은 scratchpad 파일로 쓰고 `@경로` |
 | `jira_get_transitions` | `... transitions <KEY>` | `[{id,name,to}]` |
@@ -26,6 +26,7 @@
 | `jira_update_issue` (assignee) | `... assign <KEY>` (기본 me) | |
 | `jira_update_issue` (기타) | `... update <KEY> '<fields json>'` | |
 | (jira-attach.sh) | `... attach <KEY> <file>...` | |
+| (없음) | `... download <DIR> <ATTACHMENT-ID>...` | 첨부 다운로드 (id는 `get`의 `attachments[].id`) |
 
 ## 출력 처리
 

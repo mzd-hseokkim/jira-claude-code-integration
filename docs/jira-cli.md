@@ -29,7 +29,7 @@ $ python3 scripts/jira-cli.py config show
 
 | 명령 | 인자 | 출력 (압축 JSON) |
 |---|---|---|
-| `get` | `<KEY>` | `{key, summary, status, issuetype, priority, assignee, parent, labels, description}` |
+| `get` | `<KEY>` | `{key, summary, status, issuetype, priority, assignee, parent, labels, description, attachments[{id, filename, mimeType, size}]}` |
 | `search` | `"<JQL>" [--limit N]` | `[{key, summary, status, issuetype, priority, assignee, parent, labels}]` — `project`가 설정돼 있고 JQL에 project 조건이 없으면 자동 삽입 |
 | `comment` | `<KEY> <markdown \| - \| @file>` | `{id, created}` — markdown→wiki 변환 (제목·굵게·인라인/블록 코드·불릿·번호·표·링크·구분선) |
 | `transitions` | `<KEY>` | `[{id, name, to}]` |
@@ -45,6 +45,7 @@ $ python3 scripts/jira-cli.py config show
 | `projects` | — | `[{key, name, type}]` |
 | `link-types` | — | `[{name, inward, outward}]` |
 | `attach` | `<KEY> <file>...` | `[{file, id}]` |
+| `download` | `<DIR> <ATTACHMENT-ID>...` | `[{id, path, mimeType, size}]` — `DIR/<filename>`로 저장 |
 
 `--fields subtasks,issuelinks`처럼 압축 필드 밖의 raw 필드를 덧붙일 수 있고, `--raw`는 API 응답 전체를 돌려준다. avatar·self URL·reporter·worklog는 기본 출력에 절대 포함되지 않는다 (sub-agent 컨텍스트 절약).
 

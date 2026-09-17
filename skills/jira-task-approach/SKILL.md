@@ -54,9 +54,25 @@ allowed-tools:
 
 `.jira-context.json`의 `cachedIssue`를 먼저 확인 (CLAUDE.md "Cache-First Fetch" 참고).
 
-- **hit 조건**: `key === <TASK-ID>` AND `summary`/`description`/`issuetype` 모두 존재 AND `fetchedAt` 존재. → fetch 생략.
+- **hit 조건**: `key === <TASK-ID>` AND `summary`/`description`/`issuetype`/`attachments`(빈 배열 허용) 모두 존재 AND `fetchedAt` 존재. → fetch 생략.
 - **miss**: `python3 "<scripts>/jira-cli.py" get <TASK-ID> --fields subtasks,issuelinks` (`skills/_shared/jira-cli.md`). L3는 child Story 시퀀싱이 필요하므로 `subtasks`/`issuelinks` 포함이 중요.
 - 호출 후 `cachedIssue` 갱신. `fetchedAt`은 `new Date().toISOString()` (UTC `Z`).
+
+### Step 1.5: Load Issue Attachments & References
+
+이슈에 첨부된 화면 이미지·기획서·명세서는 description보다 구체적인 요구사항인 경우가 많다. **있으면 반드시 읽고 approach에 반영한다.**
+
+1. **대상 선별** — `cachedIssue.attachments`(`[{id, filename, mimeType, size}]`)에서:
+   - 제외: 플러그인 산출물(`<TASK-ID>.` 로 시작하는 `.md` — approach/test-report/review 등).
+   - 읽기 대상: 이미지(png/jpg/jpeg/gif/webp, ≤5MB), PDF(≤10MB), 텍스트류(md/txt/csv/json/yaml/xml/html/sql, ≤1MB). description에 `!파일명!`으로 삽입된 이미지를 우선한다. 최대 10개.
+   - 그 외(docx/xlsx/pptx/zip/동영상, 크기 초과): 다운로드하지 않고 파일명만 기록.
+   - 대상이 0개면 이 Step을 건너뛴다.
+2. **다운로드** — 대상 id를 한 번에:
+   `python3 "<scripts>/jira-cli.py" download "${TMPDIR:-/tmp}/jira-attachments/<TASK-ID>" <id> [<id>...]`
+   실패해도 비차단 — 경고 1줄 후 description만으로 진행.
+3. **읽기** — 출력의 `path`를 Read로 연다 (이미지는 시각적으로 확인, PDF는 `pages`로 필요한 범위만). 화면 구성·필드·흐름·수치·예외 조건 등 **구현에 영향을 주는 사실**만 추려서 쓴다.
+4. **description 속 외부 링크**(Confluence·Figma·Google Docs 등)는 fetch하지 않고 URL만 기록한다.
+5. **반영** — 문서 헤더 `References`에 참고한 첨부/링크를 나열하고, 첨부에서 얻은 요구사항을 본문(핵심 결정·Implementation Plan·검증)에 녹인다. 첨부와 description이 충돌하거나 읽지 못한 첨부가 판단에 필요하면 Open Items(L1은 리스크 줄)로 남긴다.
 
 ### Step 2: Load Requirements Inputs
 
