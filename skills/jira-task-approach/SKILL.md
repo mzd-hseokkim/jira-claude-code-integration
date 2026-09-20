@@ -2,7 +2,7 @@
 name: jira-task-approach
 description: "Generate a level-aware approach document (plan + design 통합). 작업 규모(L1/L2/L3)에 맞춰 분량을 조정. Triggers: jira-task approach, approach task; 접근 설계, 통합 설계."
 user-invocable: false
-argument-hint: "<TASK-ID>"
+argument-hint: "<TASK-ID> [requirements 문서 경로]"
 allowed-tools:
   - Read
   - Write
@@ -23,7 +23,7 @@ allowed-tools:
 - `<TASK-ID>` (필수)
 - `.jira-context.json.cachedIssue` (Cache-First Fetch)
 - `.jira-context.json.breakdownLevel` (있으면 우선)
-- discover 산출물 `docs/requirements/<slug>.requirements.md`의 `Technical Approach Hint` 섹션 (있으면 입력)
+- discover 산출물 `docs/requirements/<slug>.requirements.md`의 `Technical Approach Hint` 섹션 (있으면 입력 — 이슈 description의 `Requirements:` 줄로 확정, Step 2)
 
 **출력:**
 - `docs/approach/<TASK-ID>.approach.md`
@@ -76,11 +76,14 @@ allowed-tools:
 
 ### Step 2: Load Requirements Inputs
 
-`docs/requirements/*.requirements.md`를 Glob으로 확인.
+표기 규약은 `Read skills/_shared/requirements-link.md`. 요구사항 문서는 아래 순서로 **확정**한다 — 먼저 맞는 규칙에서 멈춘다. 틀린 문서를 인용하는 것보다 hint 없이 진행하는 편이 낫다.
 
-- 후보 파일 0건: 입력 hint 없음으로 진행.
-- 후보 파일 1건: 자동 채택.
-- 후보 파일 N건: cachedIssue.summary와 가장 가까운 slug를 선택. 모호하면 첫 번째 파일을 채택하고 사용자에게 알림.
+1. **사용자 지정**: 호출 프롬프트에 문서 경로가 있으면 그 파일.
+2. **출처 줄**: `cachedIssue.description`의 출처 줄. 파일이 없으면(미커밋·미공유) 경고 1줄 후 hint 없음으로 진행 — 3·4로 내려가 추측하지 않는다.
+3. **키 역참조**: `docs/requirements/*.requirements.md`에서 이슈 키 표기 `[<TASK-ID>]`를 Grep — 정확히 1건이면 채택, 그 줄의 노드를 `<노드>`로 본다.
+4. **Glob 폴백** (`docs/requirements/*.requirements.md`): 0건 → hint 없음. 1건 → 채택. N건 → slug가 cachedIssue.summary와 명확히 대응하는 1건만 채택하고, 모호하면 **채택하지 않는다** — hint 없음으로 진행하고 후보 목록을 Open Items(L1은 리스크 줄)에 남긴 뒤 사용자에게 1줄로 알린다 (경로를 지정해 재실행하면 1번 적용).
+
+`<노드>`(예: `Sub-task 2.1`)를 알면 `Proposed Issue Breakdown`에서 그 노드와 상위 Story를 찾아, 아래 섹션 중 해당 범위와 관련된 내용만 쓴다. approach 문서 `Source`에는 경로와 확정 규칙 번호(예: `출처 줄`)를 적는다.
 
 채택한 파일에서 다음 섹션을 추출:
 - `## Technical Approach Hint` (필수 입력 — 있으면 그대로 인용)

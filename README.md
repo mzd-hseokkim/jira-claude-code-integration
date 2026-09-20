@@ -180,6 +180,24 @@ flowchart LR
 - `create`: 대화로 이슈를 만들거나, `--from-requirements`로 요구사항 문서의 분해안을 그대로 등록합니다.
 - `init`: 이미 있는 이슈를 가져옵니다. 부모 키를 주면 미완료 하위작업을 의존성(`is blocked by`) 분석 후 착수 가능한 것만 큐에 넣고, 숫자를 주면 나에게 할당된 고우선순위 N건을 잡습니다.
 
+### 여러 명이 나눠 쓸 때 — 설계자(A) / 구현자(B)
+
+A가 `discover`·`create`로 요구사항과 티켓을 만들고 B가 `start`/`auto`로 구현하는 분업에서는, 티켓과 요구사항 문서가 **양방향으로 고정 연결**됩니다 (v0.64.0+). B가 "이 티켓은 이 문서를 입력으로 써"라고 프롬프트에 적을 필요가 없습니다.
+
+| 방향 | 남는 곳 | 형태 |
+|---|---|---|
+| 티켓 → 문서 | `create --from-requirements`가 만든 모든 이슈의 description 마지막 줄 | `Requirements: docs/requirements/<주제>.requirements.md (Sub-task 2.1)` |
+| 문서 → 티켓 | 요구사항 문서 `Proposed Issue Breakdown`의 각 노드 라인 끝 | `- Sub-task 2.1: … [MAE-14]` |
+
+`approach`는 ① 프롬프트에 지정된 경로 → ② description의 `Requirements:` 줄 → ③ 문서 안의 `[<KEY>]` 역참조 → ④ 파일명 폴백 순으로 문서를 확정하고, 하위작업이면 자기 노드 범위만 읽습니다. 후보가 여럿인데 확정할 수 없으면 **추측하지 않고** hint 없이 진행하며 후보를 Open Items에 남깁니다.
+
+팀 규약으로 정해 둘 것:
+
+- **A는 `create` 직후 요구사항 문서를 커밋·push합니다.** `create`가 문서에 이슈 키를 기록하므로 그 변경까지 포함해야 합니다. 문서가 B의 base 브랜치에 없으면 `approach`는 경고 후 hint 없이 진행합니다 (worktree는 커밋된 파일만 봅니다). `docs/requirements/`를 gitignore하고 있다면 해제하세요.
+- description의 `Requirements:` 줄은 지우지 않습니다. 문서를 옮기면 이 줄도 고칩니다.
+- `create`(대화형)로 만든 티켓이나 v0.64.0 이전 티켓에는 출처 줄이 없습니다 — description에 같은 형식으로 한 줄 직접 추가하거나, `/jira-task approach <KEY> docs/requirements/<문서>`처럼 경로를 지정하세요.
+- 같은 문서로 `create --from-requirements`를 다시 실행하면 이미 `[<KEY>]`가 붙은 노드는 건너뛸지 묻습니다 (중복 등록 방지).
+
 ### 현황 보기
 
 - `/jira-task status` — 현재 디렉터리의 활성 태스크 + Jira 최신 상태
@@ -345,7 +363,7 @@ python3 <plugin>/scripts/ensure-workflow-dir.py    # ~/.claude/settings.json의 
     └── TASK-README.md          # 이슈 요약 (gitignore)
 ```
 
-- `docs/approach`, `review-log`, `run-log`는 merge로 main에 들어옵니다. `docs/review`·`test`·`requirements`는 기본 gitignore입니다 (프로젝트 정책에 따라 조정).
+- `docs/approach`, `review-log`, `run-log`는 merge로 main에 들어옵니다. `docs/review`·`test`·`requirements`는 기본 gitignore입니다 (프로젝트 정책에 따라 조정 — 설계자/구현자 분업이면 `requirements`는 커밋 대상, [여러 명이 나눠 쓸 때](#여러-명이-나눠-쓸-때--설계자a--구현자b) 참고).
 - `review-log`와 `run-log`는 하니스 자체의 관측 데이터입니다 — 리뷰 오탐률, 단계별 소요, fix 루프 빈도, 격리 사유가 쌓여 이후 튜닝의 근거가 됩니다. 스키마는 각 디렉터리의 README 참고.
 - 문서 템플릿은 `templates/` (approach / requirements / test-report / review / pr-description / report).
 
@@ -377,6 +395,7 @@ python3 <plugin>/scripts/ensure-workflow-dir.py    # ~/.claude/settings.json의 
 | auto가 "cwd 불일치"로 중단 | worktree가 아닌 곳에서 실행. 해당 worktree로 이동해 재실행 (`loop`는 자동 처리) |
 | worktree에서 자격증명을 못 찾음 | 메인 레포 `.jira-context.json`에 `jira` 블록이 있는지 `config show`로 확인 (worktree는 메인 파일을 참조) |
 | 이슈 생성 시 "유효한 이슈 유형" 오류 | 프로젝트가 로컬라이즈된 타입명을 씀 (예: 한국어 프로젝트는 `작업`, 하위작업은 `Subtask`). `create`는 프로젝트 메타를 조회해 맞추지만 직접 호출 시 주의 |
+| `approach`가 요구사항 문서를 못 찾거나 "hint 없음"으로 진행 | 문서가 base 브랜치에 커밋되지 않았거나 티켓 description에 `Requirements:` 줄이 없음. [여러 명이 나눠 쓸 때](#여러-명이-나눠-쓸-때--설계자a--구현자b) 참고 |
 | 플러그인 업데이트가 반영 안 됨 | `claude plugin marketplace update jira-claude-code-integration` → `claude plugin update jira-integration@jira-claude-code-integration` → 세션 재시작 |
 | `loop`가 시작부터 전체 중단 | 시스템 실패 판정(인증/MCP/base). 리포트의 "판정 근거"를 보고 원인 해결 후 재실행 — 완료 태스크는 건너뜀 |
 

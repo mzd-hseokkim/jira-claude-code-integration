@@ -138,6 +138,12 @@ subtasks[] 원소: { index, summary, description?, scope? }
 
 > **priority/labels 추출 규칙**: 표준 트리 형식에는 priority/labels 표기 문법이 없다. 따라서 `priority`/`labels`는 항상 비어 있는 옵셔널 필드로 다루며, **트리에 표기가 없으면 priority는 항상 `Medium`을 사용한다** (Step 6의 `or "Medium"` 폴백). labels는 폴백 시에만 자동으로 채워진다 (예: `epic-substitute`).
 
+## 요구사항 문서 ↔ 티켓 연결 (★ 표기 규약은 `skills/_shared/requirements-link.md`가 단일 출처 — Read 후 적용)
+
+- **출처 줄**: import 모드로 만드는 **모든 이슈**의 description 마지막 줄에 남긴다. `importPath`가 절대 경로면 레포 루트 기준으로 바꾼다.
+- **이슈 키 표기**: Step 6-6에서 생성된 키를 해당 노드 라인에 덧붙인다.
+- **파서 규칙**: 라인 끝의 `[<KEY>]`는 summary·blocks 파싱 전에 떼어내 그 노드의 `existingKey`로 보존한다. `existingKey`가 1개라도 있으면 이미 등록된 문서다 → **E14**.
+
 ## Tree → Issue Mapping
 
 | 레벨 | 트리 노드 | `create` JSON `issuetype` | `parent` 키 | 폴백 |

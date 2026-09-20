@@ -239,6 +239,7 @@ Breakdown Level: <L1 Single | L2 Story-only | L3 Epic+Stories+Subtasks>
 
 > 모드별 호출 시퀀스:
 > - **default**: 6-1 (Parent) → 6-2 (Epic 연결 검증) → 6-3 (Subtask 루프) → 6-4 (링크) → 6-5 (검증)
+> - **import (공통)**: 아래 시퀀스 끝에 6-6 (문서에 이슈 키 기록)을 덧붙인다.
 > - **import L1 Single**: 6-1 (Task 단건) → 6-5 (검증). 6-1b/6-3/6-4 skip.
 > - **import L2 Story-only**: 6-1b (Story 1건, parent 없음) → 6-3 (Subtask 루프) → 6-4 (링크) → 6-5 (검증). 6-1/6-2 skip (Epic 생성·연결 없음).
 > - **import L3 Tree**: 6-1 (Epic 생성) → 6-2 **skip** → 6-1b (Story 루프) → 6-3 (Subtask 루프) → 6-4 (링크) → 6-5 (검증).
@@ -255,7 +256,7 @@ Epic을 중첩 생성하지 않는다 — Jira가 Epic 아래 Epic을 제대로 
 
 **6-1. 상위 이슈 생성 (default 또는 import L1/L3에서 호출)**
 
-이슈 1건당 JSON 1개를 scratchpad 파일로 쓰고 `python3 "<scripts>/jira-cli.py" create @<파일>` 호출. 키: `project`/`summary`/`issuetype`/`description`(markdown)/`parent`/`labels`/`priority`/`assignee`. Epic 연결은 `"parent": "<EPIC-KEY>"`. priority 기본값은 `Medium` (`from-requirements-mode.md` Step 1.5-5의 추출 규칙과 동일). 출력 `{"key","id"}`의 `key`를 누적한다.
+이슈 1건당 JSON 1개를 scratchpad 파일로 쓰고 `python3 "<scripts>/jira-cli.py" create @<파일>` 호출. 키: `project`/`summary`/`issuetype`/`description`(markdown)/`parent`/`labels`/`priority`/`assignee`. import 모드의 description은 6-1/6-1b/6-3 모두 `Requirements:` 출처 줄로 끝난다 (`from-requirements-mode.md` "요구사항 문서 ↔ 티켓 연결"). Epic 연결은 `"parent": "<EPIC-KEY>"`. priority 기본값은 `Medium` (`from-requirements-mode.md` Step 1.5-5의 추출 규칙과 동일). 출력 `{"key","id"}`의 `key`를 누적한다.
 
 폴백 규칙은 호출 모드별로 발동 케이스가 다르다 — `from-requirements-mode.md`의 Tree→Issue Mapping 표가 단일 진실. 본 절은 요약만 둔다:
 
@@ -293,6 +294,10 @@ Epic을 중첩 생성하지 않는다 — Jira가 Epic 아래 Epic을 제대로 
 
 모든 이슈를 `python3 "<scripts>/jira-cli.py" get <KEY> --fields issuelinks`로 재조회 (압축 출력의 `summary`/`issuetype`/`priority`/`parent`/`labels`/`status` + `issuelinks`). 불일치 시 경고.
 
+**6-6. 요구사항 문서에 이슈 키 기록 (★ import 모드 전용)**
+
+`skills/_shared/requirements-link.md`의 이슈 키 표기대로 `importPath` 문서의 노드 라인에 생성된 키를 Edit으로 덧붙인다. 실패해도 비차단 — 경고 1줄.
+
 ### Step 7: Post Creation Comment (선택)
 
 상위 이슈에 요약 코멘트 게시 (서브태스크 개수, 링크 개수, 병렬 가능 개수, Next 안내) — 본문을 scratchpad md 파일로 쓰고 `python3 "<scripts>/jira-cli.py" comment <KEY> @<파일>`. 서브태스크에는 코멘트 생략.
@@ -312,6 +317,8 @@ Epic을 중첩 생성하지 않는다 — Jira가 Epic 아래 Epic을 제대로 
 - 또는 `/jira-task start PROJ-NEW` — 부모 이슈 작업 바로 시작
 ─────────────────────────────────────────
 ```
+
+import 모드에서는 요약 끝에 1줄 추가: `요구사항 문서에 이슈 키를 기록했습니다 — 다른 작업자가 approach에서 읽으려면 문서를 커밋·push하세요.`
 
 `.jira-context.json`은 건드리지 않는다 (새 이슈는 아직 활성 작업이 아님).
 
@@ -334,5 +341,6 @@ Epic을 중첩 생성하지 않는다 — Jira가 Epic 아래 Epic을 제대로 
 | E11 | 루트 노드 토큰 식별 실패 (`작업`/`Story`/`Epic` 어느 쪽도 아님) | 자연어 모드 폴백 제안 (`AskUserQuestion`) |
 | E12 | `.jira-epic.json` 파싱 실패 / 스코프 Epic 조회 실패 | 경고 1줄 + `epicScope = null`로 진행 (Epic 없이 생성). 중단하지 않는다 |
 | E13 | 스코프 Epic의 프로젝트가 생성 대상 프로젝트와 다름 | 경고 + `AskUserQuestion`(`Epic 없이 진행` / `취소`) |
+| E14 | 문서 노드에 이미 `[<KEY>]` 표기 존재 (재실행) | 기존 키 목록 표시 + `AskUserQuestion`(`키 없는 노드만 생성` / `취소`). 진행 시 `existingKey`를 그 노드의 `created_key`로 써서 parent·링크를 잇는다 |
 
 **Non-goals**: worktree/branch 생성, `.jira-context.json` 수정, 구현/테스트/리뷰 수행, 기존 이슈 수정.
