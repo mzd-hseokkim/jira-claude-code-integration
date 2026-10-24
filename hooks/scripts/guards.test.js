@@ -103,3 +103,28 @@ test('T8: 저장소 밖 임시 파일(PR 본문)은 어떤 도구로든 판정�
   const i = workdir('implementer');
   assert.equal(run('guard-test-files.js', edit(path.join(os.tmpdir(), 'tests', 'test_x.py'), i)), 'allow');
 });
+
+// ─── guard-worktree-remove ───────────────────────────────────────────────
+
+// process.platform을 바꿔 hook을 실행한다 (-r preload).
+function runOn(platform, script, input) {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'guard-platform-'));
+  const preload = path.join(d, 'platform.js');
+  fs.writeFileSync(preload, `Object.defineProperty(process, 'platform', { value: ${JSON.stringify(platform)} });\n`);
+  const p = spawnSync(process.execPath, ['-r', preload, path.join(__dirname, script)], { input: JSON.stringify(input), encoding: 'utf8' });
+  return p.stdout ? JSON.parse(p.stdout).hookSpecificOutput.permissionDecision : 'allow';
+}
+
+test('W1: Windows에서 git worktree remove → deny', () => {
+  assert.equal(runOn('win32', 'guard-worktree-remove.js', bash('git worktree remove ../wt')), 'deny');
+  assert.equal(runOn('win32', 'guard-worktree-remove.js', { tool_name: 'PowerShell', tool_input: { command: 'git -C C:\\repo worktree remove --force ..\\wt' } }), 'deny');
+});
+
+test('W2: macOS·Linux에서는 링크를 따라가지 않으므로 allow', () => {
+  assert.equal(runOn('darwin', 'guard-worktree-remove.js', bash('git worktree remove ../wt')), 'allow');
+  assert.equal(runOn('linux', 'guard-worktree-remove.js', bash('git worktree remove --force ../wt')), 'allow');
+});
+
+test('W3: worktree remove가 아닌 git 명령은 Windows에서도 allow', () => {
+  assert.equal(runOn('win32', 'guard-worktree-remove.js', bash('git worktree list')), 'allow');
+});

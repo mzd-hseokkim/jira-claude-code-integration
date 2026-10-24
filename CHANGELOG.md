@@ -4,8 +4,13 @@
 
 ## [Unreleased]
 
+## [0.72.1] - 2026-10-24
+
 ### Changed
 - README Codex 절에 auto 사용 순서(등급 확정 → 터미널에서 runner → 승인 후 재실행)와 사용량을 적었다.
+
+### Fixed
+- `git worktree remove` 차단 hook(`guard-worktree-remove.js`)이 Windows에서만 동작한다. junction을 따라 들어가 메인 레포를 지우는 문제는 Windows 동작이라 macOS·Linux에서는 명령이 안전한데도 막고 있었고, 대안인 `clean-worktree.py`는 `<TASK-ID>` worktree만 다뤄 다른 worktree는 지울 방법이 없었다.
 
 ## [0.72.0] - 2026-10-20
 

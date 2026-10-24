@@ -12,6 +12,11 @@
  * model is pointed at the script (which itself runs git via subprocess, which
  * this hook does not see).
  *
+ * Windows only: on macOS/Linux git removes a symlink without following it, so
+ * the raw command is safe there — and `clean-worktree.py` only handles
+ * `<worktree base>/<TASK-ID>` worktrees, so denying it would leave any other
+ * worktree with no supported way out.
+ *
  * Input (stdin): {"tool_name": "Bash"|"PowerShell", "tool_input": {"command": "..."}}
  * Output: PreToolUse deny decision, or nothing (allow).
  */
@@ -21,6 +26,7 @@ const fs = require('fs');
 const PATTERN = /\bgit\b[^\n;&|]*\bworktree\s+remove\b/i;
 
 function main() {
+  if (process.platform !== 'win32') return;
   let raw = '';
   try {
     raw = fs.readFileSync(0, 'utf8');
