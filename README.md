@@ -1,6 +1,6 @@
 # jira-integration · Claude Code Plugin
 
-[![Version](https://img.shields.io/badge/version-0.71.0-blue)](.claude-plugin/plugin.json)
+[![Version](https://img.shields.io/badge/version-0.73.2-blue)](.claude-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-8A2BE2)](#)
 [![Jira](https://img.shields.io/badge/Jira-REST_CLI-orange)](scripts/jira-cli.py)
