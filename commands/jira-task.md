@@ -174,14 +174,12 @@ Quick status check — `.jira-context.json`에서 활성 태스크 정보를 읽
 📋 Jira Workflow Summary
 ─────────────────────────────────────────
 ✅ Done: [이번 응답에서 수행한 작업]
-🔧 Used: [사용한 스킬, 에이전트, jira-cli 서브커맨드]
 💡 Next: [다음 추천 작업]
 ─────────────────────────────────────────
 ```
 
 규칙:
 - **Done**: 실제로 수행한 작업을 간결하게 기술 (예: "PROJ-123 기획 문서 생성")
-- **Used**: 사용한 스킬(`jira-task-approach` 등), 에이전트(`jira-reviewer` 등), jira-cli 서브커맨드(`get`, `comment` 등)를 나열. 사용하지 않았으면 생략
 - **Next**: `.jira-context.json`의 `completedSteps` 기반으로 다음 워크플로 단계를 추천. 워크플로 외 작업이면 맥락에 맞는 다음 작업 추천
   - 워크플로 단계 순서: `discover → create → init → start → approach(L2·L3) → test-write → impl → verify → pr → done`
   - L2·L3 `approach` 뒤는 승인 대기 — 승인되면 `test-write`

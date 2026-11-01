@@ -125,9 +125,9 @@ Step 4와의 협력: 격상된 `[CONFLICT]` 항목은 Step 4의 Open Questions�
 - Topic, Slug, Mode (default/lite/from), Generated At
 - Stakeholders (Step 3 답변 1번)
 - Goals & Success Criteria (Step 3 답변 2번)
-- Constraints (Step 3 답변 3번을 **Technical / Schedule / Cost / Regulatory 4 sub-section**으로 분류. 답변에 명시되지 않은 카테고리는 `N/A — 해당 없음` 한 줄로 명시 — 누락 금지.)
-- Non-functional Requirements (Step 3 답변 4번을 **6 카테고리 표**로 정리: 성능 / 가용성 / 보안 / 확장성 / 관측성 / 호환성. 각 항목은 값 또는 `N/A — <사유>`. `TBD`는 사용 금지 — 모르면 Open Questions로 격상. `--lite` 시 본 섹션 전체를 `N/A — lite mode` 한 줄로 대체.)
-- Codebase Context (Step 2 결과: 파일 경로 + 발췌 요약)
+- Constraints (Step 3 답변 3번을 **Technical / Schedule / Cost / Regulatory 4 sub-section**으로 분류. 내용이 없는 카테고리는 쓰지 않는다.)
+- Non-functional Requirements (Step 3 답변 4번을 **6 카테고리 표**로 정리: 성능 / 가용성 / 보안 / 확장성 / 관측성 / 호환성. 값이 있는 행만 쓰고, 값이 있는 행이 없으면 섹션을 생략한다. `TBD`는 사용 금지 — 모르면 Open Questions로 격상. `--lite` 시 본 섹션 생략.)
+- Codebase Context (Step 2 결과: 파일마다 경로와 관련 내용 한 줄. 코드 발췌는 넣지 않는다)
 - Functional Requirements (Step 3 답변과 codebase 컨텍스트로부터 LLM이 합성)
 - **Goals ↔ FR 매핑** (Functional Requirements 합성 직후 도출. 표 형식 `| Goal | 만족하는 FR | 비고 |`. 모든 Goal에 최소 1개 FR 매핑이 원칙. 매핑되지 않는 Goal은 `[P1]`로 Open Questions에 격상. 매핑되지 않는 FR은 Out of Scope 후보 또는 Goal 누락 신호.)
 - Edge Cases (`--lite` 시 생략)
@@ -136,6 +136,8 @@ Step 4와의 협력: 격상된 `[CONFLICT]` 항목은 Step 4의 Open Questions�
 - Technical Approach Hint (요구사항 문서 말미 섹션. plan/design 단계가 사라지고 approach로 통합됨에 따라 구현 방향의 1차 힌트를 여기에 둔다. Codebase Context · Functional Requirements · Constraints를 입력으로 LLM이 합성하며, 코드 스니펫 금지 — 의사결정/접근 옵션/주의사항 위주. `--lite` 시 3-5줄 요약. 자세한 작성 가이드는 템플릿 안내 주석 참조.)
 
 `--from <path>`가 지정된 경우: `<path>` 본문을 베이스로 위 섹션을 보강·재구성한다 (덮어쓰기 X, 보강 O).
+
+**분량 규칙:** 내용이 없는 절은 쓰지 않는다. 문서가 8천 자를 넘으면 Step 4.5에서 주제를 나눌지 사용자에게 묻는다.
 
 **`--lite` 모드 분량 규칙:** 각 섹션 최대 5줄. "Edge Cases"·"Out of Scope" 섹션은 생략. 한 페이지 분량 유지.
 

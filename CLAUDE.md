@@ -31,6 +31,8 @@ atlassian MCP 서버는 **선택**(`/jira setup --mcp`, 대화 중 ad-hoc 질의
 
 - **Language Rule**: 모든 `/jira-task` 스킬 출력은 한국어. 사용자 응답·생성 문서·Jira 코멘트 본문 모두. 예외: 코드/변수명/브랜치명/파일명/명령어는 영어. Jira 코멘트의 섹션 제목(##, ###)은 영어, 내용은 한국어.
 
+- **글쓰기 규칙**: 사람이 읽는 출력의 문체·순서·용어 규칙은 `skills/_shared/writing.md`가 단일 출처다. `conventions.md`가 연결하며, 스킬에 문체 규칙을 다시 적지 않는다. `agents/jira-reviewer.md`만 해당 내용을 짧게 직접 적는다.
+
 - **Markdown for Jira comments**: Jira 코멘트는 마크다운으로 작성.
 
 - **Cache-First Fetch** (approach/test-write/impl/verify/done): 호출 직전 `.jira-context.json`의 `cachedIssue`를 먼저 확인.

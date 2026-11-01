@@ -43,7 +43,7 @@ allowed-tools:
 
 ### Step 3: 증거 저장
 
-- **L2·L3**: 플러그인 `templates/sdlc/verification.md`를 Read해 `work/<TASK-ID>/evidence/verification.md`를 쓴다(표준 사본 표시·안내 주석은 지운다). "수용 조건별 판정" 표, "실행한 검사"(명령과 결과 요약), "독립 검증"(양식대로 목록 한 줄씩: `- [Critical|Warning] <파일:라인> — <요약>. 처리: <작업 담당자 판단 대기 | 수정함 | 후속 이슈>`)에 결과를 옮긴다. `verify-metrics`·`verify-timings` 블록은 파일 맨 위에 그대로 둔다. 화면 캡처 등은 같은 `evidence/`에 둔다.
+- **L2·L3**: 플러그인 `templates/sdlc/verification.md`를 Read해 `work/<TASK-ID>/evidence/verification.md`를 쓴다(표준 사본 표시·안내 주석은 지운다). "수용 조건별 판정" 표, "실행한 검사"(명령과 결과 요약), "독립 검증"(양식대로 목록 한 줄씩: `- [Critical|Warning] <파일:라인> — <요약>. 처리: <작업 담당자 판단 대기 | 수정함 | 후속 이슈>`)에 결과를 옮긴다. `verify-metrics`·`verify-timings` 블록은 파일 맨 위에 그대로 두고, 제목 바로 아래에 "결과"와 "직접 확인할 것"을 둔다. 화면 캡처 등은 같은 `evidence/`에 둔다.
   ```bash
   # 재검증(fix 루프, base 충돌 해결 뒤)이면 기존 verification.md를 새 결과로 덮어쓰고 새 커밋으로 남긴다
   git add work/<TASK-ID>/evidence/
@@ -74,6 +74,7 @@ set -e
    ```markdown
    ## Verification
    - 결과: 검증 통과 | 검증 미통과
+   - 직접 확인할 것: <머지 판단에 영향이 큰 1~3건 | 없음>
    - 수용 조건: 충족 <n> / 미충족 <n> / 미확인 <n>
    - 검사: <명령> <통과 | 실패 n건>
    - 주요 findings: <Critical/Warning 1건 요약 | 없음>
@@ -100,6 +101,7 @@ python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> verify "-" \
 ---
 ✅ **리뷰 요청 준비됨** — <TASK-ID>
 
+- 직접 확인할 것: <머지 판단에 영향이 큰 1~3건 | 없음>
 - 수용 조건: <n>/<n> 충족 (미확인 <n> — 사유는 verification.md)
 - 검사: <명령> 통과
 - PR: <URL> (draft)
@@ -118,7 +120,7 @@ diff와 검증 결과를 직접 확인한 뒤 draft를 풀어 리뷰를 요청�
 
 - 미충족: AC-02 <요약> …
 - Critical: <요약>
-- PR은 draft로 둡니다 (SD-COM-VER-002)
+- 미충족 조건이 있어 PR을 draft로 둡니다
 
 **Next**: `/jira-task impl <TASK-ID>`로 고친 뒤 `/jira-task verify <TASK-ID>`. 테스트가 틀렸다는 판단이면 사유를 남기고 `/jira-task test-write <TASK-ID>`.
 ---

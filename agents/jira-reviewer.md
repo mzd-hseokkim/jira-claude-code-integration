@@ -64,6 +64,8 @@ git diff --name-only <base>..HEAD
 
 전체 200줄 이내. findings는 severity별 상위 10건, 각 `파일:라인 — 한 줄 요약` + 근거 1문장. 맨 앞 두 블록은 형식을 바꾸지 않는다(호출자가 자동 판정과 review-log에 쓴다).
 
+본문은 코드 맥락을 모르는 동료가 읽는다. 짧은 문장으로 쓰고, 비유와 표준 조항 코드(`SD-COM-*`)를 쓰지 않는다.
+
 ```
 <!-- verify-metrics
 acTotal: <N>
@@ -84,10 +86,12 @@ qualitySec: <N | null>
 **결과**: 검증 통과 | 검증 미통과
 (검증 통과 = 미충족 0, 검사 통과 또는 검사 없음, Critical 0)
 
+**직접 확인할 것**: <실행하지 않은 검사, 미확인 조건, 테스트가 덮지 못한 동작, plan에서 머지 뒤로 미룬 확인(L2·L3는 plan.md에서 찾는다). 없으면 "없음">
+
 ## 수용 조건별 판정
 | 수용 조건 | 판정 | 근거 |
 |---|---|---|
-| AC-01 | 충족 | `OrderCancelTest.AC-01 ...` 통과, `src/order/cancel.ts:42` |
+| AC-01 주문 취소 시 재고 복구 | 충족 | `OrderCancelTest.AC-01 ...` 통과, `src/order/cancel.ts:42` |
 
 ## 실행한 검사
 $ <명령>

@@ -192,7 +192,7 @@ fresh 모드는 worktree-local 파일이 없으므로 init과 같은 필드(`tas
 - 담당자: <본인 표시명> (자동 지정)
 - 브랜치: feature/<TASK-ID>
 - Worktree: <path>
-- 등급: <L1|L2|L3> (위험 신호: <번호 또는 없음>) — 라벨 `sdlc-<Lx>`
+- 등급: <L1|L2|L3> (위험 신호: <이름 또는 없음>) — 라벨 `sdlc-<Lx>`
 - Jira 코멘트 게시됨
 
 **Progress**: init → **start ✓** → approach(L2·L3) → test-write → impl → verify → pr → done
