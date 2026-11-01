@@ -62,7 +62,7 @@ python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> - - "<worktree>/.jira-context.json" --ca
 1. `cachedIssue.attachments`에서 플러그인 산출물(`<TASK-ID>.`로 시작)을 뺀다. 이미지(≤5MB)·PDF(≤10MB)·텍스트류(md/txt/csv/json/yaml/xml/html/sql, ≤1MB)를 최대 10개, description에 `!파일명!`으로 삽입된 것부터 고른다. 그 밖의 형식은 파일명만 기록한다.
 2. `python3 "<scripts>/jira-cli.py" download "${TMPDIR:-/tmp}/jira-attachments/<TASK-ID>" <id>...` — 실패해도 경고 1줄 후 진행.
 3. Read로 열어 화면 구성·필드·흐름·수치·예외 조건처럼 구현에 영향을 주는 사실만 쓴다. description 속 외부 링크는 fetch하지 않고 URL만 기록한다.
-4. 반영 위치: spec의 "외부 원본"(첨부·링크와 검토한 판), 요구사항·수용 조건. 첨부와 description이 충돌하면 미결 질문으로 남긴다(Step 3).
+4. 반영 위치: spec의 "외부 원본"(첨부·링크와 검토한 버전), 요구사항·수용 조건. 첨부와 description이 충돌하면 미결 질문으로 남긴다(Step 3).
 
 ### Step 2: 요구사항 문서와 공통 문서
 

@@ -1,4 +1,4 @@
-<!-- 표준 사본: mzd-software-development-standard 00-ai-native-sdlc-process v0.9.0b, templates/work/TASK-ID/spec.md (a599561). 이 줄은 플러그인 보관 표시라 산출물에 옮길 때 지운다. 플러그인 유지보수: 사본은 고치지 말고 표준이 바뀌면 통째로 교체. -->
+<!-- 표준 사본: mzd-software-development-standard 00-ai-native-sdlc-process v0.9.1b, templates/work/TASK-ID/spec.md (f9284ef). 이 줄은 플러그인 보관 표시라 산출물에 옮길 때 지운다. 플러그인 유지보수: 사본은 고치지 말고 표준이 바뀌면 통째로 교체. -->
 <!--
 L2·L3 작업에서 work/<작업 ID>/spec.md 로 복사해 씁니다 (SD-COM-ART-001·002).
 수용 조건은 이 파일에만 두고 AC-01부터 번호를 붙입니다 (SD-COM-ART-003). 고객 요구사항 ID가 있으면 괄호로 함께 적습니다 (SD-COM-SIM-002).
@@ -12,7 +12,7 @@ L2·L3 작업에서 work/<작업 ID>/spec.md 로 복사해 씁니다 (SD-COM-ART
 - 등급: L2 | L3
 - 이슈: <이슈 링크>
 - 의도: [intent.md](intent.md) (L3만)
-- 외부 원본: 화면 디자인, 고객 요구사항정의서 등 링크와 검토한 판 (SD-COM-ART-006)
+- 외부 원본: 화면 디자인, 고객 요구사항정의서 등 링크와 검토한 버전 (SD-COM-ART-006)
 
 ## 참조
 

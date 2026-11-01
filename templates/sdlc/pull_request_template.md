@@ -1,4 +1,4 @@
-<!-- 표준 사본: mzd-software-development-standard 00-ai-native-sdlc-process v0.9.0b, templates/.github/pull_request_template.md (a599561). 이 줄은 플러그인 보관 표시라 산출물에 옮길 때 지운다. 플러그인 유지보수: 사본은 고치지 말고 표준이 바뀌면 통째로 교체. -->
+<!-- 표준 사본: mzd-software-development-standard 00-ai-native-sdlc-process v0.9.1b, templates/.github/pull_request_template.md (f9284ef). 이 줄은 플러그인 보관 표시라 산출물에 옮길 때 지운다. 플러그인 유지보수: 사본은 고치지 말고 표준이 바뀌면 통째로 교체. -->
 <!--
 .github/pull_request_template.md 로 복사해 씁니다.
 PR 제목에 작업 ID를 넣습니다 (SD-COM-ART-011).
@@ -32,7 +32,7 @@ $ <검사 명령>
 
 `plan.md` 결정 기록에 남긴 내용을 요약합니다 (SD-COM-ART-007). 없으면 "없음".
 
-## 지속 지식 옮김
+## 공통 문서에 옮긴 내용
 
 이 작업에서 바뀐 정책·용어·상태와 불변식·구조·설계 결정을 옮긴 공통 문서를 적습니다 (SD-COM-ART-008). 없으면 "없음".
 
