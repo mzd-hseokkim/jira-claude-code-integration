@@ -81,7 +81,7 @@ git commit -m "feat(<TASK-ID>): <요약>"       # 버그 수정은 fix(<TASK-ID>
 
 `Read skills/_shared/pr-body.md` 후:
 - **L1**: push 후 draft PR을 연다. "변경 내용"에 무엇을 왜 바꿨는지 3~5줄, `testWriteSkipped`가 있으면 "검증"에 그 사유.
-- **L2·L3**: push 후 본문의 "계획과 달라진 점"(plan 결정 기록 요약), "테스트 기대값 변경"(context `testExpectationChanges`), "지속 지식 옮김"을 갱신한다.
+- **L2·L3**: push 후 본문의 "계획과 달라진 점"(plan 결정 기록 요약), "테스트 기대값 변경"(context `testExpectationChanges`), "공통 문서에 옮긴 내용"을 갱신한다.
 
 ### Step 7: Jira와 context
 
