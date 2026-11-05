@@ -1,7 +1,8 @@
 {
   "name": "jira-claude-code-integration",
   "owner": {
-    "name": "bory9"
+    "name": "김형석",
+    "email": "hseokkim@mz.co.kr"
   },
   "plugins": [
     {

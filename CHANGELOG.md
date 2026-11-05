@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### Added
+- MIT `LICENSE` 파일을 추가했다. README의 라이선스 배지 링크가 이제 열린다.
+
+### Changed
+- 플러그인과 마켓플레이스의 작성자 표기를 김형석(hseokkim@mz.co.kr)으로 바꿨다.
+
 ### Fixed
 - README 버전 배지를 현재 버전 0.73.2로 고쳤다.
 
