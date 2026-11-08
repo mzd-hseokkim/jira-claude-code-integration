@@ -4,6 +4,16 @@
 
 ## [Unreleased]
 
+## [0.74.0] - 2026-11-08
+
+### Added
+- `/jira-task verify`가 LLM 검증 전에 프로젝트 `AGENTS.md`의 검사 명령(표준 ai-kit의 "## 검사", 예: `./gradlew build`)을 스크립트(`scripts/verify-checks.py`)로 실행한다. 통과 여부는 exit code로 정한다.
+
+### Changed
+- 검사가 코드 문제로 실패하면 LLM 검증을 하지 않고 바로 "검증 미통과"로 기록한다. auto는 실패한 task·테스트 요약을 수정 agent에 넘기고, 수정 agent는 수렴 직전에 같은 검사 명령을 1회 돌려 확인한다.
+- 검사가 실행 환경 문제(Docker 미실행, 런타임 없음, 네트워크, 시간 초과 등)로 실패하면 검증 결과를 남기지 않고 멈춘다. auto는 수정 루프에 들어가지 않고 중단한다.
+- 검증 세션은 통과한 검사를 다시 실행하지 않는다. 구현 세션이 보고한 lint 결과(`implSelfCheck.lint`)도 더는 인용하지 않는다.
+
 ## [0.73.2] - 2026-11-01
 
 ### Fixed

@@ -37,9 +37,26 @@ allowed-tools:
 - 수용 조건: L2·L3는 `work/<TASK-ID>/spec.md`. L1은 `cachedIssue`의 AC(없으면 PR 본문 "변경 내용"의 바뀌는 동작).
 - test 커밋: context `testWrite.commit`(rebase 뒤라면 검증 세션이 커밋 메시지로 다시 찾는다), 생략 사유 `testWriteSkipped`.
 
+### Step 1.5: 검사 실행 (스크립트 판정, LLM 검증 전)
+
+검사 통과 여부는 스크립트의 exit code로 정한다. 명령은 프로젝트 `AGENTS.md`가 정한다(표준 ai-kit의 "## 검사").
+```bash
+python3 "<scripts>/verify-checks.py" "<worktree>" > "<scratchpad>/verify-checks.json"; echo "exit=$?"   # Bash timeout 600000
+```
+- **exit 0** (`pass`): Step 2로. JSON의 `command`·`durationSec`을 검증 세션에 넘긴다.
+- **exit 2** (`none`, 명령 없음): Step 2로. 검증 세션이 기존 방식으로 명령을 찾고, "직접 확인할 것"에 "AGENTS.md에 검사 명령 없음"을 넣는다.
+- **exit 1** (`fail`): Step 2를 하지 않는다. `outputTail`을 읽어 원인을 나눈다.
+  - **실행 환경 문제**(Docker 미실행, JDK·런타임·bash 없음, 의존성 내려받기·네트워크 실패처럼 코드를 고쳐도 풀리지 않는 것. Bash 도구가 시간 초과로 끊겨 `exit=` 줄이 없을 때도 여기에 넣고 원인을 "검사 시간 초과"로 적는다): 검증이 일어나지 않았으므로 Step 3~5(review-log 포함)를 하지 않고 역할 표시만 지운 뒤(`--patch '{"activeRole":null}'`) 원인 한 줄과 명령을 알리고 멈춘다. "환경을 고친 뒤 `/jira-task verify <TASK-ID>`를 다시 실행하세요". auto wrapper면 result=failed, failureReason="검사 환경 문제: <원인>".
+  - **코드 문제**: 아래를 검증 결과로 삼아 Step 3부터 진행한다(결과: 검증 미통과).
+    - `verify-metrics`: acTotal=<AC 수>, acMet 0, acUnmet 0, acUnverified=<AC 수>, checksPassed false, criticalCount 1, warningCount 0, infoCount 0. `verify-timings`: checksSec=`durationSec`, 나머지 null.
+    - 수용 조건별 판정: 모두 "미확인 — 검사 실패로 판정하지 않음". 실행한 검사: 명령, exit code, 실패한 task·테스트 이름과 메시지(5줄 이내). 독립 검증 Critical 1건: "검사 실패: <요약>". 직접 확인할 것: "검사 실패 — 수용 조건 판정 전".
+    - auto `unmet`: 실패한 task·테스트마다 한 줄씩 `검사 실패: <task·테스트 이름> — <메시지>` (수정 agent가 이것만 보고 고친다).
+    - review-log findings: `[{"severity":"Critical","file":"<실패 위치 | 빈 값>","line":0,"category":"checks","message":"검사 실패: <요약>"}]`.
+    - 서명 줄: `Checked by verify-checks.py (검사 실패로 LLM 검증 생략)`.
+
 ### Step 2: 검증 (Mode A / Mode B)
 
-`refs/verifier-mode.md`대로 분기한다. 결과(`verify-metrics` 블록 + 본문)가 검증의 단일 출처다 — main 세션이 판정을 고치거나 덧붙이지 않는다. subagent가 실패하면 재시도하거나 사용자에게 알린다(main 세션이 대신 검증하지 않는다).
+Step 1.5가 `pass`·`none`일 때만 한다. `refs/verifier-mode.md`대로 분기한다. 결과(`verify-metrics` 블록 + 본문)가 검증의 단일 출처다 — main 세션이 판정을 고치거나 덧붙이지 않는다. subagent가 실패하면 재시도하거나 사용자에게 알린다(main 세션이 대신 검증하지 않는다).
 
 ### Step 3: 증거 저장
 
@@ -83,7 +100,7 @@ set -e
    ---
    Verified by jira-reviewer <subagent | self-mode> (harness: <실행 중인 harness>, model: <정식 모델 ID>)
    ```
-   끝의 서명 줄은 review-log 분석이 검증 주체를 식별하는 데 쓴다. Mode A는 `subagent`, Mode B(`[verify-self-mode]`)는 `self-mode`.
+   끝의 서명 줄은 review-log 분석이 검증 주체를 식별하는 데 쓴다. Mode A는 `subagent`, Mode B(`[verify-self-mode]`)는 `self-mode`. Step 1.5에서 검사 실패로 끝났으면 그 단계의 서명 줄을 쓴다.
 
 ### Step 6: context와 완료 요약
 

@@ -120,7 +120,7 @@ const guardHeader = [
     ? `- 즉석 스크립트 작성 금지. 스킬의 명령을 그대로 실행한다.`
     : `- 셸 명령은 Bash 도구만 쓴다. PowerShell 도구·즉석 스크립트 작성 금지.`,
   scriptsDir
-    ? `- 플러그인 스크립트는 전부 "${scriptsDir}/" 아래에 있다 (jira-cli.py, jira-context-update.py, sdlc-gate.py, append-review-log-wrapper.sh, detect-lint.sh). Skill 본문의 script-lookup.md Read·lookup 블록·ls 확인을 전부 생략하고 이 절대 경로를 바로 쓴다.`
+    ? `- 플러그인 스크립트는 전부 "${scriptsDir}/" 아래에 있다 (jira-cli.py, jira-context-update.py, sdlc-gate.py, verify-checks.py, append-review-log-wrapper.sh, detect-lint.sh). Skill 본문의 script-lookup.md Read·lookup 블록·ls 확인을 전부 생략하고 이 절대 경로를 바로 쓴다.`
     : `- 플러그인 스크립트는 Skill 본문의 script-lookup 규약으로 1회만 해석한다.`,
   `- 이 worktree의 .jira-context.json은 "${worktreeCtx}"다 — 경로를 찾기 위한 ls/find 금지.`,
   `- Jira 호출은 전부 \`python3 "${scriptPath('jira-cli.py')}" ...\`로 한다 (규약: skills/_shared/jira-cli.md). mcp__atlassian__* 도구와 그것을 위한 ToolSearch는 사용하지 마라.`,
@@ -274,10 +274,11 @@ function verifyPrompt(delta) {
     `[verify-self-mode]${delta ? ' [verify-delta-mode]' : ''}`,
     ``,
     delta
-      ? `이번 검증은 fix loop 재검증이다. [verify-delta-mode] 규칙(verifier-mode.md)에 따라 직전 미충족·미확인 AC, Critical, fixSelfCheck.files의 diff를 재검증하고 검사 명령을 1회 다시 실행한다.`
+      ? `이번 검증은 fix loop 재검증이다. Skill Step 1.5(검사)를 다시 실행하고, 통과하면 [verify-delta-mode] 규칙(verifier-mode.md)에 따라 직전 미충족·미확인 AC, Critical, fixSelfCheck.files의 diff를 재검증한다.`
       : ``,
     `Jira task ${taskId}의 verify 단계를 수행하라. ${skillCall('verify')}.`,
     `본 wrapper는 구현과 분리된 새 컨텍스트이고 추가 Agent 권한이 없다 — [verify-self-mode]에 따라 Skill Step 2를 직접 수행한다. 코드를 고치지 않는다.`,
+    `Skill Step 1.5의 검사가 코드 문제로 실패하면 Step 2를 건너뛰고 그 결과로 Step 3부터 진행한다. 실행 환경 문제면 result=failed로 반환한다.`,
     ``,
     `verify-metrics 블록 값을 metrics로 반환하라.`,
     `unmet에는 미충족 AC, Critical finding, 실패한 검사를 한 줄씩 넣어라 (예: "AC-02 PAID 주문 취소가 관리자 외에도 허용됨 — src/order/cancel.ts:42"). 통과면 빈 배열.`,
@@ -308,6 +309,7 @@ function fixPrompt(unmet) {
     `- lint: \`bash ${scriptPath('detect-lint.sh')}\` 출력의 도구만 (NONE이면 skipped), 변경 파일 전체를 배치 1회.`,
     `- typecheck: 프로젝트가 선언한 것만. 없으면 skipped.`,
     `- 이 작업의 테스트(context testWrite.tests)와 관련 테스트만 — 전체 스위트는 재검증이 돈다.`,
+    `- 위 센서가 green이고 수정 대상에 "검사 실패:" 줄이 있었으면 마지막에 \`python3 "${scriptPath('verify-checks.py')}" "${worktreePath}"\`를 1회 실행한다(Bash timeout 600000). exit 1이면 출력의 outputTail로 회차를 이어간다 — verify가 같은 명령으로 판정한다.`,
     `5회 안에 green이 안 되면 멈추고 converged=false, 마지막 센서 출력을 sensorSummary(3줄 이내)로 반환하라.`,
     ``,
     `## C. 커밋과 기록 (수렴했을 때)`,

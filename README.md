@@ -105,7 +105,7 @@ L3: start → approach(intent) → [제품 책임자] → approach(spec) → [�
 | approach | `work/<KEY>/`에 intent·spec·plan 작성 → 커밋 → draft PR → 승인 요청 → **정지** | — |
 | test-write | plan 승인을 스크립트로 확인 → 수용 조건(AC)마다 테스트 → 올바른 이유로 실패하는지 확인 → 테스트만 커밋 | `test-writer` |
 | impl | 테스트를 통과시키는 구현, 계획과 달라진 점 기록, 지속 지식을 공통 문서로 옮기기 | `implementer` (테스트 수정 불가) |
-| verify | 새 컨텍스트에서 AC마다 충족/미충족/미확인 판정, 검사 명령 실행, `evidence/verification.md` | `verifier` (코드 수정 불가) |
+| verify | `AGENTS.md` 검사 명령을 먼저 스크립트로 실행(실패하면 LLM 검증 생략), 통과하면 새 컨텍스트에서 AC마다 충족/미충족/미확인 판정, `evidence/verification.md` | `verifier` (코드 수정 불가) |
 | pr | PR 본문 재생성. 사람이 draft를 풀면 Jira "검토 중" | — |
 | done | GitHub에서 머지를 확인한 뒤에만 Jira "완료" | — |
 

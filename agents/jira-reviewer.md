@@ -47,9 +47,10 @@ git diff --name-only <base>..HEAD
 - test 커밋 이후 테스트 파일이 바뀌었으면(`git diff <test 커밋> HEAD -- <테스트 파일>`) Critical로 보고한다 — 구현 세션은 테스트를 고칠 수 없다. test 커밋은 `git log --format=%h --grep='^test(<KEY>)' <base>..HEAD`의 마지막(가장 오래된) 줄로 찾는다. rebase·재정렬로 SHA가 바뀌므로 호출자가 넘긴 SHA와 다르면 이쪽을 쓴다. base 충돌 해결로 테스트 파일이 바뀐 경우(context `testExpectationChanges`에 근거가 있거나 `## Rebased onto` 기록이 있음)는 그 변경이 두 쪽 테스트를 합친 것인지 확인하고, 기대값이 근거 없이 바뀌었을 때만 Critical로 본다.
 
 ### 3. 검사 실행
-- 명령: 프로젝트 `AGENTS.md`의 "## 검사" 절 명령. 없으면 선언된 테스트 명령(`package.json` scripts의 test, `pytest`, `./gradlew test` 등)과 계획에 E2E가 있으면 Playwright. 자동 설치되는 도구(`npx <미선언 도구>`)는 실행하지 않는다.
-- 한 번 실행하고 통과·실패 수와 실패 메시지를 기록한다. 실패가 이 작업과 무관해 보여도 그대로 기록한다.
-- Lint: worktree `.jira-context.json`의 `implSelfCheck.lint`가 있으면 인용하고 재실행하지 않는다. 없으면 `bash <scripts>/detect-lint.sh` 1회 → 출력 명령을 변경 파일 전체에 한 번에.
+- 입력 "검사 결과"가 **통과**면 다시 실행하지 않는다. 호출자가 `verify-checks.py`로 `AGENTS.md`의 검사 명령을 실행해 통과한 것이다. "실행한 검사"에 그 명령과 "통과 (verify-checks.py)"를 적고 `checksPassed: true`. 그 명령에 lint가 포함됐는지는 따지지 않는다(표준 검사 명령은 빌드·테스트·린트·구조 검사를 한 번에 돌린다).
+- 입력이 **명령 없음**일 때만 직접 실행한다. 명령: 선언된 테스트 명령(`package.json` scripts의 test, `pytest`, `./gradlew test` 등)과 계획에 E2E가 있으면 Playwright. 자동 설치되는 도구(`npx <미선언 도구>`)는 실행하지 않는다.
+  - 한 번 실행하고 통과·실패 수와 실패 메시지를 기록한다. 실패가 이 작업과 무관해 보여도 그대로 기록한다.
+  - Lint: `bash <scripts>/detect-lint.sh` 1회 → 출력 명령을 변경 파일 전체에 한 번에. 구현 세션의 `implSelfCheck.lint`는 인용하지 않는다.
 
 ### 4. 독립 검증 (코드 품질)
 1차 입력은 `git diff <base>..HEAD` 본문이다. 변경 파일 전문은 맥락이 필요할 때만 읽고, 읽었으면 적는다.
