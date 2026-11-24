@@ -55,7 +55,7 @@ allowed-tools:
 
 ### Step 2: 테스트 쓰기
 
-- 프로젝트의 프레임워크·위치·이름 규칙을 따른다. 테스트 이름이나 설명에 AC 번호를 넣는다(예: `AC-02 PAID 주문은 관리자만 취소한다`).
+- 프로젝트의 테스트 표준을 따른다(`skills/_shared/conventions.md` "프로젝트 표준" — 테스트 파일이 들어갈 폴더의 `AGENTS.md`가 가리키는 테스트 지침 포함). 표준이 없으면 같은 폴더의 기존 테스트에서 프레임워크·위치·이름 규칙을 따른다. 테스트 이름이나 설명에 AC 번호를 넣는다(예: `AC-02 PAID 주문은 관리자만 취소한다`).
 - 버그 수정은 두 종류를 쓴다: 지금 코드에서 실패하는 재현 테스트(기대 동작), 지금도 통과해야 하는 회귀 방지 테스트("바뀌면 안 되는 동작").
 - E2E가 계획에 있으면 Playwright 등 프로젝트 도구로 쓴다.
 - **운영 코드는 고치지 않는다.** 테스트가 컴파일되도록 운영 코드에 빈 껍데기를 만드는 것도 구현 세션 몫이다.
@@ -74,6 +74,16 @@ allowed-tools:
 | 회귀 방지 테스트가 실패 | 테스트를 고친다(지금 동작을 지키는 테스트여야 한다) |
 
 결과를 AC별로 정리한다: `AC-01 실패(올바른 이유) / AC-03 회귀 방지 통과 / …`.
+
+### Step 3.5: Lint (커밋 전 필수)
+
+구현 세션은 테스트 파일을 고칠 수 없으므로, 여기서 lint 오류를 남기면 impl·verify가 막힌다. 테스트 쓰기와 실패 확인이 끝난 뒤 커밋 전에 한 번 돌린다.
+
+1. 명령은 `skills/_shared/conventions.md` "Lint"로 정하고 lint와 format을 새로 쓰거나 고친 테스트 파일에만 실행한다. 타입체크는 돌리지 않는다(아직 없는 모듈 때문에 실패하는 것이 정상이다).
+2. 오류와 경고는 테스트 파일에서 고친다. 억제 주석은 프로젝트 규칙이 허용할 때만 그 규칙대로 쓴다.
+3. 아직 없는 함수·모듈 때문에만 생기는 오류(해석되지 않는 import, 그 때문에 `any`로 추론되어 생기는 type-aware 규칙 위반)는 고치지 않고 건수를 기록한다. impl이 구현하면 사라져야 한다.
+4. 고쳤으면 lint를 1회 다시 돌리고, Step 3의 테스트도 1회 다시 돌려 판정이 그대로인지 확인한다.
+5. 그래도 남은 오류가 3번에 해당하지 않으면 커밋하지 말고 멈춰서 보고한다.
 
 ### Step 4: 커밋과 push
 
@@ -94,20 +104,22 @@ Jira 코멘트(생략이면 사유만):
 - 커밋: <SHA> (test)
 - AC별: AC-01 실패(올바른 이유), AC-02 실패, AC-03 회귀 방지 통과
 - 기대값 변경: 없음 | <n>건 (PR 본문에 근거)
+- Lint: <도구> 오류 <n>건(구현 전 모듈 때문 <m>건) | 선언된 도구 없음
 ```
 
 ```bash
 python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> test-write "-" \
     "<worktree>/.jira-context.json" "<repoRoot>/.jira-context.json" \
-    --patch '{"activeRole":null,"planApproval":{"approver":"<login>","sha":"<sha>","url":"<url>"},"testWrite":{"commit":"<SHA>","tests":["<파일>"],"failing":<n>,"guards":<m>}}'
+    --patch '{"activeRole":null,"planApproval":{"approver":"<login>","sha":"<sha>","url":"<url>"},"testWrite":{"commit":"<SHA>","tests":["<파일>"],"failing":<n>,"guards":<m>,"lint":{"tool":"<도구명|none>","errors":<N>,"pendingImpl":<N>}}}'
 ```
-`failing`은 올바른 이유로 실패한 테스트 수, `guards`는 지금도 통과해야 하는 회귀 방지 테스트 수. `planApproval`은 이번에 확인했을 때만(L1·재실행은 키를 빼고), `testWriteSkipped`·`testExpectationChanges`는 해당할 때만 넣는다.
+`failing`은 올바른 이유로 실패한 테스트 수, `guards`는 지금도 통과해야 하는 회귀 방지 테스트 수, `lint.errors`는 Step 3.5 뒤 남은 오류 수, `lint.pendingImpl`은 그중 아직 없는 모듈 때문인 수. `planApproval`은 이번에 확인했을 때만(L1·재실행은 키를 빼고), `testWriteSkipped`·`testExpectationChanges`는 해당할 때만 넣는다.
 
 ```
 ---
 ✅ **Tests Written** — <TASK-ID>
 
 - 테스트 커밋: <SHA> — 실패 <n>건(올바른 이유), 회귀 방지 <n>건
+- Lint: <도구> 남은 오류 <n>건(구현 전 모듈 때문 <m>건) | 선언된 도구 없음
 - (L2·L3) 승인: @<approver> <sha>
 
 **Progress**: init → start → approach(L2·L3) → **test-write ✓** → impl → verify → pr → done

@@ -34,17 +34,17 @@ allowed-tools:
 ### Step 1: 입력
 
 - **L2·L3**: `work/<TASK-ID>/plan.md`의 작업 순서·바뀌는 파일·위험, `spec.md`의 수용 조건. 이슈 본문은 `cachedIssue`로 충분하다(없을 때만 `jira-cli.py get`).
-- **L1**: 이슈 description·AC. 읽는 파일은 바꿀 대상과 그 정본 1개까지로 한다 — 유사 파일 탐색·메타 확인은 하지 않는다.
+- **L1**: 이슈 description·AC. 읽는 파일은 바꿀 대상과 그 정본 1개, 그리고 바꿀 대상 폴더의 `AGENTS.md`(와 그것이 이 변경에 대해 가리키는 표준)까지로 한다 — 유사 파일 탐색·메타 확인은 하지 않는다.
 - context `testWrite.tests`(test-write가 쓴 테스트 파일)와 `testWriteSkipped`.
 
 ### Step 2: 구현
 
-- 작업 순서를 따른다. 기존 코드 컨벤션과 패턴을 따른다.
+- 작업 순서를 따른다. 프로젝트 표준을 따른다(`skills/_shared/conventions.md` "프로젝트 표준"). 표준이 정하지 않은 부분은 기존 코드의 컨벤션과 패턴을 따른다. 기존 코드가 표준과 다르면 그 방식을 새 코드에 옮기지 않는다 — 프로젝트가 정한 예외일 때만 따르고, 판단이 서지 않으면 멈추고 묻는다.
 - 진행 중 확인은 타입체크·컴파일과 **이 작업의 테스트만** 실행한다. 전체 스위트는 verify가 돈다.
 - 요구사항을 일반적으로 구현한다. 특정 테스트 값만 통과하도록 분기하거나 결과를 하드코딩하지 않는다.
 - **금지**:
   - 테스트 파일 수정·삭제·skip (hook이 막는다). 테스트가 틀렸거나 과제가 불가능하다고 판단되면 멈추고, 어느 테스트가 왜 틀렸는지 보고한다 — test-write로 되돌릴지는 사용자가 정한다.
-  - 억제 주석(`eslint-disable`, `@SuppressWarnings`, `# noqa`, `# type: ignore`, `NOSONAR` 등)과 분석 제외 설정 추가(CQ-COM-AGT-001). 꼭 필요하면 멈추고 사유를 보고한다.
+  - 억제 주석(`eslint-disable`, `@SuppressWarnings`, `# noqa`, `# type: ignore`, `NOSONAR` 등)과 분석 제외 설정 추가(CQ-COM-AGT-001). 꼭 필요하면 멈추고 사유를 보고한다. 프로젝트 규칙이 억제를 허용하면(예: 한 줄 억제에 사유를 달고 PR 본문에 적기) 그 규칙대로 쓰고 PR 본문에 적는다.
 - **계획과 달라지면**(L2·L3) 같은 PR에서 `plan.md`의 "결정 기록"에 날짜·바뀐 내용·이유를 항목당 3줄 이내로 적는다(SD-COM-ART-007). 조사 경위와 측정 기록은 `evidence/`에 두고 링크한다. 수용 조건을 바꿔야 하면 구현을 멈추고 알린다 — spec 재승인 대상이다(SD-COM-GAT-006).
 - 위험 신호를 새로 발견했거나 L1이 한 문장으로 설명되지 않게 되면 멈추고 등급 재확정을 요청한다(`skills/_shared/sdlc-level.md` "등급을 바꿀 때").
 
@@ -69,13 +69,15 @@ git commit -m "feat(<TASK-ID>): <요약>"       # 버그 수정은 fix(<TASK-ID>
 | 구조 변화 | `docs/architecture/` |
 | 설계 결정 | `docs/decisions/` (ADR) |
 
-옮긴 것이 있으면 `git add <문서...>` → `git commit -m "docs(<TASK-ID>): 지속 지식 옮기기"`. 없으면 "없음"으로 기록한다. 프로젝트에 해당 폴더가 없으면 만들지 말고 PR 본문에 "옮길 문서 없음(폴더 미도입)"으로 남긴다.
+프로젝트 `AGENTS.md`가 이 문서들의 위치를 정했으면(예: ADR 폴더 `docs/adr/`) 표 대신 그 위치를 쓴다.
+
+옮긴 것이 있으면 `git add <문서...>` → `git commit -m "docs(<TASK-ID>): 지속 지식 옮기기"`. 없으면 "없음"으로 기록한다. 프로젝트가 위치를 정하지 않았고 해당 폴더도 없으면 만들지 말고 PR 본문에 "옮길 문서 없음(폴더 미도입)"으로 남긴다.
 
 ### Step 5: Self-Check (1회)
 
 1. **계획 대조**: plan 작업 순서(L1은 이슈 AC)를 실제 변경과 하나씩 대조한다. 빠진 항목은 마저 구현하고, 의도적으로 뺀 항목은 사유를 plan 결정 기록(L1은 Jira 코멘트)에 적는다.
 2. **이 작업의 테스트 통과**: test-write의 테스트를 한 번 더 돌린다. 실패가 남으면 완료로 처리하지 않는다.
-3. **Lint 1회**: `bash <scripts>/detect-lint.sh` 1회 호출(`LINT <name> <cmd>` / `FORMAT <name> <cmd>` / `NONE`). 출력 명령을 변경 파일 전체에 한 번에 실행하고, 오류는 고친 뒤 1회만 재실행한다. `NONE`이면 `"lint":{"tool":"none"}`으로 기록한다. 구현 중에는 lint를 돌리지 않는다. verify는 이 기록을 인용하지 않고 검사 명령을 따로 실행한다.
+3. **Lint 1회**: 명령은 `skills/_shared/conventions.md` "Lint"로 정한다. 변경 파일 전체와 context `testWrite.tests`에 한 번에 실행하고, 운영 코드의 오류는 고친 뒤 1회만 재실행한다. 테스트 파일에 오류가 남으면(test-write가 남긴 `testWrite.lint.pendingImpl`이 구현 뒤에도 사라지지 않은 경우 포함) 고치지 말고 파일·규칙을 보고한다. `NONE`이면 `"lint":{"tool":"none"}`으로 기록한다. 구현 중에는 lint를 돌리지 않는다. verify는 이 기록을 인용하지 않고 검사 명령을 따로 실행한다.
 
 ### Step 6: push와 PR
 

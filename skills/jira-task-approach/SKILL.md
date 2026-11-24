@@ -67,7 +67,7 @@ python3 "$JIRA_CTX_UPDATE_PY" <TASK-ID> - - "<worktree>/.jira-context.json" --ca
 ### Step 2: 요구사항 문서와 공통 문서
 
 1. 요구사항 문서를 `Read skills/_shared/requirements-link.md`의 순서(사용자 지정 → 출처 줄 → 키 역참조 → Glob, 모호하면 채택 안 함)로 확정한다. 노드를 알면 그 노드와 상위 Story 범위만 쓴다. 문서 내용은 복사하지 않고 링크한다(SD-COM-ART-004) — intent의 배경, spec의 참조 절.
-2. 프로젝트 공통 문서가 있으면 읽는다: spec 전에는 `docs/policies/`·`docs/glossary.md`, plan 전에는 `docs/domain/`·`docs/architecture/`·`docs/decisions/`. 없는 폴더는 건너뛴다.
+2. 프로젝트 공통 문서를 읽는다. 프로젝트 `AGENTS.md`가 문서 위치·권위 순서를 정했으면 그것을 따른다(`skills/_shared/conventions.md` "프로젝트 표준"). 정하지 않았으면 spec 전에는 `docs/policies/`·`docs/glossary.md`, plan 전에는 `docs/domain/`·`docs/architecture/`·`docs/decisions/`를 읽고 없는 폴더는 건너뛴다. plan은 바꿀 파일이 있는 폴더의 `AGENTS.md`가 정한 설계·코딩 표준에 맞게 쓰고, 표준과 다르게 해야 하면 승인 요청의 "결정할 것"에 적는다.
 3. 남은 Open Questions(P1/P2/[CONFLICT])는 미결 질문으로 옮긴다(Step 3).
 
 ### Step 3: 산출물 쓰기

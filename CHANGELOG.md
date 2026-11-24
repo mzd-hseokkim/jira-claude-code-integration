@@ -4,10 +4,19 @@
 
 ## [Unreleased]
 
+## [0.75.0] - 2026-11-24
+
 ### Added
 - MIT `LICENSE` 파일을 추가했다. README의 라이선스 배지 링크가 이제 열린다.
+- `/jira-task test-write`가 커밋 전에 새로 쓴 테스트 파일에 프로젝트 lint·format을 돌리고 오류를 고친다. 아직 구현되지 않은 모듈 때문에 생기는 오류만 남기고 건수를 기록한다. 구현 세션은 테스트 파일을 고칠 수 없어, 테스트 파일의 lint 오류가 impl·verify를 막던 문제를 없앤다.
 
 ### Changed
+- approach·test-write·impl과 auto의 수정 단계가 프로젝트 표준을 따른다. 루트와 바꿀 파일 폴더의 `AGENTS.md`(또는 `CLAUDE.md`)가 정한 설계·코딩·테스트 규칙이 플러그인 규칙보다 앞선다. 규칙은 `skills/_shared/conventions.md` "프로젝트 표준"에 있다.
+- impl이 "기존 코드 패턴을 따른다" 대신 프로젝트 표준을 먼저 따른다. 표준과 다른 기존 코드의 방식은 프로젝트가 정한 예외일 때만 새 코드에 옮긴다. L1도 바꿀 대상 폴더의 `AGENTS.md`를 읽는다.
+- lint 명령은 바꾼 파일과 가장 가까운 `AGENTS.md`가 정한 것을 쓰고, 없으면 패키지 루트에서 `detect-lint.sh`로 찾는다. 하위 패키지 파일이 저장소 루트 설정으로 검사되던 문제를 고친다.
+- approach와 impl이 공통 문서(정책, 용어, ADR 등)의 위치를 프로젝트 `AGENTS.md`가 정한 대로 쓴다. 정하지 않았을 때만 `docs/policies/` 등 기본 위치를 쓴다.
+- 억제 주석은 프로젝트가 허용한 형식이면 쓸 수 있고 PR 본문에 적는다. verify는 이 경우 Critical 대신 Info로 본다.
+- verify가 검사 명령 없이 직접 lint할 때도 같은 lint 규칙을 쓴다.
 - 플러그인과 마켓플레이스의 작성자 표기를 김형석(hseokkim@mz.co.kr)으로 바꿨다.
 
 ## [0.74.0] - 2026-11-08

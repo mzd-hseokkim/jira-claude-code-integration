@@ -50,12 +50,12 @@ git diff --name-only <base>..HEAD
 - 입력 "검사 결과"가 **통과**면 다시 실행하지 않는다. 호출자가 `verify-checks.py`로 `AGENTS.md`의 검사 명령을 실행해 통과한 것이다. "실행한 검사"에 그 명령과 "통과 (verify-checks.py)"를 적고 `checksPassed: true`. 그 명령에 lint가 포함됐는지는 따지지 않는다(표준 검사 명령은 빌드·테스트·린트·구조 검사를 한 번에 돌린다).
 - 입력이 **명령 없음**일 때만 직접 실행한다. 명령: 선언된 테스트 명령(`package.json` scripts의 test, `pytest`, `./gradlew test` 등)과 계획에 E2E가 있으면 Playwright. 자동 설치되는 도구(`npx <미선언 도구>`)는 실행하지 않는다.
   - 한 번 실행하고 통과·실패 수와 실패 메시지를 기록한다. 실패가 이 작업과 무관해 보여도 그대로 기록한다.
-  - Lint: `bash <scripts>/detect-lint.sh` 1회 → 출력 명령을 변경 파일 전체에 한 번에. 구현 세션의 `implSelfCheck.lint`는 인용하지 않는다.
+  - Lint: 변경 파일과 가장 가까운 `AGENTS.md`가 정한 lint 명령, 없으면 패키지 루트(변경 파일과 가장 가까운 `package.json` 등이 있는 폴더)에서 `bash <scripts>/detect-lint.sh <패키지 루트>` 1회 → 출력 명령을 그 폴더에서 변경 파일 전체에 한 번에. 구현 세션의 `implSelfCheck.lint`는 인용하지 않는다.
 
 ### 4. 독립 검증 (코드 품질)
 1차 입력은 `git diff <base>..HEAD` 본문이다. 변경 파일 전문은 맥락이 필요할 때만 읽고, 읽었으면 적는다.
 - 보안(injection, XSS, 하드코딩된 credentials), 에러 처리 누락, 동시성·트랜잭션 경계, 네이밍 일관성, 불필요한 복잡도
-- 억제 주석·분석 제외 설정 추가는 Critical(CQ-COM-AGT-001)
+- 억제 주석·분석 제외 설정 추가는 Critical(CQ-COM-AGT-001). 단 프로젝트 `AGENTS.md`가 허용한 형식(예: 사유를 단 한 줄 억제)이고 PR 본문에 적혀 있으면 Info
 - 특정 테스트 값만 통과시키는 분기·하드코딩은 Critical
 - findings는 diff 라인에만. 기존 코드 지적은 Info로 분리하거나 뺀다.
 
